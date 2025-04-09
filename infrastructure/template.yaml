@@ -1,0 +1,280 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: 'EcoScan CZ - AWS CloudFormation Template'
+
+Parameters:
+  Environment:
+    Type: String
+    Default: dev
+    Description: The deployment environment
+    AllowedValues:
+      - dev
+      - test
+      - prod
+  
+  ApiName:
+    Type: String
+    Default: EcoScanAPI
+    Description: The name of the API Gateway
+  
+  CognitoUserPoolName:
+    Type: String
+    Default: EcoScanUserPool
+    Description: The name of the Cognito User Pool
+
+Resources:
+  # DynamoDB Tables
+  LocationsTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      TableName: !Sub ${Environment}-Locations
+      BillingMode: PAY_PER_REQUEST
+      AttributeDefinitions:
+        - AttributeName: id
+          AttributeType: S
+      KeySchema:
+        - AttributeName: id
+          KeyType: HASH
+      Tags:
+        - Key: Environment
+          Value: !Ref Environment
+
+  TrashBinsTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      TableName: !Sub ${Environment}-TrashBins
+      BillingMode: PAY_PER_REQUEST
+      AttributeDefinitions:
+        - AttributeName: id
+          AttributeType: S
+        - AttributeName: locationId
+          AttributeType: S
+      KeySchema:
+        - AttributeName: id
+          KeyType: HASH
+      GlobalSecondaryIndexes:
+        - IndexName: locationId-index
+          KeySchema:
+            - AttributeName: locationId
+              KeyType: HASH
+          Projection:
+            ProjectionType: ALL
+      Tags:
+        - Key: Environment
+          Value: !Ref Environment
+
+  QRCodesTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      TableName: !Sub ${Environment}-QRCodes
+      BillingMode: PAY_PER_REQUEST
+      AttributeDefinitions:
+        - AttributeName: id
+          AttributeType: S
+        - AttributeName: binId
+          AttributeType: S
+      KeySchema:
+        - AttributeName: id
+          KeyType: HASH
+      GlobalSecondaryIndexes:
+        - IndexName: binId-index
+          KeySchema:
+            - AttributeName: binId
+              KeyType: HASH
+          Projection:
+            ProjectionType: ALL
+      Tags:
+        - Key: Environment
+          Value: !Ref Environment
+
+  StatusUpdatesTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      TableName: !Sub ${Environment}-StatusUpdates
+      BillingMode: PAY_PER_REQUEST
+      AttributeDefinitions:
+        - AttributeName: id
+          AttributeType: S
+        - AttributeName: timestamp
+          AttributeType: S
+        - AttributeName: binId
+          AttributeType: S
+      KeySchema:
+        - AttributeName: id
+          KeyType: HASH
+        - AttributeName: timestamp
+          KeyType: RANGE
+      GlobalSecondaryIndexes:
+        - IndexName: binId-timestamp-index
+          KeySchema:
+            - AttributeName: binId
+              KeyType: HASH
+            - AttributeName: timestamp
+              KeyType: RANGE
+          Projection:
+            ProjectionType: ALL
+      Tags:
+        - Key: Environment
+          Value: !Ref Environment
+
+  # Cognito User Pool
+  UserPool:
+    Type: AWS::Cognito::UserPool
+    Properties:
+      UserPoolName: !Ref CognitoUserPoolName
+      AdminCreateUserConfig:
+        AllowAdminCreateUserOnly: true
+      AutoVerifyAttributes:
+        - email
+      MfaConfiguration: 'OFF'
+      Policies:
+        PasswordPolicy:
+          MinimumLength: 8
+          RequireLowercase: true
+          RequireUppercase: true
+          RequireNumbers: true
+          RequireSymbols: true
+      Schema:
+        - Name: email
+          AttributeDataType: String
+          Mutable: true
+          Required: true
+      UsernameAttributes:
+        - email
+      VerificationMessageTemplate:
+        DefaultEmailOption: CONFIRM_WITH_CODE
+      EmailConfiguration:
+        EmailSendingAccount: COGNITO_DEFAULT
+
+  UserPoolClient:
+    Type: AWS::Cognito::UserPoolClient
+    Properties:
+      ClientName: !Sub ${Environment}-app-client
+      UserPoolId: !Ref UserPool
+      GenerateSecret: false
+      RefreshTokenValidity: 30
+      ExplicitAuthFlows:
+        - ALLOW_USER_SRP_AUTH
+        - ALLOW_REFRESH_TOKEN_AUTH
+
+  # Cognito User Groups
+  AdminGroup:
+    Type: AWS::Cognito::UserPoolGroup
+    Properties:
+      GroupName: admin
+      Description: Administrator group with full access
+      UserPoolId: !Ref UserPool
+      Precedence: 0
+
+  MemberGroup:
+    Type: AWS::Cognito::UserPoolGroup
+    Properties:
+      GroupName: member
+      Description: Regular member group with limited access
+      UserPoolId: !Ref UserPool
+      Precedence: 1
+
+  # IAM Roles
+  LambdaExecutionRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+      Policies:
+        - PolicyName: DynamoDBAccess
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - dynamodb:GetItem
+                  - dynamodb:PutItem
+                  - dynamodb:UpdateItem
+                  - dynamodb:DeleteItem
+                  - dynamodb:Query
+                  - dynamodb:Scan
+                Resource:
+                  - !GetAtt LocationsTable.Arn
+                  - !GetAtt TrashBinsTable.Arn
+                  - !GetAtt QRCodesTable.Arn
+                  - !GetAtt StatusUpdatesTable.Arn
+                  - !Sub ${LocationsTable.Arn}/index/*
+                  - !Sub ${TrashBinsTable.Arn}/index/*
+                  - !Sub ${QRCodesTable.Arn}/index/*
+                  - !Sub ${StatusUpdatesTable.Arn}/index/*
+
+  # API Gateway
+  ApiGateway:
+    Type: AWS::ApiGateway::RestApi
+    Properties:
+      Name: !Ref ApiName
+      Description: API for EcoScan CZ application
+      EndpointConfiguration:
+        Types:
+          - REGIONAL
+      Tags:
+        - Key: Environment
+          Value: !Ref Environment
+
+  # Deployment and Stage
+  ApiDeployment:
+    Type: AWS::ApiGateway::Deployment
+    DependsOn:
+      - ApiGateway
+    Properties:
+      RestApiId: !Ref ApiGateway
+      Description: Initial deployment
+
+  ApiStage:
+    Type: AWS::ApiGateway::Stage
+    Properties:
+      DeploymentId: !Ref ApiDeployment
+      RestApiId: !Ref ApiGateway
+      StageName: !Ref Environment
+      Description: !Sub ${Environment} stage
+
+  # API Gateway Authorizer
+  ApiAuthorizer:
+    Type: AWS::ApiGateway::Authorizer
+    Properties:
+      Name: CognitoAuthorizer
+      RestApiId: !Ref ApiGateway
+      Type: COGNITO_USER_POOLS
+      IdentitySource: method.request.header.Authorization
+      ProviderARNs:
+        - !GetAtt UserPool.Arn
+
+Outputs:
+  ApiEndpoint:
+    Description: API Gateway endpoint URL
+    Value: !Sub https://${ApiGateway}.execute-api.${AWS::Region}.amazonaws.com/${Environment}
+  
+  UserPoolId:
+    Description: Cognito User Pool ID
+    Value: !Ref UserPool
+  
+  UserPoolClientId:
+    Description: Cognito User Pool Client ID
+    Value: !Ref UserPoolClient
+  
+  LocationsTableName:
+    Description: DynamoDB table for storing locations
+    Value: !Ref LocationsTable
+  
+  TrashBinsTableName:
+    Description: DynamoDB table for storing trash bins
+    Value: !Ref TrashBinsTable
+  
+  QRCodesTableName:
+    Description: DynamoDB table for storing QR codes
+    Value: !Ref QRCodesTable
+  
+  StatusUpdatesTableName:
+    Description: DynamoDB table for storing status updates
+    Value: !Ref StatusUpdatesTable 

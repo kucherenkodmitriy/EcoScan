@@ -1,180 +1,78 @@
 AWSTemplateFormatVersion: '2010-09-09'
-Description: 'EcoScan CZ - AWS CloudFormation Template'
+Description: CloudFormation template for EcoScan CZ trash bin monitoring system
 
 Parameters:
   Environment:
     Type: String
     Default: dev
-    Description: The deployment environment
     AllowedValues:
       - dev
-      - test
+      - staging
       - prod
-  
-  ApiName:
-    Type: String
-    Default: EcoScanAPI
-    Description: The name of the API Gateway
-  
-  CognitoUserPoolName:
-    Type: String
-    Default: EcoScanUserPool
-    Description: The name of the Cognito User Pool
+    Description: Environment name
 
 Resources:
-  # DynamoDB Tables
-  LocationsTable:
+  EcoScanLocationsTable:
     Type: AWS::DynamoDB::Table
     Properties:
-      TableName: !Sub ${Environment}-Locations
+      TableName: !Sub ${Environment}-EcoScanLocations
       BillingMode: PAY_PER_REQUEST
       AttributeDefinitions:
-        - AttributeName: id
-          AttributeType: S
-      KeySchema:
-        - AttributeName: id
-          KeyType: HASH
-      Tags:
-        - Key: Environment
-          Value: !Ref Environment
-
-  TrashBinsTable:
-    Type: AWS::DynamoDB::Table
-    Properties:
-      TableName: !Sub ${Environment}-TrashBins
-      BillingMode: PAY_PER_REQUEST
-      AttributeDefinitions:
-        - AttributeName: id
-          AttributeType: S
         - AttributeName: locationId
           AttributeType: S
       KeySchema:
-        - AttributeName: id
+        - AttributeName: locationId
           KeyType: HASH
-      GlobalSecondaryIndexes:
-        - IndexName: locationId-index
-          KeySchema:
-            - AttributeName: locationId
-              KeyType: HASH
-          Projection:
-            ProjectionType: ALL
-      Tags:
-        - Key: Environment
-          Value: !Ref Environment
+      SSESpecification:
+        SSEEnabled: true
 
-  QRCodesTable:
+  EcoScanTrashBinsTable:
     Type: AWS::DynamoDB::Table
     Properties:
-      TableName: !Sub ${Environment}-QRCodes
+      TableName: !Sub ${Environment}-EcoScanTrashBins
       BillingMode: PAY_PER_REQUEST
       AttributeDefinitions:
-        - AttributeName: id
-          AttributeType: S
         - AttributeName: binId
           AttributeType: S
       KeySchema:
-        - AttributeName: id
+        - AttributeName: binId
           KeyType: HASH
-      GlobalSecondaryIndexes:
-        - IndexName: binId-index
-          KeySchema:
-            - AttributeName: binId
-              KeyType: HASH
-          Projection:
-            ProjectionType: ALL
-      Tags:
-        - Key: Environment
-          Value: !Ref Environment
+      SSESpecification:
+        SSEEnabled: true
 
-  StatusUpdatesTable:
+  EcoScanQRCodesTable:
     Type: AWS::DynamoDB::Table
     Properties:
-      TableName: !Sub ${Environment}-StatusUpdates
+      TableName: !Sub ${Environment}-EcoScanQRCodes
       BillingMode: PAY_PER_REQUEST
       AttributeDefinitions:
-        - AttributeName: id
-          AttributeType: S
-        - AttributeName: timestamp
-          AttributeType: S
-        - AttributeName: binId
+        - AttributeName: qrCodeId
           AttributeType: S
       KeySchema:
-        - AttributeName: id
+        - AttributeName: qrCodeId
           KeyType: HASH
-        - AttributeName: timestamp
+      SSESpecification:
+        SSEEnabled: true
+
+  EcoScanStatusReportsTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      TableName: !Sub ${Environment}-EcoScanStatusReports
+      BillingMode: PAY_PER_REQUEST
+      AttributeDefinitions:
+        - AttributeName: binId
+          AttributeType: S
+        - AttributeName: createdAt
+          AttributeType: S
+      KeySchema:
+        - AttributeName: binId
+          KeyType: HASH
+        - AttributeName: createdAt
           KeyType: RANGE
-      GlobalSecondaryIndexes:
-        - IndexName: binId-timestamp-index
-          KeySchema:
-            - AttributeName: binId
-              KeyType: HASH
-            - AttributeName: timestamp
-              KeyType: RANGE
-          Projection:
-            ProjectionType: ALL
-      Tags:
-        - Key: Environment
-          Value: !Ref Environment
+      SSESpecification:
+        SSEEnabled: true
 
-  # Cognito User Pool
-  UserPool:
-    Type: AWS::Cognito::UserPool
-    Properties:
-      UserPoolName: !Ref CognitoUserPoolName
-      AdminCreateUserConfig:
-        AllowAdminCreateUserOnly: true
-      AutoVerifyAttributes:
-        - email
-      MfaConfiguration: 'OFF'
-      Policies:
-        PasswordPolicy:
-          MinimumLength: 8
-          RequireLowercase: true
-          RequireUppercase: true
-          RequireNumbers: true
-          RequireSymbols: true
-      Schema:
-        - Name: email
-          AttributeDataType: String
-          Mutable: true
-          Required: true
-      UsernameAttributes:
-        - email
-      VerificationMessageTemplate:
-        DefaultEmailOption: CONFIRM_WITH_CODE
-      EmailConfiguration:
-        EmailSendingAccount: COGNITO_DEFAULT
-
-  UserPoolClient:
-    Type: AWS::Cognito::UserPoolClient
-    Properties:
-      ClientName: !Sub ${Environment}-app-client
-      UserPoolId: !Ref UserPool
-      GenerateSecret: false
-      RefreshTokenValidity: 30
-      ExplicitAuthFlows:
-        - ALLOW_USER_SRP_AUTH
-        - ALLOW_REFRESH_TOKEN_AUTH
-
-  # Cognito User Groups
-  AdminGroup:
-    Type: AWS::Cognito::UserPoolGroup
-    Properties:
-      GroupName: admin
-      Description: Administrator group with full access
-      UserPoolId: !Ref UserPool
-      Precedence: 0
-
-  MemberGroup:
-    Type: AWS::Cognito::UserPoolGroup
-    Properties:
-      GroupName: member
-      Description: Regular member group with limited access
-      UserPoolId: !Ref UserPool
-      Precedence: 1
-
-  # IAM Roles
-  LambdaExecutionRole:
+  EcoScanLambdaRole:
     Type: AWS::IAM::Role
     Properties:
       AssumeRolePolicyDocument:
@@ -187,7 +85,7 @@ Resources:
       ManagedPolicyArns:
         - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
       Policies:
-        - PolicyName: DynamoDBAccess
+        - PolicyName: EcoScanDynamoDBAccess
           PolicyDocument:
             Version: '2012-10-17'
             Statement:
@@ -200,81 +98,101 @@ Resources:
                   - dynamodb:Query
                   - dynamodb:Scan
                 Resource:
-                  - !GetAtt LocationsTable.Arn
-                  - !GetAtt TrashBinsTable.Arn
-                  - !GetAtt QRCodesTable.Arn
-                  - !GetAtt StatusUpdatesTable.Arn
-                  - !Sub ${LocationsTable.Arn}/index/*
-                  - !Sub ${TrashBinsTable.Arn}/index/*
-                  - !Sub ${QRCodesTable.Arn}/index/*
-                  - !Sub ${StatusUpdatesTable.Arn}/index/*
+                  - !GetAtt EcoScanLocationsTable.Arn
+                  - !GetAtt EcoScanTrashBinsTable.Arn
+                  - !GetAtt EcoScanQRCodesTable.Arn
+                  - !GetAtt EcoScanStatusReportsTable.Arn
 
-  # API Gateway
-  ApiGateway:
+  EcoScanLambdaFunction:
+    Type: AWS::Lambda::Function
+    Properties:
+      FunctionName: !Sub ${Environment}-EcoScanUpdateBinStatus
+      Handler: bootstrap
+      Role: !GetAtt EcoScanLambdaRole.Arn
+      Runtime: provided.al2
+      Architectures:
+        - arm64
+      MemorySize: 256
+      Timeout: 30
+      Environment:
+        Variables:
+          LOCATIONS_TABLE: !Ref EcoScanLocationsTable
+          TRASH_BINS_TABLE: !Ref EcoScanTrashBinsTable
+          QR_CODES_TABLE: !Ref EcoScanQRCodesTable
+          STATUS_REPORTS_TABLE: !Ref EcoScanStatusReportsTable
+          RUST_LOG: info
+      Code:
+        ZipFile: |
+          #!/bin/bash
+          exec /var/runtime/bootstrap
+
+  EcoScanApiGateway:
     Type: AWS::ApiGateway::RestApi
     Properties:
-      Name: !Ref ApiName
-      Description: API for EcoScan CZ application
-      EndpointConfiguration:
-        Types:
-          - REGIONAL
-      Tags:
-        - Key: Environment
-          Value: !Ref Environment
+      Name: !Sub ${Environment}-EcoScanAPI
+      Description: API Gateway for EcoScan CZ trash bin monitoring system
 
-  # Deployment and Stage
-  ApiDeployment:
-    Type: AWS::ApiGateway::Deployment
-    DependsOn:
-      - ApiGateway
+  EcoScanApiResource:
+    Type: AWS::ApiGateway::Resource
     Properties:
-      RestApiId: !Ref ApiGateway
-      Description: Initial deployment
+      RestApiId: !Ref EcoScanApiGateway
+      ParentId: !GetAtt EcoScanApiGateway.RootResourceId
+      PathPart: bins
 
-  ApiStage:
+  EcoScanApiMethod:
+    Type: AWS::ApiGateway::Method
+    Properties:
+      RestApiId: !Ref EcoScanApiGateway
+      ResourceId: !Ref EcoScanApiResource
+      HttpMethod: POST
+      AuthorizationType: NONE
+      Integration:
+        Type: AWS_PROXY
+        IntegrationHttpMethod: POST
+        Uri: !Sub arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${EcoScanLambdaFunction.Arn}/invocations
+
+  EcoScanApiDeployment:
+    Type: AWS::ApiGateway::Deployment
+    DependsOn: EcoScanApiMethod
+    Properties:
+      RestApiId: !Ref EcoScanApiGateway
+
+  EcoScanApiStage:
     Type: AWS::ApiGateway::Stage
     Properties:
-      DeploymentId: !Ref ApiDeployment
-      RestApiId: !Ref ApiGateway
+      RestApiId: !Ref EcoScanApiGateway
+      DeploymentId: !Ref EcoScanApiDeployment
       StageName: !Ref Environment
-      Description: !Sub ${Environment} stage
 
-  # API Gateway Authorizer
-  ApiAuthorizer:
-    Type: AWS::ApiGateway::Authorizer
+  EcoScanLambdaPermission:
+    Type: AWS::Lambda::Permission
     Properties:
-      Name: CognitoAuthorizer
-      RestApiId: !Ref ApiGateway
-      Type: COGNITO_USER_POOLS
-      IdentitySource: method.request.header.Authorization
-      ProviderARNs:
-        - !GetAtt UserPool.Arn
+      Action: lambda:InvokeFunction
+      FunctionName: !Ref EcoScanLambdaFunction
+      Principal: apigateway.amazonaws.com
+      SourceArn: !Sub arn:aws:execute-api:${AWS::Region}:${AWS::AccountId}:${EcoScanApiGateway}/*/*/*
 
 Outputs:
-  ApiEndpoint:
+  EcoScanLocationsTableName:
+    Description: Name of the Locations table
+    Value: !Ref EcoScanLocationsTable
+
+  EcoScanTrashBinsTableName:
+    Description: Name of the Trash Bins table
+    Value: !Ref EcoScanTrashBinsTable
+
+  EcoScanQRCodesTableName:
+    Description: Name of the QR Codes table
+    Value: !Ref EcoScanQRCodesTable
+
+  EcoScanStatusReportsTableName:
+    Description: Name of the Status Reports table
+    Value: !Ref EcoScanStatusReportsTable
+
+  EcoScanApiEndpoint:
     Description: API Gateway endpoint URL
-    Value: !Sub https://${ApiGateway}.execute-api.${AWS::Region}.amazonaws.com/${Environment}
-  
-  UserPoolId:
-    Description: Cognito User Pool ID
-    Value: !Ref UserPool
-  
-  UserPoolClientId:
-    Description: Cognito User Pool Client ID
-    Value: !Ref UserPoolClient
-  
-  LocationsTableName:
-    Description: DynamoDB table for storing locations
-    Value: !Ref LocationsTable
-  
-  TrashBinsTableName:
-    Description: DynamoDB table for storing trash bins
-    Value: !Ref TrashBinsTable
-  
-  QRCodesTableName:
-    Description: DynamoDB table for storing QR codes
-    Value: !Ref QRCodesTable
-  
-  StatusUpdatesTableName:
-    Description: DynamoDB table for storing status updates
-    Value: !Ref StatusUpdatesTable 
+    Value: !Sub https://${EcoScanApiGateway}.execute-api.${AWS::Region}.amazonaws.com/${Environment}/bins
+
+  EcoScanLambdaFunctionArn:
+    Description: Lambda Function ARN
+    Value: !GetAtt EcoScanLambdaFunction.Arn 

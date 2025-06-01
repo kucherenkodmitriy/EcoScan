@@ -1,0 +1,25 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+
+Resources:
+  HelloWorldFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: .
+      Handler: bootstrap
+      Runtime: provided.al2
+      Architectures:
+        - arm64
+      MemorySize: 128
+      Timeout: 3
+      Environment:
+        Variables:
+          APP_NAME: ecoscan-lambda
+    Metadata:
+      BuildMethod: rust
+      BuildProperties:
+        Target: aarch64-unknown-linux-gnu
+        Release: true
+        BuildArgs:
+          - "--features"
+          - "lambda"

@@ -1,0 +1,198 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: CloudFormation template for EcoScan CZ trash bin monitoring system
+
+Parameters:
+  Environment:
+    Type: String
+    Default: dev
+    AllowedValues:
+      - dev
+      - staging
+      - prod
+    Description: Environment name
+
+Resources:
+  EcoScanLocationsTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      TableName: !Sub ${Environment}-EcoScanLocations
+      BillingMode: PAY_PER_REQUEST
+      AttributeDefinitions:
+        - AttributeName: locationId
+          AttributeType: S
+      KeySchema:
+        - AttributeName: locationId
+          KeyType: HASH
+      SSESpecification:
+        SSEEnabled: true
+
+  EcoScanTrashBinsTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      TableName: !Sub ${Environment}-EcoScanTrashBins
+      BillingMode: PAY_PER_REQUEST
+      AttributeDefinitions:
+        - AttributeName: binId
+          AttributeType: S
+      KeySchema:
+        - AttributeName: binId
+          KeyType: HASH
+      SSESpecification:
+        SSEEnabled: true
+
+  EcoScanQRCodesTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      TableName: !Sub ${Environment}-EcoScanQRCodes
+      BillingMode: PAY_PER_REQUEST
+      AttributeDefinitions:
+        - AttributeName: qrCodeId
+          AttributeType: S
+      KeySchema:
+        - AttributeName: qrCodeId
+          KeyType: HASH
+      SSESpecification:
+        SSEEnabled: true
+
+  EcoScanStatusReportsTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      TableName: !Sub ${Environment}-EcoScanStatusReports
+      BillingMode: PAY_PER_REQUEST
+      AttributeDefinitions:
+        - AttributeName: binId
+          AttributeType: S
+        - AttributeName: createdAt
+          AttributeType: S
+      KeySchema:
+        - AttributeName: binId
+          KeyType: HASH
+        - AttributeName: createdAt
+          KeyType: RANGE
+      SSESpecification:
+        SSEEnabled: true
+
+  EcoScanLambdaRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+      Policies:
+        - PolicyName: EcoScanDynamoDBAccess
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - dynamodb:GetItem
+                  - dynamodb:PutItem
+                  - dynamodb:UpdateItem
+                  - dynamodb:DeleteItem
+                  - dynamodb:Query
+                  - dynamodb:Scan
+                Resource:
+                  - !GetAtt EcoScanLocationsTable.Arn
+                  - !GetAtt EcoScanTrashBinsTable.Arn
+                  - !GetAtt EcoScanQRCodesTable.Arn
+                  - !GetAtt EcoScanStatusReportsTable.Arn
+
+  EcoScanLambdaFunction:
+    Type: AWS::Lambda::Function
+    Properties:
+      FunctionName: !Sub ${Environment}-EcoScanUpdateBinStatus
+      Handler: bootstrap
+      Role: !GetAtt EcoScanLambdaRole.Arn
+      Runtime: provided.al2
+      Architectures:
+        - arm64
+      MemorySize: 256
+      Timeout: 30
+      Environment:
+        Variables:
+          LOCATIONS_TABLE: !Ref EcoScanLocationsTable
+          TRASH_BINS_TABLE: !Ref EcoScanTrashBinsTable
+          QR_CODES_TABLE: !Ref EcoScanQRCodesTable
+          STATUS_REPORTS_TABLE: !Ref EcoScanStatusReportsTable
+          RUST_LOG: info
+      Code:
+        ZipFile: |
+          #!/bin/bash
+          exec /var/runtime/bootstrap
+
+  EcoScanApiGateway:
+    Type: AWS::ApiGateway::RestApi
+    Properties:
+      Name: !Sub ${Environment}-EcoScanAPI
+      Description: API Gateway for EcoScan CZ trash bin monitoring system
+
+  EcoScanApiResource:
+    Type: AWS::ApiGateway::Resource
+    Properties:
+      RestApiId: !Ref EcoScanApiGateway
+      ParentId: !GetAtt EcoScanApiGateway.RootResourceId
+      PathPart: bins
+
+  EcoScanApiMethod:
+    Type: AWS::ApiGateway::Method
+    Properties:
+      RestApiId: !Ref EcoScanApiGateway
+      ResourceId: !Ref EcoScanApiResource
+      HttpMethod: POST
+      AuthorizationType: NONE
+      Integration:
+        Type: AWS_PROXY
+        IntegrationHttpMethod: POST
+        Uri: !Sub arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${EcoScanLambdaFunction.Arn}/invocations
+
+  EcoScanApiDeployment:
+    Type: AWS::ApiGateway::Deployment
+    DependsOn: EcoScanApiMethod
+    Properties:
+      RestApiId: !Ref EcoScanApiGateway
+
+  EcoScanApiStage:
+    Type: AWS::ApiGateway::Stage
+    Properties:
+      RestApiId: !Ref EcoScanApiGateway
+      DeploymentId: !Ref EcoScanApiDeployment
+      StageName: !Ref Environment
+
+  EcoScanLambdaPermission:
+    Type: AWS::Lambda::Permission
+    Properties:
+      Action: lambda:InvokeFunction
+      FunctionName: !Ref EcoScanLambdaFunction
+      Principal: apigateway.amazonaws.com
+      SourceArn: !Sub arn:aws:execute-api:${AWS::Region}:${AWS::AccountId}:${EcoScanApiGateway}/*/*/*
+
+Outputs:
+  EcoScanLocationsTableName:
+    Description: Name of the Locations table
+    Value: !Ref EcoScanLocationsTable
+
+  EcoScanTrashBinsTableName:
+    Description: Name of the Trash Bins table
+    Value: !Ref EcoScanTrashBinsTable
+
+  EcoScanQRCodesTableName:
+    Description: Name of the QR Codes table
+    Value: !Ref EcoScanQRCodesTable
+
+  EcoScanStatusReportsTableName:
+    Description: Name of the Status Reports table
+    Value: !Ref EcoScanStatusReportsTable
+
+  EcoScanApiEndpoint:
+    Description: API Gateway endpoint URL
+    Value: !Sub https://${EcoScanApiGateway}.execute-api.${AWS::Region}.amazonaws.com/${Environment}/bins
+
+  EcoScanLambdaFunctionArn:
+    Description: Lambda Function ARN
+    Value: !GetAtt EcoScanLambdaFunction.Arn 

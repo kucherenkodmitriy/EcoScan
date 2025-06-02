@@ -122,9 +122,8 @@ Resources:
           STATUS_REPORTS_TABLE: !Ref EcoScanStatusReportsTable
           RUST_LOG: info
       Code:
-        ZipFile: |
-          #!/bin/bash
-          exec /var/runtime/bootstrap
+        S3Bucket: !Sub ${Environment}-ecoscan-lambda-deployments
+        S3Key: lambda.zip
 
   EcoScanApiGateway:
     Type: AWS::ApiGateway::RestApi

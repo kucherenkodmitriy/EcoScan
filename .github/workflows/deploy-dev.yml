@@ -14,13 +14,30 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Install Rust
-        uses: dtolnay/rust-toolchain@stable
+      - name: Cache Rust dependencies
+        uses: Swatinem/rust-cache@v2
         with:
-          components: rustfmt, clippy
+          # Cache both cargo and cargo-lambda
+          cache-directories: |
+            ~/.cargo/bin
+            ~/.cargo/registry
+            ~/.cargo/git
+            target
 
-      - name: Install cargo-lambda
-        run: cargo install cargo-lambda
+      - name: Install Rust and cargo-lambda
+        run: |
+          if ! command -v cargo-lambda &> /dev/null; then
+            cargo install cargo-lambda
+          fi
+
+      - name: Install Zig
+        run: |
+          if ! command -v zig &> /dev/null; then
+            wget https://ziglang.org/download/0.11.0/zig-linux-x86_64-0.11.0.tar.xz
+            tar xf zig-linux-x86_64-0.11.0.tar.xz
+            sudo mv zig-linux-x86_64-0.11.0 /usr/local/zig
+            echo 'export PATH=$PATH:/usr/local/zig' >> $GITHUB_ENV
+          fi
 
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v4

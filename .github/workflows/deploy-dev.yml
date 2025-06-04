@@ -23,6 +23,8 @@ jobs:
             ~/.cargo/registry
             ~/.cargo/git
             target
+          # Add a key based on the Rust version
+          key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
 
       - name: Install Rust and cargo-lambda
         run: |
@@ -38,6 +40,11 @@ jobs:
             sudo mv zig-linux-x86_64-0.11.0 /usr/local/zig
             echo "/usr/local/zig" >> $GITHUB_PATH
           fi
+
+      - name: Build Lambda function
+        run: |
+          cd lambda
+          cargo lambda build --release
 
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v4

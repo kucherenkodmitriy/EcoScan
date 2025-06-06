@@ -16,6 +16,9 @@ thiserror = "1.0"
 anyhow = "1.0"
 tracing = "0.1"
 tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+aws-config = "1"
+aws-sdk-dynamodb = { version = "1", features = ["test-util"] }
+async-trait = "0.1"
 
 [[bin]]
 name = "bootstrap"

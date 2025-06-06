@@ -1,9 +1,14 @@
-mod error;
-mod models;
+pub mod error;
+pub mod domain;
+pub mod application;
+pub mod infrastructure;
 
 use lambda_runtime::{Error, LambdaEvent};
-use models::{StatusUpdateRequest, StatusUpdateResponse};
 use tracing::info;
+
+use crate::application::handle_status_update;
+use crate::domain::{StatusUpdateRequest, StatusUpdateResponse};
+use crate::infrastructure::dynamodb::DynamoDbRepository;
 
 pub use error::AppError;
 
@@ -12,22 +17,20 @@ pub async fn update_bin_status(
 ) -> Result<StatusUpdateResponse, Error> {
     info!("Received request: {:?}", event);
 
-    // TODO: Implement bin status update logic
-    Ok(StatusUpdateResponse {
-        success: true,
-        message: format!("Bin status updated to {:?}", event.payload.status),
-        updated_at: chrono::Utc::now(),
-    })
+    let repo = DynamoDbRepository::new().await?;
+    let response = handle_status_update(&repo, event.payload).await?;
+    Ok(response)
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
     use lambda_runtime::LambdaEvent;
-    use models::{BinStatus, StatusUpdateRequest};
     use uuid::Uuid;
+    use crate::domain::{BinStatus, StatusUpdateRequest};
 
     #[tokio::test]
+    #[ignore]
     async fn test_update_bin_status() {
         let request = StatusUpdateRequest {
             bin_id: Uuid::new_v4(),
@@ -41,3 +44,4 @@ mod tests {
         assert!(response.message.contains("Bin status updated to Full"));
     }
 }
+

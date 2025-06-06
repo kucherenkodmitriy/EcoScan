@@ -1,11 +1,23 @@
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
+use std::fmt;
+use async_trait::async_trait;
+use crate::error::AppError;
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize, Clone)]
 pub enum BinStatus {
     Full,
     Ok,
+}
+
+impl fmt::Display for BinStatus {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            BinStatus::Full => write!(f, "Full"),
+            BinStatus::Ok => write!(f, "Ok"),
+        }
+    }
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -35,7 +47,7 @@ pub struct QRCode {
     pub created_at: DateTime<Utc>,
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct StatusUpdateRequest {
     pub bin_id: Uuid,
     pub status: BinStatus,
@@ -46,4 +58,22 @@ pub struct StatusUpdateResponse {
     pub success: bool,
     pub message: String,
     pub updated_at: DateTime<Utc>,
-} 
+}
+
+#[async_trait]
+pub trait BinRepository {
+    async fn update_status(
+        &self,
+        bin_id: &Uuid,
+        status: BinStatus,
+        timestamp: DateTime<Utc>,
+    ) -> Result<(), AppError>;
+
+    async fn add_report(
+        &self,
+        bin_id: &Uuid,
+        status: BinStatus,
+        timestamp: DateTime<Utc>,
+    ) -> Result<(), AppError>;
+}
+

@@ -6,25 +6,26 @@ on:
       - dev
 
 jobs:
-  build:
+  deploy:
     runs-on: ubuntu-latest
+    environment: dev
+    
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
 
       - name: Cache Rust dependencies
-        uses: Swatinem/rust-cache@v2
+        uses: actions/cache@v4
         with:
-          # Cache both cargo and cargo-lambda
-          cache-directories: |
-            ~/.cargo/bin
-            ~/.cargo/registry
-            ~/.cargo/git
-            lambda/target
-          # Add a key based on the Rust version and the lambda directory
+          path: |
+            ~/.cargo/bin/
+            ~/.cargo/registry/index/
+            ~/.cargo/registry/cache/
+            ~/.cargo/git/db/
+            lambda/target/
           key: ${{ runner.os }}-cargo-${{ hashFiles('lambda/Cargo.lock') }}
-          # Specify the working directory
-          working-directory: lambda
+          restore-keys: |
+            ${{ runner.os }}-cargo-
 
       - name: Install Rust and cargo-lambda
         run: |
@@ -41,30 +42,6 @@ jobs:
             echo "/usr/local/zig" >> $GITHUB_PATH
           fi
 
-      - name: Build Lambda function
-        run: |
-          cd lambda
-          cargo lambda build --release
-
-      - name: Upload build artifacts
-        uses: actions/upload-artifact@v4
-        with:
-          name: lambda-build
-          path: lambda/target/lambda
-
-  deploy:
-    needs: build
-    runs-on: ubuntu-latest
-    environment: 
-      name: dev
-      url: ${{ steps.deploy.outputs.api-url }}
-    steps:
-      - name: Download build artifacts
-        uses: actions/download-artifact@v4
-        with:
-          name: lambda-build
-          path: lambda/target/lambda
-
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v4
         with:
@@ -73,7 +50,6 @@ jobs:
           aws-region: eu-central-1
 
       - name: Deploy to AWS
-        id: deploy
         run: |
           cd infrastructure
           chmod +x deploy.sh

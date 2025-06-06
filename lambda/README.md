@@ -31,7 +31,7 @@ To deploy the Lambda function, run the following command in the `infrastructure`
 ```
 
 - `environment`: The deployment environment (e.g., `dev`, `staging`, `prod`). Default is `dev`.
-- `region`: The AWS region to deploy to. Default is `us-east-1`.
+- `region`: The AWS region to deploy to. Default is `eu-central-1`.
 
 ## Testing
 

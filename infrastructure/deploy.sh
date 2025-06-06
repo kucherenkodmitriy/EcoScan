@@ -22,7 +22,7 @@ usage() {
     echo ""
     echo "Available environments: dev, staging, prod"
     echo "Default environment: dev"
-    echo "Default region: us-east-1"
+    echo "Default region: eu-central-1"
     exit 1
 }
 

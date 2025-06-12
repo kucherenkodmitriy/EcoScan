@@ -31,7 +31,7 @@ To deploy the Lambda function, run the following command in the `infrastructure`
 ```
 
 - `environment`: The deployment environment (e.g., `dev`, `staging`, `prod`). Default is `dev`.
-- `region`: The AWS region to deploy to. Default is `us-east-1`.
+- `region`: The AWS region to deploy to. Default is `eu-central-1`.
 
 ## Testing
 
@@ -43,7 +43,12 @@ cargo test
 
 ## Project Structure
 
-- `src/lib.rs`: Contains the main logic for updating bin status.
+This crate follows a domain-driven design (DDD) layout:
+
+- `src/domain/`: Domain models and repository traits.
+- `src/application/`: Use cases and business logic.
+- `src/infrastructure/`: DynamoDB implementation of repositories.
+- `src/lib.rs`: Wiring of the Lambda handler.
 - `src/main.rs`: Entry point for the Lambda function.
 - `build.sh`: Script to build the Lambda function.
 - `deploy.sh`: Script to deploy the Lambda function.

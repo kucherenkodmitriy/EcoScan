@@ -1,0 +1,26 @@
+version: '3.8'
+
+services:
+  localstack:
+    image: localstack/localstack:latest
+    ports:
+      - "4566:4566"            # LocalStack Gateway
+      - "4510-4559:4510-4559"  # external services port range
+    environment:
+      - DEBUG=1
+      - DOCKER_HOST=unix:///var/run/docker.sock
+      - LAMBDA_EXECUTOR=docker
+      - AWS_DEFAULT_REGION=eu-central-1
+      - AWS_ACCESS_KEY_ID=test
+      - AWS_SECRET_ACCESS_KEY=test
+      - SERVICES=dynamodb,s3,lambda
+      - ENABLE_LEGACY_PORTS=false
+      - PERSISTENCE=1
+    volumes:
+      - "${LOCALSTACK_VOLUME_DIR:-./volume}:/var/lib/localstack"
+      - "/var/run/docker.sock:/var/run/docker.sock"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:4566/health"]
+      interval: 5s
+      timeout: 5s
+      retries: 5 

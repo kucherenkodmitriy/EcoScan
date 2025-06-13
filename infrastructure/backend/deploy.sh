@@ -53,7 +53,7 @@ if [[ ! "$ENVIRONMENT" =~ ^(dev|staging|prod)$ ]]; then
 fi
 
 echo "Building Lambda function..."
-cd ../../services/bin-status-reporter
+cd ../../services
 cargo build --release --package bin-status-reporter
 
 echo "Building SAM application..."

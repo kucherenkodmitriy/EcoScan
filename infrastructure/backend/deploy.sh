@@ -3,10 +3,16 @@
 # Exit on error
 set -e
 
+# Get the directory of this script
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+PROJECT_ROOT="$(cd "${SCRIPT_DIR}/../.." && pwd)"
+SERVICES_DIR="${PROJECT_ROOT}/services"
+INFRA_DIR="${SCRIPT_DIR}"
+
 # Source .env file for AWS credentials only in local development (not CI/CD)
-if [ -f "../../.env" ] && [ -z "$GITHUB_ACTIONS" ]; then
+if [ -f "${PROJECT_ROOT}/.env" ] && [ -z "$GITHUB_ACTIONS" ]; then
     echo "Loading AWS credentials from .env file..."
-    source ../../.env
+    source "${PROJECT_ROOT}/.env"
     export AWS_ACCESS_KEY_ID
     export AWS_SECRET_ACCESS_KEY
     export AWS_DEFAULT_REGION
@@ -53,60 +59,77 @@ if [[ ! "$ENVIRONMENT" =~ ^(dev|staging|prod)$ ]]; then
 fi
 
 echo "Building Lambda function..."
-cd ../../services/bin-status-reporter
+cd "${SERVICES_DIR}"
 
-# Create a temporary Cargo.toml for standalone build in CI/CD
-if [ -n "$GITHUB_ACTIONS" ]; then
-    echo "Creating temporary Cargo.toml for CI/CD build..."
-    cat > Cargo.toml.ci << 'EOL'
-[package]
-name = "bin-status-reporter"
-version = "0.1.0"
-edition = "2021"
+# Print debug info
+echo "Current directory: $(pwd)"
+echo "Project root: ${PROJECT_ROOT}"
+echo "Build target directory: ${PROJECT_ROOT}/target"
 
-[dependencies]
-tokio = { version = "1.0", features = ["full"] }
-serde = { version = "1.0", features = ["derive"] }
-serde_json = "1.0"
-lambda_runtime = "0.8"
-lambda-web = "0.2"
-aws-sdk-dynamodb = "1.0"
-aws-config = "1.0"
-uuid = { version = "1.0", features = ["v4", "serde"] }
-chrono = { version = "0.4", features = ["serde"] }
-anyhow = "1.0"
-tracing = "0.1"
-tracing-subscriber = { version = "0.3", features = ["env-filter"] }
-serde_dynamo = { version = "4.0", features = ["chrono"] }
-serde_with = "3.0"
-EOL
-    
-    # Use the temporary Cargo.toml for build
-    mv Cargo.toml Cargo.toml.orig
-    mv Cargo.toml.ci Cargo.toml
+# Clean previous build to ensure we're building fresh
+echo "Cleaning previous build..."
+cargo clean
+
+# Build the bootstrap binary in release mode with verbose output
+echo "Building binary..."
+RUST_BACKTRACE=1 cargo build --release --bin bootstrap --verbose
+
+# Debug: List target directory
+echo "Build complete. Listing target directory:"
+find "${PROJECT_ROOT}/target" -type f -name "bootstrap" -o -name "bootstrap.*"
+
+# Create output directory for the Lambda package
+mkdir -p "${PROJECT_ROOT}/target/lambda"
+
+# Find the built binary - look in both possible locations
+BINARY_PATH=$(find "${SERVICES_DIR}/target" -name "bootstrap" -type f -exec ls -1t {} + | head -1)
+
+if [ -z "$BINARY_PATH" ]; then
+    echo "Error: Could not find the built binary in ${SERVICES_DIR}/target"
+    echo "Trying alternative location..."
+    BINARY_PATH=$(find "${PROJECT_ROOT}/target" -name "bootstrap" -type f -exec ls -1t {} + | head -1)
+    if [ -z "$BINARY_PATH" ]; then
+        echo "Error: Could not find the built binary in ${PROJECT_ROOT}/target either"
+        exit 1
+    fi
 fi
 
-# Build the Lambda function
-cargo build --release
+echo "Found binary at: ${BINARY_PATH}"
 
-# Restore original Cargo.toml if we created a temporary one
-if [ -n "$GITHUB_ACTIONS" ] && [ -f "Cargo.toml.orig" ]; then
-    mv Cargo.toml.orig Cargo.toml
-fi
+# Copy the binary to the Lambda bootstrap location
+mkdir -p "${PROJECT_ROOT}/target/lambda"
+cp "${BINARY_PATH}" "${PROJECT_ROOT}/target/lambda/"
 
+# Package for Lambda deployment
+echo "Packaging Lambda function..."
+cd "${PROJECT_ROOT}/target/lambda"
+chmod +x bootstrap
+zip -r "${PROJECT_ROOT}/target/lambda.zip" .
+
+echo "Deploying infrastructure..."
+cd "${INFRA_DIR}"
+
+# Build and deploy with SAM
 echo "Building SAM application..."
-cd ../../infrastructure/backend
-sam build
+sam build --template-file template.yaml
 
-echo "Deploying to $ENVIRONMENT environment..."
+# Package and deploy
+echo "Packaging and deploying SAM application..."
+sam package \
+  --template-file .aws-sam/build/template.yaml \
+  --output-template-file packaged.yaml \
+  --s3-bucket "${S3_BUCKET}" \
+  --region "${REGION}"
+
 sam deploy \
-  --stack-name "ecoscan-api-$ENVIRONMENT" \
-  --parameter-overrides \
-    "Environment=$ENVIRONMENT" \
-    "RateLimit=$RATE_LIMIT" \
-    "BurstLimit=$BURST_LIMIT" \
-  --region "$REGION" \
+  --template-file packaged.yaml \
+  --stack-name "ecostack-${ENVIRONMENT}" \
   --capabilities CAPABILITY_IAM \
+  --region "${REGION}" \
+  --parameter-overrides \
+      "Environment=${ENVIRONMENT}" \
+      "RateLimit=${RATE_LIMIT}" \
+      "BurstLimit=${BURST_LIMIT}" \
   --no-fail-on-empty-changeset
 
-echo "Deployment completed successfully!" 
+echo "Deployment completed successfully!"

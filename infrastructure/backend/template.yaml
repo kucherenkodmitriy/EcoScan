@@ -38,20 +38,33 @@ Resources:
         AllowMethods: "'PUT,OPTIONS'"
         AllowHeaders: "'Content-Type,X-Amz-Date,Authorization,X-Api-Key,X-Amz-Security-Token'"
         AllowOrigin: "'*'"
-      UsagePlan:
-        UsagePlanName: !Sub ${Environment}-usage-plan
-        Description: !Sub Usage plan for ${Environment} environment
-        Quota:
-          Limit: 1000000
-          Period: MONTH
-        Throttle:
-          RateLimit: !Ref RateLimit
-          BurstLimit: !Ref BurstLimit
+
+  ApiUsagePlan:
+    Type: AWS::ApiGateway::UsagePlan
+    Properties:
+      UsagePlanName: !Sub ${Environment}-usage-plan
+      Description: !Sub Usage plan for ${Environment} environment
+      ApiStages:
+        - ApiId: !Ref ApiGatewayApi
+          Stage: !Ref Environment
+      Quota:
+        Limit: 1000000
+        Period: MONTH
+      Throttle:
+        RateLimit: !Ref RateLimit
+        BurstLimit: !Ref BurstLimit
+
+  ApiUsagePlanKey:
+    Type: AWS::ApiGateway::UsagePlanKey
+    Properties:
+      KeyId: !Ref ApiGatewayApi
+      KeyType: API_KEY
+      UsagePlanId: !Ref ApiUsagePlan
 
   StatusUpdateFunction:
     Type: AWS::Serverless::Function
     Properties:
-      CodeUri: lambda/
+      CodeUri: ../../../target/lambda.zip
       Handler: bootstrap
       Runtime: provided.al2
       Architectures:

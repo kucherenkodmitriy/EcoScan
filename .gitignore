@@ -1,2 +1,100 @@
+# Environment variables
 .env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+
+# LocalStack and Docker volumes
 volume/
+.localstack/
+
+# Rust
+services/target/
+services/*/target/
+**/*.rs.bk
+*.pdb
+
+# Lambda build artifacts
+*.zip
+lambda.zip
+bootstrap
+ecoscan-lambda.zip
+
+# AWS SAM
+.aws-sam/
+samconfig.toml
+
+# AWS CDK
+cdk.out/
+*.d.ts
+
+# Node.js / Frontend
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.pnpm-debug.log*
+
+# Frontend build outputs
+frontend/build/
+frontend/dist/
+frontend/.next/
+frontend/out/
+
+# Logs
+logs
+*.log
+
+# Runtime data
+pids
+*.pid
+*.seed
+*.pid.lock
+
+# Coverage directory used by tools like istanbul
+coverage/
+*.lcov
+
+# IDE and Editor files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS generated files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# Temporary files
+*.tmp
+*.temp
+.cache/
+
+# Build outputs and artifacts
+build/
+dist/
+out/
+
+# CloudFormation outputs
+*-outputs.json
+
+# Terraform
+infrastructure/**/.terraform/
+infrastructure/**/.terraform.lock.hcl
+infrastructure/**/terraform.tfstate
+infrastructure/**/terraform.tfstate.backup
+infrastructure/**/*.tfvars
+
+# Amplify
+frontend/amplify/backend/amplify-meta.json
+frontend/amplify/backend/.temp/
+frontend/amplify/#current-cloud-backend/
+frontend/amplify/cli.json
+frontend/src/aws-exports.js

@@ -1,0 +1,141 @@
+openapi: 3.0.1
+info:
+  title: EcoScan API
+  description: API for managing trash bin status updates
+  version: 1.0.0
+  contact:
+    name: EcoScan Support
+    email: support@ecoscan.com
+
+servers:
+  - url: https://{apiId}.execute-api.{region}.amazonaws.com/{stage}
+    variables:
+      apiId:
+        default: "your-api-id"
+        description: API Gateway ID
+      region:
+        default: "eu-central-1"
+        description: AWS Region
+      stage:
+        default: "prod"
+        description: API Stage
+
+paths:
+  /bins/{binId}/status:
+    put:
+      summary: Update bin status
+      description: Updates the status of a specific trash bin
+      operationId: updateBinStatus
+      parameters:
+        - name: binId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+          description: UUID of the trash bin
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/StatusUpdateRequest'
+      responses:
+        '200':
+          description: Status update successful
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/StatusUpdateResponse'
+        '400':
+          description: Invalid request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: Bin not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '429':
+          description: Too many requests
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+      x-amazon-apigateway-integration:
+        type: aws_proxy
+        httpMethod: POST
+        uri: arn:aws:apigateway:{region}:lambda:path/2015-03-31/functions/{lambdaArn}/invocations
+        passthroughBehavior: when_no_match
+        contentHandling: CONVERT_TO_TEXT
+      x-amazon-apigateway-request-validators:
+        basic:
+          validateRequestBody: true
+          validateRequestParameters: true
+      x-amazon-apigateway-request-validator: basic
+      x-amazon-apigateway-throttling:
+        rateLimit: 10
+        burstLimit: 5
+
+components:
+  schemas:
+    StatusUpdateRequest:
+      type: object
+      required:
+        - status
+      properties:
+        status:
+          type: object
+          required:
+            - value
+          properties:
+            value:
+              type: integer
+              minimum: 0
+              maximum: 10
+              description: Status value from 0 (empty) to 10 (full)
+      example:
+        status:
+          value: 7
+
+    StatusUpdateResponse:
+      type: object
+      required:
+        - success
+        - message
+        - updated_at
+      properties:
+        success:
+          type: boolean
+          description: Whether the update was successful
+        message:
+          type: string
+          description: Status message
+        updated_at:
+          type: string
+          format: date-time
+          description: Timestamp of the update
+      example:
+        success: true
+        message: "Bin status updated to 70%"
+        updated_at: "2024-03-20T12:00:00Z"
+
+    Error:
+      type: object
+      required:
+        - message
+      properties:
+        message:
+          type: string
+          description: Error message
+      example:
+        message: "Invalid request: Status value must be between 0 and 10" 

@@ -13,21 +13,21 @@ build: ## Build Lambda function for deployment
 
 test: ## Run all tests
 	@echo "🧪 Running tests..."
-	cd lambda && cargo test --lib
+	cd services/bin-status-reporter && cargo test --lib
 
 test-watch: ## Run tests in watch mode
 	@echo "👀 Watching tests..."
-	cd lambda && cargo watch -x "test --lib"
+	cd services/bin-status-reporter && cargo watch -x "test --lib"
 
 lint: ## Run linting and formatting
 	@echo "🔍 Linting code..."
-	cd lambda && cargo clippy -- -D warnings
-	cd lambda && cargo fmt --check
+	cd services/bin-status-reporter && cargo clippy -- -D warnings
+	cd services/bin-status-reporter && cargo fmt --check
 
 fix: ## Auto-fix linting and formatting issues
 	@echo "🔧 Auto-fixing code..."
-	cd lambda && cargo clippy --fix --allow-dirty --allow-staged
-	cd lambda && cargo fmt
+	cd services/bin-status-reporter && cargo clippy --fix --allow-dirty --allow-staged
+	cd services/bin-status-reporter && cargo fmt
 
 # Local Development
 local-up: ## Start LocalStack development environment
@@ -49,13 +49,13 @@ deploy-local: build ## Deploy to LocalStack
 	@echo "📦 Deploying to LocalStack..."
 	aws --profile localstack --endpoint-url=http://localhost:4566 lambda update-function-code \
 		--function-name update-bin-status \
-		--zip-file fileb://lambda/target/lambda.zip
+		--zip-file fileb://services/bin-status-reporter/target/lambda.zip
 
 test-lambda: deploy-local ## Test Lambda function end-to-end
 	@echo "🧪 Testing Lambda function..."
 	aws --profile localstack --endpoint-url=http://localhost:4566 lambda invoke \
 		--function-name update-bin-status \
-		--payload file://lambda/test-events/update-status-50-percent.json \
+		--payload file://services/bin-status-reporter/test-events/update-status-50-percent.json \
 		--cli-binary-format raw-in-base64-out output.json
 	@echo "📋 Test result:"
 	@cat output.json
@@ -63,14 +63,14 @@ test-lambda: deploy-local ## Test Lambda function end-to-end
 # Cleanup
 clean: ## Clean build artifacts
 	@echo "🧹 Cleaning build artifacts..."
-	cd lambda && cargo clean
-	rm -rf lambda/target/lambda.zip
+	cd services/bin-status-reporter && cargo clean
+	rm -rf services/bin-status-reporter/target/lambda.zip
 	rm -f output*.json
 
 # Documentation
 docs: ## Generate and serve documentation
 	@echo "📚 Generating documentation..."
-	cd lambda && cargo doc --open
+	cd services/bin-status-reporter && cargo doc --open
 
 # CI/CD helpers
 ci-test: lint test ## Run CI tests locally

@@ -5,8 +5,8 @@ export AWS_ACCESS_KEY_ID=test
 export AWS_SECRET_ACCESS_KEY=test
 export AWS_DEFAULT_REGION=eu-central-1
 
-# Change to lambda directory
-cd "$(dirname "$0")/../lambda" || exit
+# Change to bin-status-reporter directory
+cd "$(dirname "$0")/../services/bin-status-reporter" || exit
 
 # Build the Lambda function
 echo "Building Lambda function..."
@@ -25,7 +25,7 @@ aws --endpoint-url=http://localhost:4566 lambda create-function \
 echo "Invoking Lambda function..."
 aws --endpoint-url=http://localhost:4566 lambda invoke \
     --function-name update-bin-status \
-    --payload file://lambda/test-events/update-status-50-percent.json \
+    --payload file://test-events/update-status-50-percent.json \
     --log-type Tail \
     output.json
 

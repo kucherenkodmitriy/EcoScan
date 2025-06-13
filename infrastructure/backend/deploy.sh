@@ -3,15 +3,15 @@
 # Exit on error
 set -e
 
-# Source .env file for AWS credentials
-if [ -f "../../.env" ]; then
+# Source .env file for AWS credentials only in local development (not CI/CD)
+if [ -f "../../.env" ] && [ -z "$GITHUB_ACTIONS" ]; then
     echo "Loading AWS credentials from .env file..."
     source ../../.env
     export AWS_ACCESS_KEY_ID
     export AWS_SECRET_ACCESS_KEY
     export AWS_DEFAULT_REGION
 else
-    echo "Warning: .env file not found. Please ensure AWS credentials are configured."
+    echo "Using AWS credentials from environment (CI/CD mode)"
 fi
 
 # Default values
@@ -54,7 +54,7 @@ fi
 
 echo "Building Lambda function..."
 cd ../../services/bin-status-reporter
-cargo build --release
+cargo build --release --package bin-status-reporter
 
 echo "Building SAM application..."
 cd ../../infrastructure/backend

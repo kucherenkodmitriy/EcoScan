@@ -53,8 +53,46 @@ if [[ ! "$ENVIRONMENT" =~ ^(dev|staging|prod)$ ]]; then
 fi
 
 echo "Building Lambda function..."
-cd ../../services
-cargo build --release --package bin-status-reporter
+cd ../../services/bin-status-reporter
+
+# Create a temporary Cargo.toml for standalone build in CI/CD
+if [ -n "$GITHUB_ACTIONS" ]; then
+    echo "Creating temporary Cargo.toml for CI/CD build..."
+    cat > Cargo.toml.ci << 'EOL'
+[package]
+name = "bin-status-reporter"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+tokio = { version = "1.0", features = ["full"] }
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+lambda_runtime = "0.8"
+lambda-web = "0.2"
+aws-sdk-dynamodb = "1.0"
+aws-config = "1.0"
+uuid = { version = "1.0", features = ["v4", "serde"] }
+chrono = { version = "0.4", features = ["serde"] }
+anyhow = "1.0"
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+serde_dynamo = { version = "4.0", features = ["chrono"] }
+serde_with = "3.0"
+EOL
+    
+    # Use the temporary Cargo.toml for build
+    mv Cargo.toml Cargo.toml.orig
+    mv Cargo.toml.ci Cargo.toml
+fi
+
+# Build the Lambda function
+cargo build --release
+
+# Restore original Cargo.toml if we created a temporary one
+if [ -n "$GITHUB_ACTIONS" ] && [ -f "Cargo.toml.orig" ]; then
+    mv Cargo.toml.orig Cargo.toml
+fi
 
 echo "Building SAM application..."
 cd ../../infrastructure/backend

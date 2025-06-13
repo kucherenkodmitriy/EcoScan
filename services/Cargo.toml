@@ -1,10 +1,11 @@
 [workspace]
 resolver = "2"
 members = [
-    "bin-status-reporter",
-    "admin-dashboard-api",
-    "notifier",
-    "shared"
+    "bin-status-reporter"
+    # Temporarily disabled until implemented:
+    # "admin-dashboard-api",
+    # "notifier",
+    # "shared"
 ]
 
 [workspace.dependencies]

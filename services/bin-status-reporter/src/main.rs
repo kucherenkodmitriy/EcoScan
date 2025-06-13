@@ -1,6 +1,6 @@
 use lambda_runtime::{run, service_fn, Error};
 use tracing_subscriber::fmt;
-use ecoscan_lambda::update_bin_status;
+use bin_status_reporter::update_bin_status;
 
 #[tokio::main]
 async fn main() -> Result<(), Error> {

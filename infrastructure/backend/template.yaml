@@ -1,0 +1,118 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+
+Description: EcoScan API Gateway with rate limiting
+
+Parameters:
+  Environment:
+    Type: String
+    Default: prod
+    AllowedValues:
+      - dev
+      - staging
+      - prod
+    Description: Environment name
+
+  RateLimit:
+    Type: Number
+    Default: 10
+    Description: Number of requests per second allowed
+
+  BurstLimit:
+    Type: Number
+    Default: 5
+    Description: Maximum number of requests allowed in burst
+
+Resources:
+  ApiGatewayApi:
+    Type: AWS::Serverless::Api
+    Properties:
+      StageName: !Ref Environment
+      OpenApiVersion: '3.0.1'
+      DefinitionBody:
+        Fn::Transform:
+          Name: AWS::Include
+          Parameters:
+            Location: openapi.yaml
+      Cors:
+        AllowMethods: "'PUT,OPTIONS'"
+        AllowHeaders: "'Content-Type,X-Amz-Date,Authorization,X-Api-Key,X-Amz-Security-Token'"
+        AllowOrigin: "'*'"
+      UsagePlan:
+        UsagePlanName: !Sub ${Environment}-usage-plan
+        Description: !Sub Usage plan for ${Environment} environment
+        Quota:
+          Limit: 1000000
+          Period: MONTH
+        Throttle:
+          RateLimit: !Ref RateLimit
+          BurstLimit: !Ref BurstLimit
+
+  StatusUpdateFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: lambda/
+      Handler: bootstrap
+      Runtime: provided.al2
+      Architectures:
+        - arm64
+      MemorySize: 256
+      Timeout: 30
+      Environment:
+        Variables:
+          TRASH_BINS_TABLE: !Ref TrashBinsTable
+          STATUS_REPORTS_TABLE: !Ref StatusReportsTable
+          LOG_LEVEL: INFO
+      Policies:
+        - DynamoDBCrudPolicy:
+            TableName: !Ref TrashBinsTable
+        - DynamoDBCrudPolicy:
+            TableName: !Ref StatusReportsTable
+      Events:
+        UpdateStatus:
+          Type: Api
+          Properties:
+            RestApiId: !Ref ApiGatewayApi
+            Path: /bins/{binId}/status
+            Method: PUT
+
+  TrashBinsTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      TableName: !Sub ${Environment}-trash-bins
+      BillingMode: PAY_PER_REQUEST
+      AttributeDefinitions:
+        - AttributeName: binId
+          AttributeType: S
+      KeySchema:
+        - AttributeName: binId
+          KeyType: HASH
+
+  StatusReportsTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      TableName: !Sub ${Environment}-status-reports
+      BillingMode: PAY_PER_REQUEST
+      AttributeDefinitions:
+        - AttributeName: binId
+          AttributeType: S
+        - AttributeName: createdAt
+          AttributeType: S
+      KeySchema:
+        - AttributeName: binId
+          KeyType: HASH
+        - AttributeName: createdAt
+          KeyType: RANGE
+
+Outputs:
+  ApiEndpoint:
+    Description: API Gateway endpoint URL
+    Value: !Sub https://${ApiGatewayApi}.execute-api.${AWS::Region}.amazonaws.com/${Environment}
+  
+  TrashBinsTableName:
+    Description: Name of the trash bins table
+    Value: !Ref TrashBinsTable
+
+  StatusReportsTableName:
+    Description: Name of the status reports table
+    Value: !Ref StatusReportsTable 

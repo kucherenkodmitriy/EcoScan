@@ -22,8 +22,8 @@ jobs:
             ~/.cargo/registry/index/
             ~/.cargo/registry/cache/
             ~/.cargo/git/db/
-            lambda/target/
-          key: ${{ runner.os }}-cargo-${{ hashFiles('lambda/Cargo.lock') }}
+            services/target/
+          key: ${{ runner.os }}-cargo-${{ hashFiles('services/Cargo.lock') }}
           restore-keys: |
             ${{ runner.os }}-cargo-
 
@@ -51,6 +51,6 @@ jobs:
 
       - name: Deploy to AWS
         run: |
-          cd infrastructure
+          cd infrastructure/backend
           chmod +x deploy.sh
-          ./deploy.sh dev 
+          ./deploy.sh --environment dev --region eu-central-1

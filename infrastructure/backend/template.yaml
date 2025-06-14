@@ -29,11 +29,11 @@ Resources:
   StatusUpdateFunction:
     Type: AWS::Serverless::Function
     Properties:
-      CodeUri: /Users/dmytro.kucherenko/Documents/dev/My/Pet/EcoScan/target/lambda.zip
+      CodeUri: services/bin-status-reporter/target/lambda.zip
       Handler: bootstrap
       Runtime: provided.al2
       Architectures:
-        - arm64
+        - x86_64
       MemorySize: 256
       Timeout: 30
       Environment:

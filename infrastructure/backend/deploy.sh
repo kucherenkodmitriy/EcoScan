@@ -151,24 +151,23 @@ trap cleanup EXIT
 validate_aws_credentials() {
     log "Validating AWS credentials..."
     
+    # Check if running in local development with act
+    if [ -n "${ACT:-}" ]; then
+        log "Running in local development with act - skipping AWS validation"
+        return 0
+    fi
+    
     # Check if running in CI/CD environment
     if [ -n "${CI:-}" ] || [ -n "${GITHUB_ACTIONS:-}" ]; then
         log "Running in CI/CD environment"
-        # In CI/CD, credentials should come from environment variables
+        # In CI/CD, we expect environment variables to be set
         if [ -z "${AWS_ACCESS_KEY_ID:-}" ] || [ -z "${AWS_SECRET_ACCESS_KEY:-}" ]; then
-            error "AWS credentials not found in environment. Please set AWS_ACCESS_KEY_ID and AWS_SECRET_ACCESS_KEY."
+            error "AWS credentials not found in environment variables"
         fi
     else
-        # In local development, try to load from .env file
-        local env_file="${ROOT_DIR}/.env"
-        if [ -f "$env_file" ]; then
-            log "Loading AWS credentials from $env_file"
-            # Use grep to safely extract values without sourcing the file
-            AWS_ACCESS_KEY_ID=$(grep -E '^AWS_ACCESS_KEY_ID=' "$env_file" | cut -d= -f2-)
-            AWS_SECRET_ACCESS_KEY=$(grep -E '^AWS_SECRET_ACCESS_KEY=' "$env_file" | cut -d= -f2-)
-            AWS_DEFAULT_REGION=$(grep -E '^AWS_DEFAULT_REGION=' "$env_file" | cut -d= -f2-)
-            
-            # Export variables if they exist
+        # In local development, check for AWS credentials in the environment or AWS credentials file
+        if ! aws sts get-caller-identity >/dev/null 2>&1; then
+            error "Failed to validate AWS credentials. Please ensure you have valid credentials configured."
             [ -n "$AWS_ACCESS_KEY_ID" ] && export AWS_ACCESS_KEY_ID
             [ -n "$AWS_SECRET_ACCESS_KEY" ] && export AWS_SECRET_ACCESS_KEY
             [ -n "$AWS_DEFAULT_REGION" ] && export AWS_DEFAULT_REGION
@@ -306,11 +305,13 @@ build_lambda() {
         mkdir -p "${build_dir}/target/lambda/bin-status-reporter"
         
         log "Building with cargo lambda..."
+        # Build with unstable options for artifact directory
         cargo lambda build \
             --release \
             --arm64 \
             --output-format zip \
-            --output-dir "${build_dir}/target/lambda" \
+            -Z unstable-options \
+            --out-dir "${build_dir}/target/lambda" \
             || error "Failed to build Lambda function"
         
         # Show the directory structure for debugging

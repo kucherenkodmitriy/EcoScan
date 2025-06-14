@@ -3,7 +3,10 @@
 # Set AWS credentials for local testing
 export AWS_ACCESS_KEY_ID=test
 export AWS_SECRET_ACCESS_KEY=test
-export AWS_DEFAULT_REGION=eu-central-1
+export AWS_DEFAULT_REGION=${AWS_DEFAULT_REGION:-eu-central-1}
+
+# Set environment
+ENVIRONMENT=${ENVIRONMENT:-dev}
 
 # Create S3 bucket for health checks if it doesn't exist
 echo "Checking S3 bucket for health checks..."
@@ -25,47 +28,28 @@ echo "Creating DynamoDB tables..."
 
 # Create trash bins table
 aws --endpoint-url=http://localhost:4566 dynamodb create-table \
-    --table-name trash-bins \
+    --table-name ${ENVIRONMENT}-trash-bins \
     --attribute-definitions \
         AttributeName=binId,AttributeType=S \
-        AttributeName=status,AttributeType=N \
     --key-schema \
         AttributeName=binId,KeyType=HASH \
-    --provisioned-throughput \
-        ReadCapacityUnits=5,WriteCapacityUnits=5 \
-    --global-secondary-indexes \
-        "[
-            {
-                \"IndexName\": \"status-index\",
-                \"KeySchema\": [
-                    {\"AttributeName\":\"status\",\"KeyType\":\"HASH\"}
-                ],
-                \"Projection\": {
-                    \"ProjectionType\":\"ALL\"
-                },
-                \"ProvisionedThroughput\": {
-                    \"ReadCapacityUnits\": 5,
-                    \"WriteCapacityUnits\": 5
-                }
-            }
-        ]"
+    --billing-mode PAY_PER_REQUEST
 
 # Create status reports table
 aws --endpoint-url=http://localhost:4566 dynamodb create-table \
-    --table-name status-reports \
+    --table-name ${ENVIRONMENT}-status-reports \
     --attribute-definitions \
         AttributeName=binId,AttributeType=S \
         AttributeName=createdAt,AttributeType=S \
     --key-schema \
         AttributeName=binId,KeyType=HASH \
         AttributeName=createdAt,KeyType=RANGE \
-    --provisioned-throughput \
-        ReadCapacityUnits=5,WriteCapacityUnits=5
+    --billing-mode PAY_PER_REQUEST
 
 # Create default trash bin
 echo "Creating default trash bin..."
 aws --endpoint-url=http://localhost:4566 dynamodb put-item \
-    --table-name trash-bins \
+    --table-name ${ENVIRONMENT}-trash-bins \
     --item '{
         "binId": {"S": "default-bin"},
         "name": {"S": "Default Bin"},

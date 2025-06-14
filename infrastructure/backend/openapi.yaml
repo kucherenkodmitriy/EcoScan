@@ -74,17 +74,18 @@ paths:
       x-amazon-apigateway-integration:
         type: aws_proxy
         httpMethod: POST
-        uri: arn:aws:apigateway:{region}:lambda:path/2015-03-31/functions/{lambdaArn}/invocations
+        uri: arn:aws:apigateway:${region}:lambda:path/2015-03-31/functions/${lambdaArn}/invocations
         passthroughBehavior: when_no_match
         contentHandling: CONVERT_TO_TEXT
-      x-amazon-apigateway-request-validators:
-        basic:
-          validateRequestBody: true
-          validateRequestParameters: true
       x-amazon-apigateway-request-validator: basic
       x-amazon-apigateway-throttling:
         rateLimit: 10
         burstLimit: 5
+
+x-amazon-apigateway-request-validators:
+  basic:
+    validateRequestBody: true
+    validateRequestParameters: true
 
 components:
   schemas:
@@ -138,4 +139,4 @@ components:
           type: string
           description: Error message
       example:
-        message: "Invalid request: Status value must be between 0 and 10" 
+        message: "Invalid request: Status value must be between 0 and 10"

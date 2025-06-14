@@ -4,6 +4,7 @@ on:
   push:
     branches:
       - dev
+  workflow_dispatch:  # Allow manual triggering
 
 jobs:
   deploy:
@@ -27,19 +28,12 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-cargo-
 
+
       - name: Install Rust and cargo-lambda
         run: |
+          rustup target add aarch64-unknown-linux-gnu
           if ! command -v cargo-lambda &> /dev/null; then
             cargo install cargo-lambda
-          fi
-
-      - name: Install Zig
-        run: |
-          if ! command -v zig &> /dev/null; then
-            wget https://ziglang.org/download/0.11.0/zig-linux-x86_64-0.11.0.tar.xz
-            tar xf zig-linux-x86_64-0.11.0.tar.xz
-            sudo mv zig-linux-x86_64-0.11.0 /usr/local/zig
-            echo "/usr/local/zig" >> $GITHUB_PATH
           fi
 
       - name: Configure AWS credentials
@@ -48,9 +42,42 @@ jobs:
           aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws-region: eu-central-1
+          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}  # Optional: If using IAM roles
+          role-session-name: GitHubActions
+          role-duration-seconds: 3600
 
       - name: Deploy to AWS
         run: |
+          # Install jq for JSON parsing
+          sudo apt-get update && sudo apt-get install -y jq
+          
           cd infrastructure/backend
           chmod +x deploy.sh
-          ./deploy.sh --environment dev --region eu-central-1
+          
+          # Run deployment with debug output
+          ./deploy.sh --environment dev --debug
+          
+          # Store outputs for subsequent steps if needed
+          STACK_OUTPUTS=$(aws cloudformation describe-stacks \
+            --stack-name ecoscan-dev \
+            --query 'Stacks[0].Outputs' \
+            --region eu-central-1 \
+            --output json)
+          
+          echo "stack_outputs=$STACK_OUTPUTS" >> $GITHUB_OUTPUT
+
+      - name: Verify deployment
+        run: |
+          # Verify Lambda function exists
+          aws lambda get-function \
+            --function-name ecoscan-dev-StatusUpdateFunction-* \
+            --region eu-central-1
+          
+          # Verify DynamoDB tables exist
+          aws dynamodb describe-table \
+            --table-name dev-trash-bins \
+            --region eu-central-1
+            
+          aws dynamodb describe-table \
+            --table-name dev-status-reports \
+            --region eu-central-1

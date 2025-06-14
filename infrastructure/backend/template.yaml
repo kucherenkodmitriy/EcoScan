@@ -1,70 +1,35 @@
 AWSTemplateFormatVersion: '2010-09-09'
 Transform: AWS::Serverless-2016-10-31
 
-Description: EcoScan API Gateway with rate limiting
+Description: EcoScan Backend Resources
 
 Parameters:
   Environment:
     Type: String
-    Default: prod
+    Default: dev
     AllowedValues:
       - dev
       - staging
       - prod
     Description: Environment name
 
+  # We'll keep these parameters in case they're referenced elsewhere
   RateLimit:
     Type: Number
     Default: 10
-    Description: Number of requests per second allowed
+    Description: Number of requests per second allowed (not currently used)
 
   BurstLimit:
     Type: Number
     Default: 5
-    Description: Maximum number of requests allowed in burst
+    Description: Maximum number of requests allowed in burst (not currently used)
 
 Resources:
-  ApiGatewayApi:
-    Type: AWS::Serverless::Api
-    Properties:
-      StageName: !Ref Environment
-      OpenApiVersion: '3.0.1'
-      DefinitionBody:
-        Fn::Transform:
-          Name: AWS::Include
-          Parameters:
-            Location: openapi.yaml
-      Cors:
-        AllowMethods: "'PUT,OPTIONS'"
-        AllowHeaders: "'Content-Type,X-Amz-Date,Authorization,X-Api-Key,X-Amz-Security-Token'"
-        AllowOrigin: "'*'"
-
-  ApiUsagePlan:
-    Type: AWS::ApiGateway::UsagePlan
-    Properties:
-      UsagePlanName: !Sub ${Environment}-usage-plan
-      Description: !Sub Usage plan for ${Environment} environment
-      ApiStages:
-        - ApiId: !Ref ApiGatewayApi
-          Stage: !Ref Environment
-      Quota:
-        Limit: 1000000
-        Period: MONTH
-      Throttle:
-        RateLimit: !Ref RateLimit
-        BurstLimit: !Ref BurstLimit
-
-  ApiUsagePlanKey:
-    Type: AWS::ApiGateway::UsagePlanKey
-    Properties:
-      KeyId: !Ref ApiGatewayApi
-      KeyType: API_KEY
-      UsagePlanId: !Ref ApiUsagePlan
 
   StatusUpdateFunction:
     Type: AWS::Serverless::Function
     Properties:
-      CodeUri: ../../../target/lambda.zip
+      CodeUri: /Users/dmytro.kucherenko/Documents/dev/My/Pet/EcoScan/target/lambda.zip
       Handler: bootstrap
       Runtime: provided.al2
       Architectures:
@@ -81,13 +46,6 @@ Resources:
             TableName: !Ref TrashBinsTable
         - DynamoDBCrudPolicy:
             TableName: !Ref StatusReportsTable
-      Events:
-        UpdateStatus:
-          Type: Api
-          Properties:
-            RestApiId: !Ref ApiGatewayApi
-            Path: /bins/{binId}/status
-            Method: PUT
 
   TrashBinsTable:
     Type: AWS::DynamoDB::Table
@@ -118,14 +76,16 @@ Resources:
           KeyType: RANGE
 
 Outputs:
-  ApiEndpoint:
-    Description: API Gateway endpoint URL
-    Value: !Sub https://${ApiGatewayApi}.execute-api.${AWS::Region}.amazonaws.com/${Environment}
-  
+  StatusUpdateFunctionArn:
+    Description: ARN of the Status Update Lambda function
+    Value: !GetAtt StatusUpdateFunction.Arn
+    Export:
+      Name: !Sub "${Environment}-EcoScan-StatusUpdateFunctionArn"
+
   TrashBinsTableName:
     Description: Name of the trash bins table
     Value: !Ref TrashBinsTable
 
   StatusReportsTableName:
     Description: Name of the status reports table
-    Value: !Ref StatusReportsTable 
+    Value: !Ref StatusReportsTable

@@ -10,26 +10,12 @@ jobs:
   deploy:
     runs-on: ubuntu-latest
     environment: dev
-    
+
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
 
       - name: Cache Rust dependencies
-        uses: actions/cache@v4
-        with:
-          path: |
-            ~/.cargo/bin/
-            ~/.cargo/registry/index/
-            ~/.cargo/registry/cache/
-            ~/.cargo/git/db/
-            services/target/
-          key: ${{ runner.os }}-cargo-${{ hashFiles('services/Cargo.lock') }}
-          restore-keys: |
-            ${{ runner.os }}-cargo-
-
-
-            - name: Cache Rust dependencies
         uses: actions/cache@v4
         with:
           path: |
@@ -60,42 +46,34 @@ jobs:
           aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws-region: eu-central-1
-          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}  # Optional: If using IAM roles
+          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
           role-session-name: GitHubActions
           role-duration-seconds: 3600
 
       - name: Deploy to AWS
         run: |
-          # Install jq for JSON parsing
           sudo apt-get update && sudo apt-get install -y jq
-          
           cd infrastructure/backend
           chmod +x deploy.sh
-          
-          # Run deployment with debug output
           ./deploy.sh --environment dev --debug
-          
-          # Store outputs for subsequent steps if needed
+
           STACK_OUTPUTS=$(aws cloudformation describe-stacks \
             --stack-name ecoscan-dev \
             --query 'Stacks[0].Outputs' \
             --region eu-central-1 \
             --output json)
-          
           echo "stack_outputs=$STACK_OUTPUTS" >> $GITHUB_OUTPUT
 
       - name: Verify deployment
         run: |
-          # Verify Lambda function exists
           aws lambda get-function \
             --function-name ecoscan-dev-StatusUpdateFunction-* \
             --region eu-central-1
-          
-          # Verify DynamoDB tables exist
+
           aws dynamodb describe-table \
             --table-name dev-trash-bins \
             --region eu-central-1
-            
+
           aws dynamodb describe-table \
             --table-name dev-status-reports \
             --region eu-central-1

@@ -298,22 +298,43 @@ build_lambda() {
         log "Installing target for cross-compilation..."
         rustup target add aarch64-unknown-linux-gnu || error "Failed to add cross-compilation target"
         
+        # Clean previous builds
+        log "Cleaning previous build artifacts..."
+        cargo clean || true
+        
+        # Create target directories if they don't exist
+        mkdir -p "${build_dir}/target/lambda/bin-status-reporter"
+        
         log "Building with cargo lambda..."
         cargo lambda build \
             --release \
             --arm64 \
             --output-format zip \
+            --output-dir "${build_dir}/target/lambda" \
             || error "Failed to build Lambda function"
         
         # Show the directory structure for debugging
         log "Build directory structure:"
-        find "${build_dir}/target" -type f -name "bootstrap" -o -name "*.zip" | xargs ls -la 2>/dev/null || true
+        find "${build_dir}/target" -type f -name "bootstrap" -o -name "*.zip" -o -name "*.so" | xargs ls -la 2>/dev/null || true
+        
+        # Show the contents of the lambda directory
+        log "Lambda output directory contents:"
+        ls -la "${build_dir}/target/lambda/" 2>/dev/null || true
+        
+        # If we have a zip file, extract it to check contents
+        if [ -f "${build_dir}/target/lambda/bin-status-reporter.zip" ]; then
+            log "Found zip file, checking contents..."
+            unzip -l "${build_dir}/target/lambda/bin-status-reporter.zip" || true
+        fi
         
         # Check for the binary in multiple possible locations
         local possible_locations=(
             "${build_dir}/target/lambda/bin-status-reporter/bootstrap"
             "${build_dir}/target/aarch64-unknown-linux-gnu/release/bootstrap"
             "${build_dir}/target/release/bootstrap"
+            "${build_dir}/target/lambda/bootstrap"
+            "${build_dir}/target/lambda/bin-status-reporter/bootstrap"
+            "${build_dir}/target/lambda/bin-status-reporter/bootstrap.zip"
         )
         
         local found_binary=""

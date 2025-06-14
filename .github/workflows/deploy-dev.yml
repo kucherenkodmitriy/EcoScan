@@ -61,7 +61,12 @@ jobs:
       - name: Install cargo-lambda
         if: steps.cache-cargo-lambda.outputs.cache-hit != 'true'
         run: |
-          cargo install cargo-lambda --version 0.22.0
+          # Check if cargo-lambda is already installed
+          if ! command -v cargo-lambda &> /dev/null; then
+            cargo install cargo-lambda --version 0.22.0
+          else
+            echo "cargo-lambda is already installed"
+          fi
           echo "$HOME/.cargo/bin" >> $GITHUB_PATH
           cargo lambda --version
 

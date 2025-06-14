@@ -1,0 +1,228 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+Description: EcoScan API Gateway with rate limiting
+Parameters:
+  Environment:
+    Type: String
+    Default: prod
+    AllowedValues:
+    - dev
+    - staging
+    - prod
+    Description: Environment name
+  RateLimit:
+    Type: Number
+    Default: 10
+    Description: Number of requests per second allowed
+  BurstLimit:
+    Type: Number
+    Default: 5
+    Description: Maximum number of requests allowed in burst
+Resources:
+  ApiGatewayApi:
+    Type: AWS::Serverless::Api
+    Properties:
+      StageName:
+        Ref: Environment
+      OpenApiVersion: 3.0.1
+      DefinitionBody:
+        openapi: 3.0.1
+        info:
+          title: EcoScan API
+          description: API for managing trash bin status updates
+          version: 1.0.0
+          contact:
+            name: EcoScan Support
+            email: support@ecoscan.com
+        servers:
+        - url: https://${ApiGatewayApi}.execute-api.${AWS::Region}.amazonaws.com/${Environment}
+          description: API Gateway endpoint
+        paths:
+          /bins/{binId}/status:
+            put:
+              x-amazon-apigateway-integration:
+                httpMethod: POST
+                type: aws_proxy
+                uri:
+                  Fn::Sub: arn:${AWS::Partition}:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${StatusUpdateFunction.Arn}/invocations
+                responses:
+                  default:
+                    statusCode: '200'
+                passthroughBehavior: when_no_match
+              summary: Update bin status
+              description: Updates the status of a specific trash bin
+              operationId: updateBinStatus
+              parameters:
+              - name: binId
+                in: path
+                required: true
+                schema:
+                  type: string
+                  format: uuid
+                description: UUID of the trash bin
+              requestBody:
+                required: true
+                content:
+                  application/json:
+                    schema:
+                      $ref: '#/components/schemas/StatusUpdateRequest'
+              responses:
+                '200':
+                  description: Status update successful
+                  content:
+                    application/json:
+                      schema:
+                        $ref: '#/components/schemas/StatusUpdateResponse'
+                '400':
+                  description: Bad Request
+                  content:
+                    application/json:
+                      schema:
+                        $ref: '#/components/schemas/ErrorResponse'
+        components:
+          schemas:
+            StatusUpdateRequest:
+              type: object
+              required:
+              - status
+              properties:
+                status:
+                  type: number
+                  format: float
+                  minimum: 0
+                  maximum: 100
+                  description: Fill percentage of the trash bin (0-100%)
+            StatusUpdateResponse:
+              type: object
+              properties:
+                success:
+                  type: boolean
+                message:
+                  type: string
+                updated_at:
+                  type: string
+                  format: date-time
+            ErrorResponse:
+              type: object
+              properties:
+                error:
+                  type: string
+                message:
+                  type: string
+      Cors:
+        AllowMethods: '''PUT,OPTIONS'''
+        AllowHeaders: '''Content-Type,X-Amz-Date,Authorization,X-Api-Key,X-Amz-Security-Token'''
+        AllowOrigin: '''*'''
+    Metadata:
+      SamResourceId: ApiGatewayApi
+  ApiUsagePlan:
+    Type: AWS::ApiGateway::UsagePlan
+    Properties:
+      UsagePlanName:
+        Fn::Sub: ${Environment}-usage-plan
+      Description:
+        Fn::Sub: Usage plan for ${Environment} environment
+      ApiStages:
+      - ApiId:
+          Ref: ApiGatewayApi
+        Stage:
+          Ref: Environment
+      Quota:
+        Limit: 1000000
+        Period: MONTH
+      Throttle:
+        RateLimit:
+          Ref: RateLimit
+        BurstLimit:
+          Ref: BurstLimit
+    Metadata:
+      SamResourceId: ApiUsagePlan
+  ApiUsagePlanKey:
+    Type: AWS::ApiGateway::UsagePlanKey
+    Properties:
+      KeyId:
+        Ref: ApiGatewayApi
+      KeyType: API_KEY
+      UsagePlanId:
+        Ref: ApiUsagePlan
+    Metadata:
+      SamResourceId: ApiUsagePlanKey
+  StatusUpdateFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: s3://ecoscan-dev-artifacts-2426fd85/99a793506975ac9f1920d9fb63bf5386
+      Handler: bootstrap
+      Runtime: provided.al2
+      Architectures:
+      - arm64
+      MemorySize: 256
+      Timeout: 30
+      Environment:
+        Variables:
+          TRASH_BINS_TABLE:
+            Ref: TrashBinsTable
+          STATUS_REPORTS_TABLE:
+            Ref: StatusReportsTable
+          LOG_LEVEL: INFO
+      Policies:
+      - DynamoDBCrudPolicy:
+          TableName:
+            Ref: TrashBinsTable
+      - DynamoDBCrudPolicy:
+          TableName:
+            Ref: StatusReportsTable
+      Events:
+        UpdateStatus:
+          Type: Api
+          Properties:
+            RestApiId:
+              Ref: ApiGatewayApi
+            Path: /bins/{binId}/status
+            Method: PUT
+    Metadata:
+      SamResourceId: StatusUpdateFunction
+  TrashBinsTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      TableName:
+        Fn::Sub: ${Environment}-trash-bins
+      BillingMode: PAY_PER_REQUEST
+      AttributeDefinitions:
+      - AttributeName: binId
+        AttributeType: S
+      KeySchema:
+      - AttributeName: binId
+        KeyType: HASH
+    Metadata:
+      SamResourceId: TrashBinsTable
+  StatusReportsTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      TableName:
+        Fn::Sub: ${Environment}-status-reports
+      BillingMode: PAY_PER_REQUEST
+      AttributeDefinitions:
+      - AttributeName: binId
+        AttributeType: S
+      - AttributeName: createdAt
+        AttributeType: S
+      KeySchema:
+      - AttributeName: binId
+        KeyType: HASH
+      - AttributeName: createdAt
+        KeyType: RANGE
+    Metadata:
+      SamResourceId: StatusReportsTable
+Outputs:
+  ApiEndpoint:
+    Description: API Gateway endpoint URL
+    Value:
+      Fn::Sub: https://${ApiGatewayApi}.execute-api.${AWS::Region}.amazonaws.com/${Environment}
+  TrashBinsTableName:
+    Description: Name of the trash bins table
+    Value:
+      Ref: TrashBinsTable
+  StatusReportsTableName:
+    Description: Name of the status reports table
+    Value:
+      Ref: StatusReportsTable

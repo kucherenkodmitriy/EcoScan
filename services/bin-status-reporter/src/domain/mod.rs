@@ -1,9 +1,14 @@
+//! Domain models and business logic for the bin-status-reporter service
+
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 use std::fmt;
 use async_trait::async_trait;
-use crate::error::AppError;
+
+pub mod error;
+pub use error::AppError;
+pub type Result<T> = error::Result<T>;
 
 #[derive(Debug, Serialize, Deserialize, Clone, PartialEq)]
 pub struct BinStatus {
@@ -11,9 +16,9 @@ pub struct BinStatus {
 }
 
 impl BinStatus {
-    pub fn new(value: i32) -> Result<Self, AppError> {
+    pub fn new(value: i32) -> Result<Self> {
         if value < 0 || value > 10 {
-            return Err(AppError::InvalidRequest(format!(
+            return Err(AppError::ValidationError(format!(
                 "Bin status must be between 0 and 10, got {}",
                 value
             )));
@@ -98,20 +103,20 @@ pub struct StatusUpdateResponse {
 }
 
 #[async_trait]
-pub trait BinRepository {
+pub trait BinRepository: Send + Sync + 'static {
     async fn update_status(
         &self,
         bin_id: &Uuid,
         status: BinStatus,
         timestamp: DateTime<Utc>,
-    ) -> Result<(), AppError>;
+    ) -> Result<()>;
 
     async fn add_report(
         &self,
         bin_id: &Uuid,
         status: BinStatus,
         timestamp: DateTime<Utc>,
-    ) -> Result<(), AppError>;
+    ) -> Result<()>;
 }
 
 #[cfg(test)]
@@ -142,15 +147,15 @@ mod tests {
         #[test]
         fn test_bin_status_error_messages() {
             match BinStatus::new(-1) {
-                Err(AppError::InvalidRequest(msg)) => {
+                Err(AppError::ValidationError(msg)) => {
                     assert!(msg.contains("Bin status must be between 0 and 10"));
                     assert!(msg.contains("-1"));
                 }
-                _ => panic!("Expected InvalidRequest error"),
+                _ => panic!("Expected ValidationError"),
             }
 
             match BinStatus::new(15) {
-                Err(AppError::InvalidRequest(msg)) => {
+                Err(AppError::ValidationError(msg)) => {
                     assert!(msg.contains("Bin status must be between 0 and 10"));
                     assert!(msg.contains("15"));
                 }

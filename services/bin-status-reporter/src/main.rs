@@ -1,6 +1,6 @@
 use lambda_runtime::{run, service_fn, Error};
 use tracing_subscriber::fmt;
-use bin_status_reporter::update_bin_status;
+use bin_status_reporter::api_gateway_handler;
 
 #[tokio::main]
 async fn main() -> Result<(), Error> {
@@ -10,5 +10,6 @@ async fn main() -> Result<(), Error> {
         .without_time()
         .init();
 
-    run(service_fn(update_bin_status)).await
+    // Use the API Gateway handler as the main entry point
+    run(service_fn(api_gateway_handler)).await
 }

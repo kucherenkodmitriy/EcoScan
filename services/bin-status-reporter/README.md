@@ -40,6 +40,7 @@ You can run tests for the Lambda function using Cargo:
 ```bash
 cargo test
 ```
+Test events placed in the `./test-events` directory and can be used to simulate requests to the Lambda function.
 
 ## Project Structure
 

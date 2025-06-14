@@ -1,3 +1,5 @@
 pub mod dynamodb;
-#[cfg(test)]
+pub mod repository;
+
+#[cfg(any(test, feature = "test-utils"))]
 pub mod test_utils;

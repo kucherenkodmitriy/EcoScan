@@ -4,8 +4,12 @@ use chrono::{DateTime, Utc};
 use uuid::Uuid;
 use async_trait::async_trait;
 
-use crate::error::AppError;
-use crate::domain::{BinRepository, BinStatus};
+use crate::domain::{
+    BinRepository, 
+    BinStatus,
+    error::RepositoryError,
+    Result
+};
 
 pub struct DynamoDbRepository {
     client: Client,
@@ -14,7 +18,7 @@ pub struct DynamoDbRepository {
 }
 
 impl DynamoDbRepository {
-    pub async fn new() -> Result<Self, AppError> {
+    pub async fn new() -> Result<Self> {
         let region_provider = RegionProviderChain::default_provider().or_else("eu-central-1");
         let config = aws_config::defaults(aws_config::BehaviorVersion::latest())
             .region(region_provider)
@@ -31,23 +35,23 @@ impl DynamoDbRepository {
         let client = Client::from_conf(builder.build());
         
         let bins_table = std::env::var("TRASH_BINS_TABLE")
-            .unwrap_or_else(|_| "trash-bins".to_string());
+            .map_err(|_| RepositoryError::ValidationError("TRASH_BINS_TABLE environment variable not set".to_string()))?;
         let reports_table = std::env::var("STATUS_REPORTS_TABLE")
-            .unwrap_or_else(|_| "status-reports".to_string());
+            .map_err(|_| RepositoryError::ValidationError("STATUS_REPORTS_TABLE environment variable not set".to_string()))?;
             
         Ok(Self { client, bins_table, reports_table })
     }
 
-    pub async fn get_average_status(&self, bin_id: &Uuid) -> Result<f64, AppError> {
+    pub async fn get_average_status(&self, bin_id: &Uuid) -> Result<f64> {
         let result = self.client
             .get_item()
             .table_name(&self.bins_table)
             .key("binId", AttributeValue::S(bin_id.to_string()))
             .send()
             .await
-            .map_err(|e| AppError::DatabaseError(e.to_string()))?;
+            .map_err(|e| RepositoryError::DatabaseError(e.to_string()))?;
 
-        let item = result.item().ok_or_else(|| AppError::DatabaseError("Bin not found".to_string()))?;
+        let item = result.item().ok_or_else(|| RepositoryError::DatabaseError("Bin not found".to_string()))?;
         
         let status = item.get("status")
             .and_then(|v| v.as_n().ok())
@@ -74,7 +78,7 @@ impl BinRepository for DynamoDbRepository {
         bin_id: &Uuid,
         status: BinStatus,
         timestamp: DateTime<Utc>,
-    ) -> Result<(), AppError> {
+    ) -> Result<()> {
         let status_value = status.value();
         
         // First get current status and count
@@ -84,9 +88,9 @@ impl BinRepository for DynamoDbRepository {
             .key("binId", AttributeValue::S(bin_id.to_string()))
             .send()
             .await
-            .map_err(|e| AppError::DatabaseError(e.to_string()))?;
+            .map_err(|e| RepositoryError::DatabaseError(e.to_string()))?;
 
-        let item = result.item().ok_or_else(|| AppError::DatabaseError("Bin not found".to_string()))?;
+        let item = result.item().ok_or_else(|| RepositoryError::DatabaseError("Bin not found".to_string()))?;
         
         let current_status = item.get("status")
             .and_then(|v| v.as_n().ok())
@@ -105,20 +109,23 @@ impl BinRepository for DynamoDbRepository {
             ((current_status * reports_count) + status_value) / (reports_count + 1)
         };
         
+        // Increment reports count
+        let new_reports_count = reports_count + 1;
+        
         self.client
             .update_item()
             .table_name(&self.bins_table)
             .key("binId", AttributeValue::S(bin_id.to_string()))
-            .update_expression("SET #s = :s, #u = :u, #rc = #rc + :one")
+            .update_expression("SET #s = :s, #u = :u, #rc = :rc")
             .expression_attribute_names("#s", "status")
             .expression_attribute_names("#u", "lastUpdated")
             .expression_attribute_names("#rc", "reportsCount")
             .expression_attribute_values(":s", AttributeValue::N(new_average.to_string()))
             .expression_attribute_values(":u", AttributeValue::S(timestamp.to_rfc3339()))
-            .expression_attribute_values(":one", AttributeValue::N("1".to_string()))
+            .expression_attribute_values(":rc", AttributeValue::N(new_reports_count.to_string()))
             .send()
             .await
-            .map_err(|e| AppError::DatabaseError(e.to_string()))?;
+            .map_err(|e| RepositoryError::DatabaseError(e.to_string()))?;
         Ok(())
     }
 
@@ -127,7 +134,7 @@ impl BinRepository for DynamoDbRepository {
         bin_id: &Uuid,
         status: BinStatus,
         timestamp: DateTime<Utc>,
-    ) -> Result<(), AppError> {
+    ) -> Result<()> {
         self.client
             .put_item()
             .table_name(&self.reports_table)
@@ -136,7 +143,7 @@ impl BinRepository for DynamoDbRepository {
             .item("status", AttributeValue::N(status.value().to_string()))
             .send()
             .await
-            .map_err(|e| AppError::DatabaseError(e.to_string()))?;
+            .map_err(|e| RepositoryError::DatabaseError(e.to_string()))?;
         Ok(())
     }
 }

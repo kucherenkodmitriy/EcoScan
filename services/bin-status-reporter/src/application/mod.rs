@@ -1,13 +1,16 @@
 use chrono::Utc;
 use tracing::{info, error};
 
-use crate::domain::{BinRepository, StatusUpdateRequest, StatusUpdateResponse};
-use crate::error::AppError;
+use crate::domain::{
+    BinRepository, 
+    StatusUpdateRequest, StatusUpdateResponse,
+    Result
+};
 
 pub async fn handle_status_update<R: BinRepository>(
     repo: &R,
     request: StatusUpdateRequest,
-) -> Result<StatusUpdateResponse, AppError> {
+) -> Result<StatusUpdateResponse> {
     info!("Processing status update for bin: {}", request.bin_id);
     
     let timestamp = Utc::now();
@@ -15,25 +18,21 @@ pub async fn handle_status_update<R: BinRepository>(
     
     info!("Updating bin status to: {} (value: {})", status, status.value());
     
-    match repo.update_status(&request.bin_id, status.clone(), timestamp).await {
-        Ok(_) => {
-            info!("Successfully updated bin status in database");
-        }
-        Err(e) => {
+    repo.update_status(&request.bin_id, status.clone(), timestamp).await
+        .map_err(|e| {
             error!("Failed to update bin status: {}", e);
-            return Err(e);
-        }
-    }
+            e
+        })?;
     
-    match repo.add_report(&request.bin_id, status.clone(), timestamp).await {
-        Ok(_) => {
-            info!("Successfully added status report to database");
-        }
-        Err(e) => {
+    info!("Successfully updated bin status in database");
+    
+    repo.add_report(&request.bin_id, status.clone(), timestamp).await
+        .map_err(|e| {
             error!("Failed to add status report: {}", e);
-            return Err(e);
-        }
-    }
+            e
+        })?;
+    
+    info!("Successfully added status report to database");
 
     let response = StatusUpdateResponse {
         success: true,
@@ -48,7 +47,11 @@ pub async fn handle_status_update<R: BinRepository>(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::domain::BinStatus;
+    use crate::domain::{
+        BinStatus,
+        error::RepositoryError,
+    };
+    use crate::AppError;
     use chrono::{DateTime, Utc};
     use uuid::Uuid;
     use async_trait::async_trait;
@@ -98,9 +101,9 @@ mod tests {
             bin_id: &Uuid,
             status: BinStatus,
             timestamp: DateTime<Utc>,
-        ) -> Result<(), AppError> {
+        ) -> Result<()> {
             if *self.should_fail_update.lock().await {
-                return Err(AppError::DatabaseError("Mock update failure".to_string()));
+                return Err(AppError::RepositoryError(RepositoryError::DatabaseError("Mock update failure".to_string())));
             }
             
             self.update_status_calls
@@ -115,9 +118,9 @@ mod tests {
             bin_id: &Uuid,
             status: BinStatus,
             timestamp: DateTime<Utc>,
-        ) -> Result<(), AppError> {
+        ) -> Result<()> {
             if *self.should_fail_report.lock().await {
-                return Err(AppError::DatabaseError("Mock report failure".to_string()));
+                return Err(AppError::RepositoryError(RepositoryError::DatabaseError("Mock report failure".to_string())));
             }
             
             self.add_report_calls
@@ -211,7 +214,7 @@ mod tests {
         
         assert!(result.is_err());
         match result.unwrap_err() {
-            AppError::DatabaseError(msg) => {
+            AppError::RepositoryError(RepositoryError::DatabaseError(msg)) => {
                 assert_eq!(msg, "Mock update failure");
             }
             _ => panic!("Expected DatabaseError"),
@@ -240,7 +243,7 @@ mod tests {
         
         assert!(result.is_err());
         match result.unwrap_err() {
-            AppError::DatabaseError(msg) => {
+            AppError::RepositoryError(RepositoryError::DatabaseError(msg)) => {
                 assert_eq!(msg, "Mock report failure");
             }
             _ => panic!("Expected DatabaseError"),

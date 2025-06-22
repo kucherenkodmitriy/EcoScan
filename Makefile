@@ -1,6 +1,6 @@
 # EcoScan Development Tasks
 
-.PHONY: help build test deploy clean local-up local-down
+.PHONY: help build test deploy clean local-up local-down frontend-dev frontend-build frontend-install frontend-lint
 
 help: ## Show this help message
 	@echo "EcoScan Development Tasks:"
@@ -29,6 +29,23 @@ fix: ## Auto-fix linting and formatting issues
 	cd services/bin-status-reporter && cargo clippy --fix --allow-dirty --allow-staged
 	cd services/bin-status-reporter && cargo fmt
 
+# Frontend Development
+frontend-dev: ## Start frontend development server
+	@echo "🌐 Starting frontend development server..."
+	cd infrastructure/frontend && pnpm run dev
+
+frontend-build: ## Build frontend for production
+	@echo "🏗️ Building frontend for production..."
+	cd infrastructure/frontend && pnpm run build
+
+frontend-install: ## Install frontend dependencies
+	@echo "📦 Installing frontend dependencies..."
+	cd infrastructure/frontend && pnpm install
+
+frontend-lint: ## Lint frontend code
+	@echo "🔍 Linting frontend code..."
+	cd infrastructure/frontend && pnpm run lint
+
 # Local Development
 local-up: ## Start LocalStack development environment
 	@echo "🚀 Starting LocalStack..."
@@ -43,6 +60,9 @@ local-down: ## Stop LocalStack development environment
 
 local-logs: ## Show LocalStack logs
 	docker-compose logs -f localstack
+
+# Full Stack Development
+dev-full: local-up frontend-dev ## Start full development environment (backend + frontend)
 
 # Deployment
 deploy-local: build ## Deploy to LocalStack

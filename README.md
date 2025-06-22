@@ -12,10 +12,10 @@ ecoscan/
 │   ├── shared/               # Common infra modules (IAM roles, policies)
 │   └── templates/            # Parameterized templates for deployment
 ├── services/                 # Rust Lambda microservices workspace
-│   ├── bin-status-reporter/  # Handles submission from QR-scan (REST endpoint)
-│   ├── admin-dashboard-api/  # Authenticated Admin API for bin/location management
-│   ├── notifier/             # Push/email notifications when bin is full
-│   └── shared/               # Shared Rust modules (types, utils, logging)
+│   ├── bin-status-reporter/  # Handles bin status updates from QR-scan (REST endpoint, main business logic)
+│   ├── admin-dashboard-api/  # Authenticated Admin API for bin/location management (skeleton, extendable)
+│   ├── notifier/             # Push/email notifications when bin is full (skeleton, extendable)
+│   └── shared/               # Shared Rust modules (domain models, DTOs, utils, logging)
 ├── frontend/                 # React TypeScript app for admin dashboard
 ├── scripts/                  # Deployment helpers, CI/CD tools
 ├── tests/                    # E2E (Playwright), integration tests
@@ -26,13 +26,14 @@ ecoscan/
 
 ## Architecture
 
-- **AWS Lambda**: Multiple microservices handling different aspects
-  - `bin-status-reporter`: Updates bin status from sensor data
-  - `admin-dashboard-api`: Admin interface for managing bins and locations
-  - `notifier`: Sends alerts when bins are full
+- **AWS Lambda (Rust)**: Multiple microservices, each in its own crate:
+  - `bin-status-reporter`: Main service for updating bin status from QR-scan or sensor data
+  - `admin-dashboard-api`: Admin API for managing bins and locations (currently a skeleton for future extension)
+  - `notifier`: Sends push/email alerts when bins are full (currently a skeleton for future extension)
+  - `shared`: Common models and utilities used by all services
 - **DynamoDB**: Stores bin status and reports
-  - `trash-bins` table: Current status and average calculations
-  - `status-reports` table: Historical status reports
+  - `dev-ecoscan-bin-status` table: Current status and average calculations
+  - `dev-ecoscan-bin-status-reports` table: Historical status reports
 
 ## Data Model
 
@@ -53,7 +54,51 @@ ecoscan/
 The system maintains a running average of bin status:
 1. Each status update is stored in the reports table
 2. The average is calculated using: `((current_status * reports_count) + new_status) / (reports_count + 1)`
-3. The result is stored as the current status in the trash-bins table
+3. The result is stored as the current status in the dev-ecoscan-bin-status table
+
+## Deployment Artifacts S3 Bucket
+
+All AWS Lambda deployments for EcoScan use the S3 bucket:
+
+```
+dev-ecoscan-lambda-deployments
+```
+
+This bucket **must exist** in your AWS account and region before deploying. All deployment artifacts (Lambda packages, CloudFormation templates) will be uploaded here. This is required for both local development and CI/CD workflows. If the bucket does not exist, create it with:
+
+```
+aws s3 mb s3://dev-ecoscan-lambda-deployments --region <your-region>
+```
+
+Replace `<your-region>` with your target AWS region (e.g., `eu-central-1`).
+
+## Multi-Stack Deployment Approach
+
+EcoScan uses a multi-stack architecture. Each microservice or major component is deployed as a separate CloudFormation stack, named using the convention:
+
+```
+<env>-ecoscan-<service>
+```
+
+**Examples:**
+- `dev-ecoscan-bin-status-reporter`
+- `dev-ecoscan-notifier`
+- `dev-ecoscan-admin-dashboard-api`
+- `dev-ecoscan-shared` (for shared resources, if needed)
+
+### Deploying a Service Stack
+
+From the service directory (e.g., `services/bin-status-reporter`):
+
+```sh
+aws cloudformation deploy \
+  --template-file packaged.yaml \
+  --stack-name dev-ecoscan-bin-status-reporter \
+  --capabilities CAPABILITY_IAM \
+  --region <your-region>
+```
+
+Repeat for each service or component as needed. Update the stack name and template path accordingly.
 
 ## Local Development
 
@@ -85,8 +130,8 @@ docker-compose up -d
 Create a `.env.local` file for local development:
 ```env
 DYNAMODB_ENDPOINT_URL=http://localhost:4566
-TRASH_BINS_TABLE=trash-bins
-STATUS_REPORTS_TABLE=status-reports
+TRASH_BINS_TABLE=dev-ecoscan-bin-status
+STATUS_REPORTS_TABLE=dev-ecoscan-bin-status-reports
 ```
 
 ## Testing

@@ -19,7 +19,7 @@ pub fn setup_localstack_env() {
     env::set_var("AWS_EC2_METADATA_DISABLED", "true");
     
     // Table names
-    env::set_var("TRASH_BINS_TABLE", "trash-bins");
+    env::set_var("TRASH_BINS_TABLE", "dev-ecoscan-bin-status");
     env::set_var("STATUS_REPORTS_TABLE", "status-reports");
     
     // Additional AWS SDK configuration for LocalStack

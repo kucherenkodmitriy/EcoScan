@@ -58,6 +58,14 @@ jobs:
           sudo ./aws/install --update
           aws --version
 
+      - name: Install AWS SAM CLI
+        run: |
+          # Download and install SAM CLI with --update flag
+          curl -L "https://github.com/aws/aws-sam-cli/releases/latest/download/aws-sam-cli-linux-x86_64.zip" -o "sam.zip"
+          unzip -q sam.zip -d sam-installation
+          sudo ./sam-installation/install --update
+          sam --version
+
       - name: Build Lambda Function
         run: |
           cd services/bin-status-reporter

@@ -14,9 +14,9 @@ impl Config {
         Self {
             dynamodb_endpoint: env::var("DYNAMODB_ENDPOINT_URL").ok(),
             trash_bins_table: env::var("TRASH_BINS_TABLE")
-                .unwrap_or_else(|_| "trash-bins".to_string()),
+                .unwrap_or_else(|_| "dev-ecoscan-bin-status".to_string()),
             status_reports_table: env::var("STATUS_REPORTS_TABLE")
-                .unwrap_or_else(|_| "status-reports".to_string()),
+                .unwrap_or_else(|_| "dev-ecoscan-bin-status-reports".to_string()),
             aws_region: env::var("AWS_DEFAULT_REGION")
                 .unwrap_or_else(|_| "eu-central-1".to_string()),
             log_level: env::var("LOG_LEVEL")

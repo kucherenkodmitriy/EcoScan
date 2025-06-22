@@ -28,8 +28,12 @@ impl DynamoDbRepository {
         let mut builder = Builder::from(&config);
         
         // Check if we're running in local development mode
-        if let Ok(endpoint_url) = std::env::var("DYNAMODB_ENDPOINT_URL") {
-            builder = builder.endpoint_url(endpoint_url);
+        let endpoint_url = std::env::var("DYNAMODB_ENDPOINT_URL").ok();
+        if let Some(ref url) = endpoint_url {
+            println!("[DEBUG] Using DYNAMODB_ENDPOINT_URL: {}", url);
+            builder = builder.endpoint_url(url);
+        } else {
+            println!("[DEBUG] No DYNAMODB_ENDPOINT_URL set, using AWS default endpoint");
         }
         
         let client = Client::from_conf(builder.build());
@@ -38,7 +42,7 @@ impl DynamoDbRepository {
             .map_err(|_| RepositoryError::ValidationError("TRASH_BINS_TABLE environment variable not set".to_string()))?;
         let reports_table = std::env::var("STATUS_REPORTS_TABLE")
             .map_err(|_| RepositoryError::ValidationError("STATUS_REPORTS_TABLE environment variable not set".to_string()))?;
-            
+        println!("[DEBUG] Using bins_table: {} | reports_table: {}", bins_table, reports_table);
         Ok(Self { client, bins_table, reports_table })
     }
 

@@ -20,6 +20,7 @@ services/*/target/
 lambda.zip
 bootstrap
 ecoscan-lambda.zip
+lambda
 
 # AWS SAM
 .aws-sam/

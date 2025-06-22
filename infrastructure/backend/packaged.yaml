@@ -185,7 +185,7 @@ Resources:
     Type: AWS::DynamoDB::Table
     Properties:
       TableName:
-        Fn::Sub: ${Environment}-trash-bins
+        Fn::Sub: ${Environment}-bin-status
       BillingMode: PAY_PER_REQUEST
       AttributeDefinitions:
       - AttributeName: binId

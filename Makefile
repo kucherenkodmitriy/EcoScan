@@ -60,6 +60,57 @@ test-lambda: deploy-local ## Test Lambda function end-to-end
 	@echo "📋 Test result:"
 	@cat output.json
 
+# AWS Deployment
+package: build ## Package the Lambda function for AWS deployment
+	@echo "📦 Packaging Lambda function for AWS..."
+	@cd services/bin-status-reporter && \
+	  mkdir -p target/package && \
+	  cp target/lambda.zip target/package/
+
+	@if [ ! -f .env ]; then \
+		echo "Error: .env file not found in project root"; \
+		exit 1; \
+	fi
+	@set -o allexport; source .env; set +o allexport; \
+	cd services/bin-status-reporter && \
+	  AWS_ACCESS_KEY_ID=$$AWS_ACCESS_KEY_ID AWS_SECRET_ACCESS_KEY=$$AWS_SECRET_ACCESS_KEY AWS_SESSION_TOKEN=$$AWS_SESSION_TOKEN \
+	  aws cloudformation package \
+	    --template-file template.yaml \
+	    --output-template-file packaged.yaml \
+	    --s3-bucket dev-ecoscan-lambda-deployments
+	@echo "✅ Lambda packaging complete."
+
+deploy-aws: package ## Deploy to AWS using credentials from .env
+	@echo "🚀 Deploying backend infrastructure stack to AWS..."
+	@if [ ! -f .env ]; then \
+		echo "Error: .env file not found in project root"; \
+		exit 1; \
+	fi
+	@set -o allexport; source .env; set +o allexport; \
+	AWS_ACCESS_KEY_ID=$$AWS_ACCESS_KEY_ID AWS_SECRET_ACCESS_KEY=$$AWS_SECRET_ACCESS_KEY AWS_SESSION_TOKEN=$$AWS_SESSION_TOKEN \
+	aws cloudformation deploy \
+	  --template-file infrastructure/backend/template.yaml \
+	  --stack-name dev-ecoscan-backend \
+	  --capabilities CAPABILITY_IAM \
+	  --parameter-overrides Environment=dev \
+	  --region $$AWS_REGION
+	@echo "✅ Backend infrastructure deployment complete!"
+deploy-bin-status-reporter: ## Deploy bin-status-reporter stack to AWS using canonical naming and .env credentials
+	@echo "🚀 Deploying dev-ecoscan-bin-status-reporter stack..."
+	@if [ ! -f .env ]; then \
+		echo "Error: .env file not found in project root"; \
+		exit 1; \
+	fi
+	@set -o allexport; source .env; set +o allexport; \
+	cd services/bin-status-reporter && \
+	  AWS_ACCESS_KEY_ID=$$AWS_ACCESS_KEY_ID AWS_SECRET_ACCESS_KEY=$$AWS_SECRET_ACCESS_KEY AWS_SESSION_TOKEN=$$AWS_SESSION_TOKEN \
+	  aws cloudformation deploy \
+	    --template-file packaged.yaml \
+	    --stack-name dev-ecoscan-bin-status-reporter \
+	    --capabilities CAPABILITY_IAM \
+	    --region $$AWS_REGION
+	@echo "✅ Deployment complete!"
+
 # Cleanup
 clean: ## Clean build artifacts
 	@echo "🧹 Cleaning build artifacts..."

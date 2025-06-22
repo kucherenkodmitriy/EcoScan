@@ -92,6 +92,7 @@ infrastructure/**/.terraform.lock.hcl
 infrastructure/**/terraform.tfstate
 infrastructure/**/terraform.tfstate.backup
 infrastructure/**/*.tfvars
+infrastructure/backend/packaged.yaml
 
 # Amplify
 frontend/amplify/backend/amplify-meta.json

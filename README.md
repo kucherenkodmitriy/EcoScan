@@ -32,19 +32,19 @@ ecoscan/
   - `notifier`: Sends push/email alerts when bins are full (currently a skeleton for future extension)
   - `shared`: Common models and utilities used by all services
 - **DynamoDB**: Stores bin status and reports
-  - `dev-ecoscan-bin-status` table: Current status and average calculations
-  - `dev-ecoscan-bin-status-reports` table: Historical status reports
+  - `dev-ecoscan-trash-bins` table: Current status and average calculations
+  - `dev-ecoscan-status-reports` table: Historical status reports
 
 ## Data Model
 
-### Trash Bins Table
+### Trash Bins Table (`dev-ecoscan-trash-bins`)
 - `binId` (String, Hash Key): Unique identifier for the bin
 - `name` (String): Bin name
 - `status` (Number): Current average status (0-10)
 - `lastUpdated` (String): Last update timestamp
 - `reportsCount` (Number): Number of status reports
 
-### Status Reports Table
+### Status Reports Table (`dev-ecoscan-status-reports`)
 - `binId` (String, Hash Key): Bin identifier
 - `createdAt` (String, Range Key): Report timestamp
 - `status` (Number): Status value (0-10)
@@ -54,7 +54,7 @@ ecoscan/
 The system maintains a running average of bin status:
 1. Each status update is stored in the reports table
 2. The average is calculated using: `((current_status * reports_count) + new_status) / (reports_count + 1)`
-3. The result is stored as the current status in the dev-ecoscan-bin-status table
+3. The result is stored as the current status in the `dev-ecoscan-trash-bins` table.
 
 ## Deployment Artifacts S3 Bucket
 
@@ -127,16 +127,38 @@ docker-compose up -d
 
 ### Environment Variables
 
-Create a `.env.local` file for local development:
+Create a `.env` file in the root directory for local development and AWS deployment. For local development, use `.env.local` which is git-ignored.
+
+**For Local Development (`.env.local`):**
 ```env
 DYNAMODB_ENDPOINT_URL=http://localhost:4566
-TRASH_BINS_TABLE=dev-ecoscan-bin-status
-STATUS_REPORTS_TABLE=dev-ecoscan-bin-status-reports
+TRASH_BINS_TABLE=dev-ecoscan-trash-bins
+STATUS_REPORTS_TABLE=dev-ecoscan-status-reports
+```
+
+**For AWS Deployment (`.env`):**
+```env
+AWS_ACCESS_KEY_ID=<Your_AWS_Access_Key_ID>
+AWS_SECRET_ACCESS_KEY=<Your_AWS_Secret_Access_Key>
+AWS_REGION=eu-central-1
+TRASH_BINS_TABLE=dev-ecoscan-trash-bins
+STATUS_REPORTS_TABLE=dev-ecoscan-status-reports
 ```
 
 ## Testing
 
-The project includes:
-- Unit tests for domain logic
-- Integration tests with LocalStack
-- Test events in `lambda/test-events/`
+The project includes unit tests for domain logic and a comprehensive end-to-end integration test that runs against a local LocalStack environment.
+
+### Running End-to-End Tests
+
+To run the entire end-to-end test suite, use the provided script. This command will automatically:
+1. Start the LocalStack Docker container.
+2. Initialize the database with the necessary tables and seed data.
+3. Run the Rust integration tests from the `services` workspace.
+
+From the project root, run:
+```bash
+./scripts/run-e2e-tests.sh
+```
+
+This is the recommended way to verify the application's core logic and its integration with AWS services locally.

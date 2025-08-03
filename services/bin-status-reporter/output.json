@@ -1,0 +1,1 @@
+{"status_code":500,"body":"{\"error\":\"Internal server error\",\"details\":\"Failed to initialize database: Repository error: Validation error: TRASH_BINS_TABLE environment variable not set\"}"}

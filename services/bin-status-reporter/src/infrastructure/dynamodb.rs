@@ -18,6 +18,10 @@ pub struct DynamoDbRepository {
 }
 
 impl DynamoDbRepository {
+    pub fn new_with_client(client: Client, bins_table: String, reports_table: String) -> Self {
+        Self { client, bins_table, reports_table }
+    }
+
     pub async fn new() -> Result<Self> {
         let region_provider = RegionProviderChain::default_provider().or_else("eu-central-1");
         let config = aws_config::defaults(aws_config::BehaviorVersion::latest())
@@ -77,6 +81,21 @@ impl DynamoDbRepository {
 
 #[async_trait]
 impl BinRepository for DynamoDbRepository {
+    async fn create_bin(&self, bin_id: &Uuid, name: &str) -> Result<()> {
+        self.client
+            .put_item()
+            .table_name(&self.bins_table)
+            .item("binId", AttributeValue::S(bin_id.to_string()))
+            .item("Name", AttributeValue::S(name.to_string()))
+            .item("status", AttributeValue::N("0".to_string()))
+            .item("reportsCount", AttributeValue::N("0".to_string()))
+            .item("lastUpdated", AttributeValue::S(Utc::now().to_rfc3339()))
+            .send()
+            .await
+            .map_err(|e| RepositoryError::DatabaseError(e.to_string()))?;
+        Ok(())
+    }
+
     async fn update_status(
         &self,
         bin_id: &Uuid,

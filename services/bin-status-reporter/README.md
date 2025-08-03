@@ -1,59 +1,35 @@
-# EcoScan Lambda Function
+# Bin Status Reporter Service
 
-This Lambda function is part of the EcoScan project and is responsible for updating the status of bins.
+This service is a core component of the EcoScan project. It is a Rust-based AWS Lambda function responsible for processing trash bin status updates.
 
 ## Purpose
 
-The Lambda function receives requests to update the status of bins and returns a response indicating whether the update was successful.
+The primary responsibility of this service is to receive status update requests (e.g., from a QR code scan or sensor), calculate the new average bin status, and persist the changes to DynamoDB.
 
-## Prerequisites
+## Architecture
 
-- Rust and Cargo installed
-- Docker installed
-- AWS CLI configured
+This crate is designed following Clean Architecture and Domain-Driven Design (DDD) principles to ensure a clear separation of concerns, making it maintainable and testable.
 
-## Building the Lambda Function
+The project structure is organized as follows:
 
-To build the Lambda function, run the following command in the `lambda` directory:
+-   `src/main.rs`: The entry point for the AWS Lambda runtime. It initializes dependencies and invokes the handler.
+-   `src/lib.rs`: Wires up the application dependencies for the Lambda handler.
+-   `src/application/`: Contains the core business logic and use cases (e.g., `UpdateBinStatusUseCase`).
+-   `src/domain/`: Defines the core business entities (e.g., `TrashBin`, `StatusReport`), value objects, and repository traits (interfaces).
+-   `src/infrastructure/`: Provides concrete implementations of the repository traits defined in the domain layer, specifically for interacting with AWS DynamoDB.
 
-```bash
-./build.sh
-```
+## Building and Deployment
 
-This script uses Docker to build the Lambda function and creates a deployment package.
+This service is a crate within the `services` Rust workspace. It is not intended to be built or deployed standalone.
 
-## Deploying the Lambda Function
-
-To deploy the Lambda function, run the following command in the `infrastructure` directory:
-
-```bash
-./deploy.sh [environment] [region]
-```
-
-- `environment`: The deployment environment (e.g., `dev`, `staging`, `prod`). Default is `dev`.
-- `region`: The AWS region to deploy to. Default is `eu-central-1`.
+-   **Building**: The service is automatically built as part of the backend deployment process. The build is triggered by the `infrastructure/backend/deploy.sh` script, which uses Docker for cross-compilation.
+-   **Deployment**: The deployment is managed by the AWS SAM template located in `infrastructure/backend/template.yaml`. Please refer to the `infrastructure/backend/README.md` for detailed deployment instructions.
 
 ## Testing
 
-You can run tests for the Lambda function using Cargo:
-
-```bash
-cargo test
-```
-Test events placed in the `./test-events` directory and can be used to simulate requests to the Lambda function.
-
-## Project Structure
-
-This crate follows a domain-driven design (DDD) layout:
-
-- `src/domain/`: Domain models and repository traits.
-- `src/application/`: Use cases and business logic.
-- `src/infrastructure/`: DynamoDB implementation of repositories.
-- `src/lib.rs`: Wiring of the Lambda handler.
-- `src/main.rs`: Entry point for the Lambda function.
-- `build.sh`: Script to build the Lambda function.
-- `deploy.sh`: Script to deploy the Lambda function.
+-   **Unit Tests**: You can run unit tests for this specific service by navigating to the `services` directory and running `cargo test --package bin-status-reporter`.
+-   **Integration/E2E Tests**: Integration tests and sample Lambda invocation events are located in the root `tests/` directory of the project.
 
 ## License
 
-This project is licensed under the MIT License - see the LICENSE file for details. 
+This project is licensed under the MIT License.

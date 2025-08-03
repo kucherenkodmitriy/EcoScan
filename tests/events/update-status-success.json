@@ -1,0 +1,13 @@
+{
+  "resource": "/bins/{binId}/status",
+  "path": "/bins/default-bin/status",
+  "httpMethod": "PUT",
+  "headers": {
+    "Content-Type": "application/json"
+  },
+  "pathParameters": {
+    "binId": "default-bin"
+  },
+  "body": "{\"status\":{\"value\":8}}",
+  "isBase64Encoded": false
+}

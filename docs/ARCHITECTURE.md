@@ -18,21 +18,6 @@ EcoScan uses a multi-stack AWS deployment model. Each microservice or major comp
 
 This approach enables modularity, independent updates, and easier scaling or hand-off of individual services.
 
-## Multi-Stack AWS Deployment
-EcoScan uses a multi-stack AWS deployment model. Each microservice or major component is deployed as a separate CloudFormation stack, following the naming convention:
-
-```
-<env>-ecoscan-<service>
-```
-
-**Examples:**
-- `dev-ecoscan-bin-status-reporter`
-- `dev-ecoscan-notifier`
-- `dev-ecoscan-admin-dashboard-api`
-- `dev-ecoscan-shared` (for shared resources, if needed)
-
-This approach enables modularity, independent updates, and easier scaling or hand-off of individual services.
-
 ## Architecture Diagram
 ```
 ┌─────────────────┐    ┌──────────────────┐    ┌─────────────────┐
@@ -42,8 +27,8 @@ This approach enables modularity, independent updates, and easier scaling or han
                                                         │
                        ┌─────────────────┐    ┌─────────▼─────────┐
                        │   CloudWatch    │    │    DynamoDB       │
-                       │     Logs        │    │  - dev-ecoscan-bin-status     │
-                       └─────────────────┘    │  - dev-ecoscan-bin-status-reports │
+                       │     Logs        │    │  - dev-ecoscan-trash-bins     │
+                       └─────────────────┘    │  - dev-ecoscan-status-reports │
                                               └───────────────────┘
 ```
 
@@ -56,41 +41,27 @@ This approach enables modularity, independent updates, and easier scaling or han
 - **shared**: Rust library crate with domain models, DTOs, and utilities, shared by all services.
 
 ### Data Model
-- **TrashBin**: Core entity with status tracking
-- **StatusReport**: Individual status readings
-- **BinStatus**: Value object (0-10 scale)
+The data model is centered around two DynamoDB tables:
 
-#### Table structure
-- **Location**: LocationId (PK), Name, Address, Latitude, Longitude, CreatedAt
-| Attribute    | Type   | Key           | Description                   |
-| ------------ | ------ | ------------- | ----------------------------- |
-| `LocationId` | String | Partition Key | Unique ID for the location    |
-| `Name`       | String |               | Human-readable location name  |
-| `Address`    | String |               | Street address or label       |
-| `Latitude`   | Number |               | Latitude coordinate           |
-| `Longitude`  | Number |               | Longitude coordinate          |
-| `CreatedAt`  | String |               | ISO8601 timestamp of creation |
-- **TrashBin**: BinId (PK), Name, LocationId (FK), QRCodeId (FK), CreatedAt
-| Attribute    | Type   | Key           | Description                       |
-| ------------ | ------ | ------------- | --------------------------------- |
-| `BinId`      | String | Partition Key | Unique ID for the trash bin       |
-| `Name`       | String |               | Friendly bin name (e.g., “Bin 7”) |
-| `LocationId` | String |               | Foreign key to `Location`         |
-| `QRCodeId`   | String |               | Foreign key to `QRCode`           |
-| `CreatedAt`  | String |               | ISO8601 timestamp of creation     |
-- **QRCode**: QRCodeId (PK, UUID), BinId (FK), CreatedAt
-| Attribute   | Type   | Key           | Description                           |
-| ----------- | ------ | ------------- | ------------------------------------- |
-| `QRCodeId`  | String | Partition Key | Unique QR code ID                     |
-| `BinId`     | String |               | Foreign key to `TrashBin`             |
-| `CreatedAt` | String |               | ISO8601 timestamp of QR code creation |
-- **StatusReport**: BinId (PK), CreatedAt (SK), Fullness, ReportedBy (default: "anonymous")
-| Attribute    | Type   | Key                         | Description                        |
-| ------------ | ------ | --------------------------- | ---------------------------------- |
-| `BinId`      | String | Partition Key               | Trash bin being reported           |
-| `CreatedAt`  | String | Sort Key (ISO8601 datetime) | Timestamp of status submission     |
-| `Fullness`   | Number |                             | Fullness percentage (0–100)        |
-| `ReportedBy` | String |                             | Optionally: user/email/“anonymous” |
+#### `dev-ecoscan-trash-bins`
+Stores the current state of each trash bin.
+
+| Attribute      | Type   | Key           | Description                                      |
+|----------------|--------|---------------|--------------------------------------------------|
+| `binId`        | String | Partition Key | Unique identifier for the bin                    |
+| `name`         | String |               | Bin name                                         |
+| `status`       | Number |               | Current average status (0-10)                    |
+| `lastUpdated`  | String |               | Last update timestamp (ISO 8601)                 |
+| `reportsCount` | Number |               | Number of status reports received                |
+
+#### `dev-ecoscan-status-reports`
+Stores historical status reports for auditing and analysis.
+
+| Attribute   | Type   | Key        | Description                      |
+|-------------|--------|------------|----------------------------------|
+| `binId`     | String | Partition Key | Bin identifier                   |
+| `createdAt` | String | Sort Key   | Report timestamp (ISO 8601)      |
+| `status`    | Number |            | Reported status value (0-10)     |
 
 ### External Services
 - **DynamoDB**: Primary data store

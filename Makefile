@@ -7,9 +7,15 @@ help: ## Show this help message
 	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | sort | awk 'BEGIN {FS = ":.*?## "}; {printf "\033[36m%-20s\033[0m %s\n", $$1, $$2}'
 
 # Development
-build: ## Build Lambda function for deployment
-	@echo "🔨 Building Lambda function..."
-	./scripts/build-lambda.sh
+build: build-lambda-aws ## Build Lambda function for AWS/LocalStack (default)
+
+build-lambda-aws: ## Build Lambda for AWS/LocalStack (Linux binary)
+	@echo "🔨 Building Lambda function for AWS (x86_64-unknown-linux-musl)..."
+	./scripts/build-lambda.sh aws
+
+build-lambda-local: ## Build Lambda for local macOS execution
+	@echo "🔨 Building Lambda function for local macOS..."
+	./scripts/build-lambda.sh local
 
 test: ## Run all tests
 	@echo "🧪 Running tests..."
@@ -30,11 +36,19 @@ fix: ## Auto-fix linting and formatting issues
 	cd services/bin-status-reporter && cargo fmt
 
 # Local Development
+reset-local: ## Stop and remove all local containers, volumes, and networks
+	@echo "🔥 Resetting LocalStack environment..."
+	AWS_ENDPOINT_URL=http://localhost:4566 aws --profile localstack cloudformation delete-stack --stack-name dev-ecoscan-backend || true
+	@echo "⏳ Waiting for stack to delete..."
+	AWS_ENDPOINT_URL=http://localhost:4566 aws --profile localstack cloudformation wait stack-delete-complete --stack-name dev-ecoscan-backend || true
+	docker-compose down --volumes
+	rm -rf ./volume
+
 local-up: ## Start LocalStack development environment
 	@echo "🚀 Starting LocalStack..."
 	docker-compose up -d
 	@echo "⏳ Waiting for LocalStack to be ready..."
-	sleep 10
+	sleep 10 # Wait for services to initialize
 	./scripts/init-localstack.sh
 
 local-down: ## Stop LocalStack development environment
@@ -45,11 +59,24 @@ local-logs: ## Show LocalStack logs
 	docker-compose logs -f localstack
 
 # Deployment
-deploy-local: build ## Deploy to LocalStack
-	@echo "📦 Deploying to LocalStack..."
-	aws --profile localstack --endpoint-url=http://localhost:4566 lambda update-function-code \
-		--function-name update-bin-status \
-		--zip-file fileb://services/bin-status-reporter/target/lambda.zip
+deploy-local: build ## Build, upload, and deploy the full stack to LocalStack. Run 'make seed-db' after.
+	@echo "📦 Uploading Lambda artifact to S3..."
+	AWS_ACCESS_KEY_ID=test AWS_SECRET_ACCESS_KEY=test AWS_ENDPOINT_URL=http://localhost:4566 aws --profile localstack s3 cp \
+	  services/target/lambda.zip s3://local-lambda-deployments/lambda.zip
+
+	@echo "🏗️  Deploying infrastructure to LocalStack..."
+	AWS_ENDPOINT_URL=http://localhost:4566 aws --profile localstack cloudformation deploy \
+	  --template-file infrastructure/backend/template.yaml \
+	  --stack-name dev-ecoscan-backend \
+	  --capabilities CAPABILITY_IAM \
+	  --parameter-overrides \
+	    Environment=dev \
+	    LambdaS3Bucket=local-lambda-deployments \
+	    LambdaS3Key=lambda.zip
+
+seed-db: ## Seed the local database with default data
+	@echo "🌱 Seeding database..."
+	./scripts/seed-data.sh
 
 test-lambda: deploy-local ## Test Lambda function end-to-end
 	@echo "🧪 Testing Lambda function..."

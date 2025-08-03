@@ -104,6 +104,8 @@ pub struct StatusUpdateResponse {
 
 #[async_trait]
 pub trait BinRepository: Send + Sync + 'static {
+    async fn create_bin(&self, bin_id: &Uuid, name: &str) -> Result<()>;
+
     async fn update_status(
         &self,
         bin_id: &Uuid,

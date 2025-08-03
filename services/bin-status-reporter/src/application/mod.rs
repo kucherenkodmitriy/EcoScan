@@ -7,8 +7,8 @@ use crate::domain::{
     Result
 };
 
-pub async fn handle_status_update<R: BinRepository>(
-    repo: &R,
+pub async fn handle_status_update(
+    repo: &dyn BinRepository,
     request: StatusUpdateRequest,
 ) -> Result<StatusUpdateResponse> {
     info!("Processing status update for bin: {}", request.bin_id);

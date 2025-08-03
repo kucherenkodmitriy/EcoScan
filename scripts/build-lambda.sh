@@ -1,28 +1,54 @@
 #!/bin/bash
+#
+# Builds the Lambda function using the official rust:latest Docker image
+# with the MUSL toolchain for static linking. This ensures compatibility
+# with the AWS Lambda Amazon Linux 2 runtime.
+#
 set -e
 
-# Change to services directory (workspace root)
-cd "$(dirname "$0")/../services" || exit
+# --- Configuration ---
+PROJECT_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
+SERVICE_DIR="$PROJECT_ROOT/services"
+PACKAGE_NAME="bin-status-reporter"
+RUST_TARGET="x86_64-unknown-linux-musl"
 
-# Use Docker to build the Lambda binary for Linux x86_64 (Apple Silicon compatible)
-echo "Building Lambda function with Docker for Linux x86_64..."
-docker run --rm --platform linux/amd64 -v "$PWD":/usr/src/myapp -w /usr/src/myapp rust:latest bash -c "
-    apt-get update && apt-get install -y musl-tools && 
-    rustup target add x86_64-unknown-linux-musl && 
-    cargo build --release --target x86_64-unknown-linux-musl --package bin-status-reporter
-"
+# --- Build the Lambda Binary using Docker ---
+echo "--- Building Lambda binary using rust:latest image ---"
 
-# Package the binary as bootstrap
-echo "Packaging Lambda function..."
-cd bin-status-reporter
-rm -rf target/lambda
-mkdir -p target/lambda
-cp ../target/x86_64-unknown-linux-musl/release/bootstrap target/lambda/bootstrap
-chmod +x target/lambda/bootstrap
+# The command to run inside the Docker container.
+# It first installs the MUSL toolchain and then compiles the project.
+DOCKER_SHELL_COMMAND="apt-get update > /dev/null && apt-get install -y musl-tools > /dev/null && rustup target add $RUST_TARGET && cargo build --release --target $RUST_TARGET --package $PACKAGE_NAME"
 
-cd target/lambda
-zip lambda.zip bootstrap
-mv lambda.zip ../lambda.zip
-cd ../..
+# Run the build in a container.
+# We mount the services directory into the container.
+docker run --rm -v "$SERVICE_DIR":/usr/src/app -w /usr/src/app rust:latest bash -c "$DOCKER_SHELL_COMMAND"
 
-echo "Lambda package created at bin-status-reporter/target/lambda.zip"
+# --- Package ---
+echo "--- Packaging artifact ---"
+SOURCE_ARTIFACT="$SERVICE_DIR/target/$RUST_TARGET/release/bootstrap"
+ZIP_PATH="$SERVICE_DIR/target/lambda.zip"
+
+if [ ! -f "$SOURCE_ARTIFACT" ]; then
+    echo "Error: Build artifact not found at $SOURCE_ARTIFACT" >&2
+    exit 1
+fi
+
+# Create a temporary directory for packaging
+PACKAGE_DIR=$(mktemp -d)
+
+# Copy the bootstrap executable to the temp directory
+cp "$SOURCE_ARTIFACT" "$PACKAGE_DIR/bootstrap"
+
+# Create the zip file containing the bootstrap executable
+mkdir -p "$(dirname "$ZIP_PATH")"
+(cd "$PACKAGE_DIR" && zip -r "$ZIP_PATH" ./*)
+
+# --- Verify ---
+echo "--- Verifying zip contents... ---"
+unzip -l "$ZIP_PATH"
+
+# Clean up the temporary directory
+rm -rf "$PACKAGE_DIR"
+
+echo -e "\n\xE2\x9C\x85 Build successful!"
+echo "Lambda package created at: $ZIP_PATH"

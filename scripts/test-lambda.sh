@@ -6,56 +6,69 @@ export AWS_ACCESS_KEY_ID=test
 export AWS_SECRET_ACCESS_KEY=test
 export AWS_DEFAULT_REGION=eu-central-1
 
-# Go to workspace root for Docker build
-cd "$(dirname "$0")/../services"
+# --- Configuration ---
+PROJECT_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
+FUNCTION_NAME="dev-EcoScanUpdateBinStatus"
+ZIP_PATH="$PROJECT_ROOT/services/target/lambda.zip"
+TEST_EVENT_PATH="$PROJECT_ROOT/tests/events/update-status-success.json"
+TRASH_BINS_TABLE="dev-ecoscan-trash-bins"
+STATUS_REPORTS_TABLE="dev-ecoscan-status-reports"
 
-echo "Building Lambda binary using Docker cross-compilation (from workspace root)..."
-docker run --rm -v "$PWD":/code -w /code messense/rust-musl-cross:x86_64-musl \
-    cargo build --release --target x86_64-unknown-linux-musl -p bin-status-reporter
+# --- Deployment ---
+echo "--- Deploying Lambda function to LocalStack ---"
 
-# Copy the binary to the expected location for zipping
-cp target/x86_64-unknown-linux-musl/release/bootstrap bin-status-reporter/target/lambda/bootstrap
-cd bin-status-reporter/target/lambda
-zip lambda.zip bootstrap
-cd ../../../../
+# Delete old function if it exists
+aws --endpoint-url=http://localhost:4566 lambda delete-function --function-name "$FUNCTION_NAME" >/dev/null 2>&1 || true
 
-# Delete old function
-aws --endpoint-url=http://localhost:4566 lambda delete-function \
-    --function-name dev-EcoScanUpdateBinStatus || true
-
-echo "Creating Lambda function..."
+# Create new function
 aws --endpoint-url=http://localhost:4566 lambda create-function \
-    --function-name dev-EcoScanUpdateBinStatus \
+    --function-name "$FUNCTION_NAME" \
     --runtime provided.al2 \
     --handler bootstrap \
     --role arn:aws:iam::000000000000:role/lambda-role \
-    --zip-file fileb://services/bin-status-reporter/target/lambda/lambda.zip
+    --timeout 30 \
+    --zip-file "fileb://$ZIP_PATH" \
+    --environment "Variables={TRASH_BINS_TABLE=$TRASH_BINS_TABLE,STATUS_REPORTS_TABLE=$STATUS_REPORTS_TABLE,LOG_LEVEL=INFO,DYNAMODB_ENDPOINT_URL=http://localhost:4566}"
 
-echo "Updating function environment..."
-aws --endpoint-url=http://localhost:4566 lambda update-function-configuration \
-    --function-name dev-EcoScanUpdateBinStatus \
-    --environment '{"Variables":{"TRASH_BINS_TABLE":"dev-ecoscan-bin-status","STATUS_REPORTS_TABLE":"dev-ecoscan-bin-status-reports","LOG_LEVEL":"INFO","DYNAMODB_ENDPOINT_URL":"http://localhost:4566"}}'
+# --- Wait for function to be active ---
+echo "--- Waiting for Lambda function to become active ---"
+MAX_ATTEMPTS=15
+ATTEMPT=0
+while [ $ATTEMPT -lt $MAX_ATTEMPTS ]; do
+    STATE=$(aws --endpoint-url=http://localhost:4566 lambda get-function-configuration --function-name "$FUNCTION_NAME" --query 'State' --output text 2>/dev/null)
+    if [ "$STATE" == "Active" ]; then
+        echo "Function is active."
+        break
+    fi
+    echo "Function state is '$STATE'. Waiting..."
+    sleep 2
+    ATTEMPT=$((ATTEMPT + 1))
+done
 
-# Confirm envs
-aws --endpoint-url=http://localhost:4566 lambda get-function-configuration \
-    --function-name dev-EcoScanUpdateBinStatus
+if [ "$STATE" != "Active" ]; then
+    echo "Error: Lambda function did not become active in time." >&2
+    exit 1
+fi
 
-echo "Invoking Lambda function..."
+# --- Invocation ---
+echo "--- Invoking Lambda function ---"
 aws --endpoint-url=http://localhost:4566 lambda invoke \
-    --function-name dev-EcoScanUpdateBinStatus \
-    --payload fileb://services/bin-status-reporter/test-events/api-gateway-request.json \
+    --function-name "$FUNCTION_NAME" \
+    --payload "file://$TEST_EVENT_PATH" \
     --cli-binary-format raw-in-base64-out \
-    --log-type Tail \
     output.json
 
-echo "Lambda execution result:"
-cat output.json
+# --- Verification ---
+echo "--- Verifying results ---"
+echo "Lambda response:"
+cat output.json | jq
 
-echo -e "\nChecking status reports table:"
-aws --endpoint-url=http://localhost:4566 dynamodb scan \
-    --table-name dev-ecoscan-bin-status-reports
+echo "\nChecking status reports table..."
+aws --endpoint-url=http://localhost:4566 dynamodb scan --table-name "$STATUS_REPORTS_TABLE" | jq
 
-echo -e "\nChecking trash bins table:"
+echo "\nChecking trash bins table for updated status..."
 aws --endpoint-url=http://localhost:4566 dynamodb get-item \
-    --table-name dev-ecoscan-bin-status \
-    --key '{"BinId": {"S": "default-bin"}}'
+    --table-name "$TRASH_BINS_TABLE" \
+    --key '{"binId": {"S": "default-bin"}}' | jq
+
+echo "\n\xE2\x9C\x85 E2E test completed successfully!"

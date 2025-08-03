@@ -1,54 +1,68 @@
 AWSTemplateFormatVersion: '2010-09-09'
 Transform: AWS::Serverless-2016-10-31
+Description: >
+  EcoScan Backend
 
-Description: EcoScan Backend Resources
+  This template deploys the backend infrastructure for the EcoScan project.
 
 Parameters:
   Environment:
     Type: String
     Default: dev
-    AllowedValues:
-      - dev
-      - staging
-      - prod
-    Description: Environment name
+    Description: The deployment environment (e.g., dev, prod).
 
-  # We'll keep these parameters in case they're referenced elsewhere
+  LambdaS3Bucket:
+    Type: String
+    Description: The S3 bucket containing the Lambda deployment package.
+
+  LambdaS3Key:
+    Type: String
+    Description: The S3 key for the Lambda deployment package.
+
   RateLimit:
     Type: Number
     Default: 10
-    Description: Number of requests per second allowed (not currently used)
+    Description: The rate limit for the API Gateway.
 
   BurstLimit:
     Type: Number
     Default: 5
-    Description: Maximum number of requests allowed in burst (not currently used)
+    Description: The burst limit for the API Gateway.
 
 Resources:
-
   StatusUpdateFunction:
     Type: AWS::Serverless::Function
     Properties:
-      CodeUri: services/bin-status-reporter/target/lambda.zip
+      FunctionName: !Sub "${Environment}-EcoScanUpdateBinStatus"
+      Description: "A Lambda function that updates the status of a trash bin."
+      CodeUri:
+        Bucket: !Ref LambdaS3Bucket
+        Key: !Ref LambdaS3Key
       Handler: bootstrap
       Runtime: provided.al2
       Architectures:
         - x86_64
-      MemorySize: 256
       Timeout: 30
+      MemorySize: 128
       Environment:
         Variables:
-          TRASH_BINS_TABLE: !Ref TrashBinsTable
-          STATUS_REPORTS_TABLE: !Ref StatusReportsTable
-          LOG_LEVEL: INFO
+          TRASH_BINS_TABLE_NAME: !Ref TrashBinsTable
+          STATUS_REPORTS_TABLE_NAME: !Ref StatusReportsTable
       Policies:
         - DynamoDBCrudPolicy:
             TableName: !Ref TrashBinsTable
         - DynamoDBCrudPolicy:
             TableName: !Ref StatusReportsTable
+      Events:
+        ApiEvent:
+          Type: Api
+          Properties:
+            Path: /bins/{binId}/status
+            Method: post
 
   LocationTable:
     Type: AWS::DynamoDB::Table
+    DeletionPolicy: Delete
     Properties:
       TableName: !Sub "${Environment}-ecoscan-location"
       BillingMode: PAY_PER_REQUEST
@@ -61,6 +75,7 @@ Resources:
 
   TrashBinsTable:
     Type: AWS::DynamoDB::Table
+    DeletionPolicy: Delete
     Properties:
       TableName: !Sub "${Environment}-ecoscan-bin-status"
       BillingMode: PAY_PER_REQUEST
@@ -73,6 +88,7 @@ Resources:
 
   QRCodeTable:
     Type: AWS::DynamoDB::Table
+    DeletionPolicy: Delete
     Properties:
       TableName: !Sub "${Environment}-ecoscan-qrcode"
       BillingMode: PAY_PER_REQUEST
@@ -85,6 +101,7 @@ Resources:
 
   StatusReportsTable:
     Type: AWS::DynamoDB::Table
+    DeletionPolicy: Delete
     Properties:
       TableName: !Sub "${Environment}-ecoscan-bin-status-reports"
       BillingMode: PAY_PER_REQUEST
@@ -100,6 +117,10 @@ Resources:
           KeyType: RANGE
 
 Outputs:
+  ApiEndpoint:
+    Description: "API Gateway endpoint URL"
+    Value: !Sub "http://${ServerlessRestApi}.execute-api.localhost.localstack.cloud:4566/Prod"
+
   StatusUpdateFunctionArn:
     Description: ARN of the Status Update Lambda function
     Value: !GetAtt StatusUpdateFunction.Arn

@@ -9,6 +9,8 @@ async fn main() -> Result<(), Error> {
         .with_target(false)
         .without_time()
         .init();
+        
+
 
     // Use the API Gateway handler as the main entry point
     run(service_fn(api_gateway_handler)).await

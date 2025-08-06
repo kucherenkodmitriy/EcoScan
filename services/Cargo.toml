@@ -1,7 +1,8 @@
 [workspace]
 resolver = "2"
 members = [
-    "bin-status-reporter"
+    "bin-status-reporter",
+    "e2e-tests"
     # Temporarily disabled until implemented:
     # "admin-dashboard-api",
     # "notifier",
@@ -17,6 +18,7 @@ lambda_runtime = "0.8"
 lambda-web = "0.2"
 aws-sdk-dynamodb = "1.0"
 aws-config = "1.0"
+aws-credential-types = "1.0"
 uuid = { version = "1.0", features = ["v4", "serde"] }
 chrono = { version = "0.4", features = ["serde"] }
 thiserror = "1.0"
@@ -27,6 +29,5 @@ tracing-subscriber = { version = "0.3", features = ["env-filter"] }
 # Optimize for size.
 opt-level = "z"
 strip = true
-lto = true
 codegen-units = 1
 panic = "abort"

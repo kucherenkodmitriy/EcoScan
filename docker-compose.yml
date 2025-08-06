@@ -2,16 +2,19 @@ version: '3.8'
 
 services:
   localstack:
+    container_name: ecoscan-localstack
     image: localstack/localstack:latest
     ports:
       - "4566:4566"            # LocalStack Gateway
       - "4510-4559:4510-4559"  # external services port range
     environment:
       - DOCKER_HOST=unix:///var/run/docker.sock
-      - LAMBDA_EXECUTOR=local
+      - LAMBDA_EXECUTOR=docker-reuse
       - AWS_DEFAULT_REGION=${AWS_DEFAULT_REGION:-eu-central-1}
-      - SERVICES=dynamodb,s3,lambda,cloudformation,apigateway,iam
+      - SERVICES=dynamodb,s3,lambda,cloudformation,apigateway,iam,logs
+      - MAIN_CONTAINER_NAME=ecoscan-localstack
       - LAMBDA_DOCKER_NETWORK=ecoscan-net
+
     volumes:
       - "${LOCALSTACK_VOLUME_DIR:-./volume}:/var/lib/localstack"
       - "/var/run/docker.sock:/var/run/docker.sock"
@@ -25,4 +28,5 @@ services:
 
 networks:
   ecoscan-net:
+    name: ecoscan-net
     driver: bridge

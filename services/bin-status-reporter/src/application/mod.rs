@@ -129,13 +129,18 @@ mod tests {
                 .push((*bin_id, status, timestamp));
             Ok(())
         }
+
+        async fn create_bin(&self, _bin_id: &Uuid, _name: &str) -> Result<()> {
+            // This is a mock implementation and can be expanded if needed for tests.
+            Ok(())
+        }
     }
 
     #[tokio::test]
     async fn test_handle_status_update_success() {
         let mock_repo = MockBinRepository::new();
         let bin_id = Uuid::new_v4();
-        let status = BinStatus::new(7).unwrap();
+        let status = BinStatus::new(70).unwrap();
         
         let request = StatusUpdateRequest {
             bin_id,

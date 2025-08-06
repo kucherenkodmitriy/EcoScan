@@ -17,7 +17,7 @@ use crate::infrastructure::dynamodb::DynamoDbRepository;
 
 #[derive(Debug, Deserialize)]
 struct StatusUpdateBody {
-    status: i8,
+    status: i32,
 }
 
 pub async fn api_gateway_handler(

@@ -1,5 +1,6 @@
-use aws_sdk_dynamodb::{types::AttributeValue, Client, config::Builder};
+use aws_sdk_dynamodb::{types::AttributeValue, Client};
 use aws_config::meta::region::RegionProviderChain;
+use aws_credential_types::Credentials;
 use chrono::{DateTime, Utc};
 use uuid::Uuid;
 use async_trait::async_trait;
@@ -23,29 +24,33 @@ impl DynamoDbRepository {
     }
 
     pub async fn new() -> Result<Self> {
-        let region_provider = RegionProviderChain::default_provider().or_else("eu-central-1");
-        let config = aws_config::defaults(aws_config::BehaviorVersion::latest())
-            .region(region_provider)
-            .load()
-            .await;
+        let is_local = std::env::var("DYNAMODB_ENDPOINT_URL").is_ok();
+        let client = if is_local {
+            let endpoint_url = std::env::var("DYNAMODB_ENDPOINT_URL").unwrap();
+            println!("[DEBUG] LocalStack environment detected. Using endpoint: {}", &endpoint_url);
 
-        let mut builder = Builder::from(&config);
-        
-        // Check if we're running in local development mode
-        let endpoint_url = std::env::var("DYNAMODB_ENDPOINT_URL").ok();
-        if let Some(ref url) = endpoint_url {
-            println!("[DEBUG] Using DYNAMODB_ENDPOINT_URL: {}", url);
-            builder = builder.endpoint_url(url);
+            let credentials = Credentials::new("test", "test", None, None, "local");
+            let config = aws_sdk_dynamodb::Config::builder()
+                .behavior_version_latest()
+                .region(aws_config::Region::new("eu-central-1"))
+                .credentials_provider(credentials)
+                .endpoint_url(endpoint_url)
+                .build();
+            Client::from_conf(config)
         } else {
-            println!("[DEBUG] No DYNAMODB_ENDPOINT_URL set, using AWS default endpoint");
-        }
+            // For real AWS, use the default provider chain.
+            let region_provider = RegionProviderChain::default_provider().or_else("eu-central-1");
+            let config = aws_config::defaults(aws_config::BehaviorVersion::latest())
+                .region(region_provider)
+                .load()
+                .await;
+            Client::new(&config)
+        };
         
-        let client = Client::from_conf(builder.build());
-        
-        let bins_table = std::env::var("TRASH_BINS_TABLE")
-            .map_err(|_| RepositoryError::ValidationError("TRASH_BINS_TABLE environment variable not set".to_string()))?;
-        let reports_table = std::env::var("STATUS_REPORTS_TABLE")
-            .map_err(|_| RepositoryError::ValidationError("STATUS_REPORTS_TABLE environment variable not set".to_string()))?;
+        let bins_table = std::env::var("TRASH_BINS_TABLE_NAME")
+            .map_err(|_| RepositoryError::ValidationError("TRASH_BINS_TABLE_NAME environment variable not set".to_string()))?;
+        let reports_table = std::env::var("STATUS_REPORTS_TABLE_NAME")
+            .map_err(|_| RepositoryError::ValidationError("STATUS_REPORTS_TABLE_NAME environment variable not set".to_string()))?;
         println!("[DEBUG] Using bins_table: {} | reports_table: {}", bins_table, reports_table);
         Ok(Self { client, bins_table, reports_table })
     }

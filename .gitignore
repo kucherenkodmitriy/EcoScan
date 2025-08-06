@@ -10,6 +10,8 @@ volume/
 .localstack/
 
 # Rust
+/target/
+lambda/target/
 services/target/
 services/*/target/
 **/*.rs.bk
@@ -17,10 +19,7 @@ services/*/target/
 
 # Lambda build artifacts
 *.zip
-lambda.zip
 bootstrap
-ecoscan-lambda.zip
-lambda
 
 # AWS SAM
 .aws-sam/
@@ -87,12 +86,15 @@ out/
 *-outputs.json
 
 # Terraform
-infrastructure/**/.terraform/
-infrastructure/**/.terraform.lock.hcl
-infrastructure/**/terraform.tfstate
-infrastructure/**/terraform.tfstate.backup
-infrastructure/**/*.tfvars
-infrastructure/backend/packaged.yaml
+# Ignore Terraform state files and directories
+**/.terraform/
+**/.terraform.lock.hcl
+**/terraform.tfstate
+**/terraform.tfstate.backup
+**/*.tfvars
+**/*_override.tf
+**/*_override.tf.json
+**/crash.log
 
 # Amplify
 frontend/amplify/backend/amplify-meta.json

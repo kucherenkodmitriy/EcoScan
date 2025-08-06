@@ -17,9 +17,9 @@ pub struct BinStatus {
 
 impl BinStatus {
     pub fn new(value: i32) -> Result<Self> {
-        if value < 0 || value > 10 {
+        if value < 0 || value > 100 {
             return Err(AppError::ValidationError(format!(
-                "Bin status must be between 0 and 10, got {}",
+                "Bin status must be between 0 and 100, got {}",
                 value
             )));
         }
@@ -36,11 +36,11 @@ impl BinStatus {
     }
 
     pub fn ok() -> Self {
-        Self { value: 5 }
+        Self { value: 50 }
     }
 
     pub fn full() -> Self {
-        Self { value: 10 }
+        Self { value: 100 }
     }
 }
 
@@ -48,8 +48,8 @@ impl fmt::Display for BinStatus {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self.value {
             0 => write!(f, "Empty"),
-            10 => write!(f, "Full"),
-            _ => write!(f, "{}%", self.value * 10),
+            100 => write!(f, "Full"),
+            _ => write!(f, "{}%", self.value),
         }
     }
 }
@@ -57,7 +57,7 @@ impl fmt::Display for BinStatus {
 impl From<i32> for BinStatus {
     fn from(value: i32) -> Self {
         Self { 
-            value: value.clamp(0, 10)
+            value: value.clamp(0, 100)
         }
     }
 }
@@ -141,27 +141,25 @@ mod tests {
         #[test]
         fn test_bin_status_new_invalid_values() {
             assert!(BinStatus::new(-1).is_err());
-            assert!(BinStatus::new(11).is_err());
-            assert!(BinStatus::new(-100).is_err());
-            assert!(BinStatus::new(100).is_err());
+            assert!(BinStatus::new(101).is_err());
         }
 
         #[test]
         fn test_bin_status_error_messages() {
             match BinStatus::new(-1) {
                 Err(AppError::ValidationError(msg)) => {
-                    assert!(msg.contains("Bin status must be between 0 and 10"));
+                    assert!(msg.contains("Bin status must be between 0 and 100"));
                     assert!(msg.contains("-1"));
                 }
                 _ => panic!("Expected ValidationError"),
             }
 
-            match BinStatus::new(15) {
+            match BinStatus::new(101) {
                 Err(AppError::ValidationError(msg)) => {
-                    assert!(msg.contains("Bin status must be between 0 and 10"));
-                    assert!(msg.contains("15"));
+                    assert!(msg.contains("Bin status must be between 0 and 100"));
+                    assert!(msg.contains("101"));
                 }
-                _ => panic!("Expected InvalidRequest error"),
+                _ => panic!("Expected ValidationError"),
             }
         }
 
@@ -170,9 +168,9 @@ mod tests {
             assert_eq!(BinStatus::empty().to_string(), "Empty");
             assert_eq!(BinStatus::full().to_string(), "Full");
             assert_eq!(BinStatus::ok().to_string(), "50%");
-            assert_eq!(BinStatus::new(1).unwrap().to_string(), "10%");
-            assert_eq!(BinStatus::new(7).unwrap().to_string(), "70%");
-            assert_eq!(BinStatus::new(9).unwrap().to_string(), "90%");
+            assert_eq!(BinStatus::new(10).unwrap().to_string(), "10%");
+            assert_eq!(BinStatus::new(70).unwrap().to_string(), "70%");
+            assert_eq!(BinStatus::new(90).unwrap().to_string(), "90%");
         }
 
         #[test]
@@ -182,11 +180,11 @@ mod tests {
             assert_eq!(empty.to_string(), "Empty");
 
             let ok = BinStatus::ok();
-            assert_eq!(ok.value(), 5);
+            assert_eq!(ok.value(), 50);
             assert_eq!(ok.to_string(), "50%");
 
             let full = BinStatus::full();
-            assert_eq!(full.value(), 10);
+            assert_eq!(full.value(), 100);
             assert_eq!(full.to_string(), "Full");
         }
 
@@ -195,11 +193,11 @@ mod tests {
             let status_negative = BinStatus::from(-5);
             assert_eq!(status_negative.value(), 0);
 
-            let status_over_limit = BinStatus::from(15);
-            assert_eq!(status_over_limit.value(), 10);
+            let status_over_limit = BinStatus::from(101);
+            assert_eq!(status_over_limit.value(), 100);
 
-            let status_valid = BinStatus::from(7);
-            assert_eq!(status_valid.value(), 7);
+            let status_valid = BinStatus::from(75);
+            assert_eq!(status_valid.value(), 75);
         }
 
         #[test]

@@ -18,6 +18,7 @@ tracing = { workspace = true }
 tracing-subscriber = { workspace = true, features = ["env-filter"] }
 aws-config = { workspace = true }
 aws-sdk-dynamodb = { workspace = true, features = ["test-util"] }
+aws-credential-types = { workspace = true }
 async-trait = "0.1"
 
 [[bin]]
@@ -37,7 +38,7 @@ aws-sdk-dynamodb = { workspace = true }
 uuid = { workspace = true, features = ["v4"] }
 
 [[test]]
-name = "localstack_test"
-path = "../../tests/localstack_test.rs"
+name = "e2e"
+path = "tests/e2e.rs"
 harness = true
 

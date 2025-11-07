@@ -6,7 +6,7 @@ A serverless application for monitoring trash bin status using AWS Lambda and Dy
 
 ```
 ecoscan/
-├── infrastructure/           # All IaC (CloudFormation, CDK, Terraform, etc.)
+├── infrastructure/           # All IaC (CloudFormation, CDK, etc.)
 │   ├── backend/              # API Gateway, Lambda, DynamoDB, Cognito
 │   ├── frontend/             # Amplify hosting config, CloudFront, Route53
 │   ├── shared/               # Common infra modules (IAM roles, policies)

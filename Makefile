@@ -39,17 +39,18 @@ fix: ## Auto-fix linting and formatting issues
 # Local Development
 reset-local: ## Destroy local infrastructure and stop all containers
 	@echo "🔥 Destroying LocalStack infrastructure..."
-	cd infrastructure && terraform destroy -auto-approve -var-file=local.tfvars
+	@echo "Note: Destroying in reverse layer order..."
+	cd infrastructure/layers/02-compute && terraform destroy -auto-approve -var-file=../../environments/local.tfvars || true
+	cd infrastructure/layers/03-api && terraform destroy -auto-approve -var-file=../../environments/local.tfvars || true
+	cd infrastructure/layers/01-data && terraform destroy -auto-approve -var-file=../../environments/local.tfvars || true
+	cd infrastructure/layers/00-foundation && terraform destroy -auto-approve -var-file=../../environments/local.tfvars || true
 	@echo "🛑 Stopping Docker containers..."
 	docker-compose down --volumes
 	rm -rf ./volume
 
 local-up: ## Start LocalStack development environment
-	@echo "🚀 Starting LocalStack..."
-	docker-compose up -d
-	@echo "⏳ Waiting for LocalStack to be ready..."
-	sleep 10 # Wait for services to initialize
-	./scripts/init-terraform.sh
+	@echo "🚀 Starting LocalStack and deploying infrastructure..."
+	./infrastructure/scripts/init-environment.sh local
 
 local-down: ## Stop LocalStack development environment
 	@echo "🛑 Stopping LocalStack..."

@@ -6,7 +6,7 @@ resource "aws_lambda_function" "update_bin_status" {
   role          = aws_iam_role.lambda_exec_role.arn
   handler       = "bootstrap"
   runtime       = "provided.al2"
-  architectures = ["arm64"]
+  architectures = ["x86_64"]
 
   filename         = "../services/target/lambda.zip"
   source_code_hash = filebase64sha256("../services/target/lambda.zip")

@@ -5,7 +5,7 @@ on:
     branches: [ main ]
     paths:
       - 'services/bin-status-reporter/**'
-      - 'infrastructure/backend/**'
+      - 'infrastructure/**'
       - '.github/workflows/deploy-dev.yml'
 
 env:
@@ -16,7 +16,7 @@ env:
 
 jobs:
   deploy:
-    name: Deploy
+    name: Deploy Infrastructure and Lambda
     runs-on: ubuntu-latest
     permissions:
       id-token: write
@@ -26,19 +26,18 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Install Rust and cargo-lambda
+      - name: Install Rust toolchain
         uses: actions-rs/toolchain@v1
         with:
           toolchain: stable
           profile: minimal
           components: rustfmt, clippy
           target: aarch64-unknown-linux-gnu
-      
+
       - name: Install cargo-lambda
         run: |
           cargo install cargo-lambda --version 0.22.0
           echo "$HOME/.cargo/bin" >> $GITHUB_PATH
-          cargo lambda --version
 
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v4
@@ -47,39 +46,54 @@ jobs:
           aws-region: ${{ env.AWS_REGION }}
           role-session-name: GitHubActions-Deploy
 
-      - name: Install AWS CLI and jq
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y jq unzip
-          
-          # Install AWS CLI v2
-          curl "https://awscli.amazonaws.com/awscli-exe-linux-$(uname -m).zip" -o "awscliv2.zip"
-          unzip -q awscliv2.zip
-          sudo ./aws/install --update
-          aws --version
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: 1.5.0
 
-      - name: Install AWS SAM CLI
+      - name: Build Lambda function
         run: |
-          # Download and install SAM CLI with --update flag
-          curl -L "https://github.com/aws/aws-sam-cli/releases/latest/download/aws-sam-cli-linux-x86_64.zip" -o "sam.zip"
-          unzip -q sam.zip -d sam-installation
-          sudo ./sam-installation/install --update
-          sam --version
+          chmod +x ./scripts/build-lambda.sh
+          ./scripts/build-lambda.sh
 
-      - name: Build Lambda Function
+      - name: Deploy Foundation Layer
+        working-directory: infrastructure/layers/00-foundation
         run: |
-          cd services/bin-status-reporter
-          cargo lambda build --release --arm64 --output-format zip --output-dir ../../target/lambda
-          ls -la ../../target/lambda/*.zip
-          
-      - name: Deploy to AWS
-        working-directory: infrastructure/backend
+          terraform init \
+            -backend-config="../../backend/dev.tfbackend" \
+            -backend-config="key=layers/00-foundation/terraform.tfstate"
+          terraform plan -var-file="../../environments/dev.tfvars" -out=tfplan
+          terraform apply -auto-approve tfplan
+
+      - name: Deploy Data Layer
+        working-directory: infrastructure/layers/01-data
         run: |
-          chmod +x deploy.sh
-          ./deploy.sh --environment dev --rate-limit 10 --burst-limit 5
+          terraform init \
+            -backend-config="../../backend/dev.tfbackend" \
+            -backend-config="key=layers/01-data/terraform.tfstate"
+          terraform plan -var-file="../../environments/dev.tfvars" -out=tfplan
+          terraform apply -auto-approve tfplan
+
+      - name: Deploy API Layer (creates SQS queue)
+        working-directory: infrastructure/layers/03-api
+        run: |
+          terraform init \
+            -backend-config="../../backend/dev.tfbackend" \
+            -backend-config="key=layers/03-api/terraform.tfstate"
+          terraform plan -var-file="../../environments/dev.tfvars" -out=tfplan
+          terraform apply -auto-approve tfplan
+
+      - name: Deploy Compute Layer (configures Lambda to consume from SQS)
+        working-directory: infrastructure/layers/02-compute
+        run: |
+          terraform init \
+            -backend-config="../../backend/dev.tfbackend" \
+            -backend-config="key=layers/02-compute/terraform.tfstate"
+          terraform plan -var-file="../../environments/dev.tfvars" -out=tfplan
+          terraform apply -auto-approve tfplan
 
       - name: Verify deployment
+        working-directory: infrastructure/layers/03-api
         run: |
-          aws lambda get-function \
-            --function-name ecoscan-api-dev-StatusUpdateFunction-* \
-            --region eu-central-1
+          API_URL=$(terraform output -raw api_gateway_invoke_url)
+          echo "Deployed API URL: $API_URL"

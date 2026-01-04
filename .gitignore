@@ -91,10 +91,25 @@ out/
 **/.terraform.lock.hcl
 **/terraform.tfstate
 **/terraform.tfstate.backup
-**/*.tfvars
+**/terraform-local.tfstate
+**/terraform-local.tfstate.backup
+**/*.tfvars.json
 **/*_override.tf
 **/*_override.tf.json
 **/crash.log
+**/crash.*.log
+**/.terraformrc
+**/terraform.rc
+
+# Keep environment configuration files (non-sensitive)
+!infrastructure/environments/*.tfvars
+!infrastructure/backend/*.tfbackend
+
+# Ignore sensitive override files (if any)
+infrastructure/environments/*-secrets.tfvars
+infrastructure/environments/local-override.tfvars
+infrastructure/environments/dev-override.tfvars
+infrastructure/environments/prod-override.tfvars
 
 # Amplify
 frontend/amplify/backend/amplify-meta.json

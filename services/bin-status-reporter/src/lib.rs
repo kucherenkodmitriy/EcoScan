@@ -5,6 +5,7 @@ pub mod infrastructure;
 pub use domain::error::AppError;
 
 use aws_lambda_events::event::apigw::{ApiGatewayProxyRequest, ApiGatewayProxyResponse};
+use aws_lambda_events::event::sqs::{SqsEvent, SqsBatchResponse, BatchItemFailure};
 use aws_lambda_events::http::HeaderMap;
 use lambda_runtime::{Error, LambdaEvent};
 use serde::Deserialize;
@@ -18,6 +19,90 @@ use crate::infrastructure::dynamodb::DynamoDbRepository;
 #[derive(Debug, Deserialize)]
 struct StatusUpdateBody {
     status: i32,
+}
+
+#[derive(Debug, Deserialize)]
+struct SqsMessageBody {
+    #[serde(rename = "binId")]
+    bin_id: String,
+    status: i32,
+}
+
+// SQS event handler - processes messages from the SQS queue
+pub async fn sqs_handler(
+    event: LambdaEvent<SqsEvent>,
+) -> Result<SqsBatchResponse, Error> {
+    info!("Received SQS event with {} records", event.payload.records.len());
+
+    let repo = match DynamoDbRepository::new().await {
+        Ok(repo) => repo,
+        Err(e) => {
+            error!("Failed to initialize DynamoDB repository: {}", e);
+            // Return all messages as failures if we can't connect to DynamoDB
+            let failures: Vec<BatchItemFailure> = event.payload.records
+                .iter()
+                .map(|record| BatchItemFailure {
+                    item_identifier: record.message_id.clone().unwrap_or_default(),
+                })
+                .collect();
+            return Ok(SqsBatchResponse {
+                batch_item_failures: failures,
+            });
+        }
+    };
+
+    let mut failures = Vec::new();
+
+    for record in event.payload.records {
+        let message_id = record.message_id.clone().unwrap_or_default();
+
+        match process_sqs_record(&repo, &record).await {
+            Ok(_) => {
+                info!("Successfully processed message {}", message_id);
+            }
+            Err(e) => {
+                error!("Failed to process message {}: {}", message_id, e);
+                failures.push(BatchItemFailure {
+                    item_identifier: message_id,
+                });
+            }
+        }
+    }
+
+    Ok(SqsBatchResponse {
+        batch_item_failures: failures,
+    })
+}
+
+async fn process_sqs_record(
+    repo: &DynamoDbRepository,
+    record: &aws_lambda_events::event::sqs::SqsMessage,
+) -> Result<(), Error> {
+    let body = record.body.as_ref()
+        .ok_or_else(|| Error::from("Missing message body"))?;
+
+    info!("Processing SQS message body: {}", body);
+
+    // Parse the message body
+    let message: SqsMessageBody = serde_json::from_str(body)
+        .map_err(|e| Error::from(format!("Failed to parse message body: {}", e)))?;
+
+    // Parse bin_id
+    let bin_id = Uuid::parse_str(&message.bin_id)
+        .map_err(|e| Error::from(format!("Invalid bin_id format: {}", e)))?;
+
+    // Validate and create status
+    let status = BinStatus::new(message.status)
+        .map_err(|e| Error::from(e.to_string()))?;
+
+    let request = StatusUpdateRequest { bin_id, status };
+
+    // Process the status update
+    handle_status_update(repo, request).await
+        .map_err(|e| Error::from(e.to_string()))?;
+
+    info!("Status update successful for bin {}", bin_id);
+    Ok(())
 }
 
 pub async fn api_gateway_handler(

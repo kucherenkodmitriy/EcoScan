@@ -23,6 +23,6 @@ async fn test_update_bin_status_e2e() {
     let body: serde_json::Value = response.json().await.expect("Failed to parse response body");
     println!("Received response body: {}", body);
 
-    assert_eq!(body["success"], true);
-    assert_eq!(body["message"], "Bin status updated to 50%");
+    // With the async SQS architecture, the API Gateway returns a queued message
+    assert_eq!(body["message"], "Status update queued for processing");
 }

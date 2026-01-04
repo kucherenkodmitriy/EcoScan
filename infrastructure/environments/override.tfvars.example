@@ -1,0 +1,39 @@
+# Example: Sensitive Configuration Overrides
+#
+# This file demonstrates how to override environment variables
+# with sensitive data that should NOT be committed to git.
+#
+# Usage:
+#   1. Copy this file to `dev-override.tfvars` or `local-override.tfvars`
+#   2. Add your sensitive values
+#   3. Apply with: terraform apply -var-file="../../environments/dev.tfvars" \
+#                                   -var-file="../../environments/dev-override.tfvars"
+#
+# Note: *-override.tfvars files are automatically ignored by git
+
+# Example: Override S3 bucket names if you need custom names
+# health_bucket_name = "my-custom-health-bucket-abc123"
+# lambda_deployments_bucket_name = "my-custom-lambda-bucket-abc123"
+
+# Example: Override AWS region
+# aws_region = "us-west-2"
+
+# Example: Override Lambda settings for performance testing
+# lambda_memory_size = 512
+# lambda_timeout = 120
+# lambda_max_concurrency = 500
+
+# Example: Add custom tags with your name or team
+# tags = {
+#   Environment = "dev"
+#   ManagedBy   = "terraform"
+#   Project     = "ecoscan"
+#   Owner       = "your-name"
+#   Team        = "your-team"
+# }
+
+# Example: Use a different DynamoDB billing mode
+# dynamodb_billing_mode = "PROVISIONED"
+# dynamodb_read_capacity = 100
+# dynamodb_write_capacity = 100
+

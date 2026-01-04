@@ -7,12 +7,12 @@ set -e # Exit immediately if a command exits with a non-zero status.
 PROJECT_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 SERVICE_DIR="$PROJECT_ROOT/services"
 TARGET_DIR="$SERVICE_DIR/target"
-RUST_TARGET="aarch64-unknown-linux-musl"
+RUST_TARGET="x86_64-unknown-linux-musl"
 SOURCE_ARTIFACT="$TARGET_DIR/$RUST_TARGET/release/bootstrap"
 ZIP_PATH="$TARGET_DIR/lambda.zip"
 
 # --- Build the Lambda function using Docker ---
-# We're building for aarch64 since it works on Apple Silicon and is supported by Lambda
+# We're building for x86_64-unknown-linux-musl for AWS Lambda
 echo "--- Building Lambda function for $RUST_TARGET (clux/muslrust) ---"
 
 # Use the clux/muslrust image which is a modern, well-maintained builder for static Rust binaries.

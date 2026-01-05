@@ -5,7 +5,7 @@ pub mod infrastructure;
 pub use domain::error::AppError;
 
 use aws_lambda_events::event::apigw::{ApiGatewayProxyRequest, ApiGatewayProxyResponse};
-use aws_lambda_events::event::sqs::{SqsEvent, SqsBatchResponse, BatchItemFailure};
+use aws_lambda_events::event::sqs::{BatchItemFailure, SqsBatchResponse, SqsEvent};
 use aws_lambda_events::http::HeaderMap;
 use lambda_runtime::{Error, LambdaEvent};
 use serde::Deserialize;
@@ -29,17 +29,20 @@ struct SqsMessageBody {
 }
 
 // SQS event handler - processes messages from the SQS queue
-pub async fn sqs_handler(
-    event: LambdaEvent<SqsEvent>,
-) -> Result<SqsBatchResponse, Error> {
-    info!("Received SQS event with {} records", event.payload.records.len());
+pub async fn sqs_handler(event: LambdaEvent<SqsEvent>) -> Result<SqsBatchResponse, Error> {
+    info!(
+        "Received SQS event with {} records",
+        event.payload.records.len()
+    );
 
     let repo = match DynamoDbRepository::new().await {
         Ok(repo) => repo,
         Err(e) => {
             error!("Failed to initialize DynamoDB repository: {}", e);
             // Return all messages as failures if we can't connect to DynamoDB
-            let failures: Vec<BatchItemFailure> = event.payload.records
+            let failures: Vec<BatchItemFailure> = event
+                .payload
+                .records
                 .iter()
                 .map(|record| BatchItemFailure {
                     item_identifier: record.message_id.clone().unwrap_or_default(),
@@ -78,7 +81,9 @@ async fn process_sqs_record(
     repo: &DynamoDbRepository,
     record: &aws_lambda_events::event::sqs::SqsMessage,
 ) -> Result<(), Error> {
-    let body = record.body.as_ref()
+    let body = record
+        .body
+        .as_ref()
         .ok_or_else(|| Error::from("Missing message body"))?;
 
     info!("Processing SQS message body: {}", body);
@@ -92,13 +97,13 @@ async fn process_sqs_record(
         .map_err(|e| Error::from(format!("Invalid bin_id format: {}", e)))?;
 
     // Validate and create status
-    let status = BinStatus::new(message.status)
-        .map_err(|e| Error::from(e.to_string()))?;
+    let status = BinStatus::new(message.status).map_err(|e| Error::from(e.to_string()))?;
 
     let request = StatusUpdateRequest { bin_id, status };
 
     // Process the status update
-    handle_status_update(repo, request).await
+    handle_status_update(repo, request)
+        .await
         .map_err(|e| Error::from(e.to_string()))?;
 
     info!("Status update successful for bin {}", bin_id);
@@ -145,18 +150,21 @@ pub async fn api_gateway_handler(
     }
 }
 
-fn parse_request(event: ApiGatewayProxyRequest) -> Result<StatusUpdateRequest, ApiGatewayProxyResponse> {
+#[allow(clippy::result_large_err)]
+fn parse_request(
+    event: ApiGatewayProxyRequest,
+) -> Result<StatusUpdateRequest, ApiGatewayProxyResponse> {
     let bin_id_str = event
         .path_parameters
         .get("bin_id")
         .ok_or_else(|| build_response(400, "Missing 'bin_id' in path"))?;
 
-    let bin_id = Uuid::parse_str(bin_id_str)
-        .map_err(|_| build_response(400, "Invalid 'bin_id' format"))?;
+    let bin_id =
+        Uuid::parse_str(bin_id_str).map_err(|_| build_response(400, "Invalid 'bin_id' format"))?;
 
     let body_str = event.body.as_deref().unwrap_or("");
-    let update_body: StatusUpdateBody = serde_json::from_str(body_str)
-        .map_err(|_| build_response(400, "Invalid request body"))?;
+    let update_body: StatusUpdateBody =
+        serde_json::from_str(body_str).map_err(|_| build_response(400, "Invalid request body"))?;
 
     let status = BinStatus::new(update_body.status as i32)
         .map_err(|e| build_response(400, &e.to_string()))?;

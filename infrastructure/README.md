@@ -206,6 +206,54 @@ The `init-environment.sh` script handles this automatically.
    ./infrastructure/scripts/init-environment.sh local
    ```
 
+## API Gateway Security Features
+
+The API Gateway layer (03-api) includes comprehensive security measures to prevent abuse:
+
+### Rate Limiting & Throttling
+
+**LocalStack (local environment):**
+- Rate limit: 100 requests/second
+- Burst capacity: 50 requests
+- Daily quota: 10,000 requests
+
+**AWS Dev environment:**
+- Rate limit: 1,000 requests/second
+- Burst capacity: 500 requests
+- Daily quota: 100,000 requests
+
+When limits are exceeded, API Gateway returns `429 Too Many Requests`.
+
+### Request Validation
+
+All POST requests to `/bins/{bin_id}/status` are validated against a JSON schema:
+
+```json
+{
+  "required": ["status"],
+  "properties": {
+    "status": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 100
+    }
+  }
+}
+```
+
+Invalid requests receive `400 Bad Request` with error details.
+
+### Monitoring & Logging
+
+- **CloudWatch Logs**: Detailed access logs for all requests (IP, timestamp, status code, etc.)
+- **X-Ray Tracing**: Request tracing for debugging and performance analysis
+- **Metrics**: CloudWatch metrics for request count, latency, errors
+- **Retention**: 1 day (local), 7 days (dev)
+
+### Usage Plan
+
+A usage plan enforces quotas and throttling limits. Future enhancement: API keys for admin access.
+
 ## Cleaning Up
 
 ### Local Environment

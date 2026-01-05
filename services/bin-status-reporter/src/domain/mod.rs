@@ -1,13 +1,16 @@
 //! Domain models and business logic for the bin-status-reporter service
 
+use async_trait::async_trait;
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
-use uuid::Uuid;
 use std::fmt;
-use async_trait::async_trait;
+use uuid::Uuid;
 
 pub mod error;
+pub mod fullness;
+
 pub use error::AppError;
+pub use fullness::{calculate_fullness_default, ReportValue, DEFAULT_WINDOW_SIZE};
 pub type Result<T> = error::Result<T>;
 
 #[derive(Debug, Serialize, Deserialize, Clone, PartialEq)]
@@ -17,7 +20,7 @@ pub struct BinStatus {
 
 impl BinStatus {
     pub fn new(value: i32) -> Result<Self> {
-        if value < 0 || value > 100 {
+        if !(0..=100).contains(&value) {
             return Err(AppError::ValidationError(format!(
                 "Bin status must be between 0 and 100, got {}",
                 value
@@ -56,8 +59,8 @@ impl fmt::Display for BinStatus {
 
 impl From<i32> for BinStatus {
     fn from(value: i32) -> Self {
-        Self { 
-            value: value.clamp(0, 100)
+        Self {
+            value: value.clamp(0, 100),
         }
     }
 }
@@ -119,6 +122,16 @@ pub trait BinRepository: Send + Sync + 'static {
         status: BinStatus,
         timestamp: DateTime<Utc>,
     ) -> Result<()>;
+
+    /// Fetches the most recent N reports for a bin, ordered from newest to oldest.
+    ///
+    /// # Arguments
+    /// * `bin_id` - The UUID of the bin
+    /// * `limit` - Maximum number of reports to fetch
+    ///
+    /// # Returns
+    /// * Vector of report values ordered from newest to oldest
+    async fn get_recent_reports(&self, bin_id: &Uuid, limit: usize) -> Result<Vec<ReportValue>>;
 }
 
 #[cfg(test)]
@@ -133,7 +146,7 @@ mod tests {
             assert!(BinStatus::new(0).is_ok());
             assert!(BinStatus::new(5).is_ok());
             assert!(BinStatus::new(10).is_ok());
-            
+
             let status = BinStatus::new(7).unwrap();
             assert_eq!(status.value(), 7);
         }
@@ -234,7 +247,7 @@ mod tests {
 
             let json = serde_json::to_string(&request).unwrap();
             let deserialized: StatusUpdateRequest = serde_json::from_str(&json).unwrap();
-            
+
             assert_eq!(request.bin_id, deserialized.bin_id);
             assert_eq!(request.status, deserialized.status);
         }
@@ -249,7 +262,7 @@ mod tests {
 
             let json = serde_json::to_string(&response).unwrap();
             let deserialized: StatusUpdateResponse = serde_json::from_str(&json).unwrap();
-            
+
             assert_eq!(response.success, deserialized.success);
             assert_eq!(response.message, deserialized.message);
         }

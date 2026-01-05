@@ -33,6 +33,13 @@ resource "aws_api_gateway_method" "post_status" {
   resource_id   = aws_api_gateway_resource.status.id
   http_method   = "POST"
   authorization = "NONE"
+
+  request_validator_id = aws_api_gateway_request_validator.body_validator.id
+
+  # Request model for validation
+  request_models = {
+    "application/json" = aws_api_gateway_model.status_update_model.name
+  }
 }
 
 resource "aws_api_gateway_integration" "sqs_integration" {
@@ -115,6 +122,112 @@ resource "aws_api_gateway_stage" "api_stage" {
   deployment_id = aws_api_gateway_deployment.api_deployment.id
   rest_api_id   = aws_api_gateway_rest_api.api.id
   stage_name    = var.environment
+
+  # Enable detailed CloudWatch metrics
+  xray_tracing_enabled = true
+
+  # Access logging configuration
+  access_log_settings {
+    destination_arn = aws_cloudwatch_log_group.api_gateway_logs.arn
+    format = jsonencode({
+      requestId      = "$context.requestId"
+      ip             = "$context.identity.sourceIp"
+      caller         = "$context.identity.caller"
+      user           = "$context.identity.user"
+      requestTime    = "$context.requestTime"
+      httpMethod     = "$context.httpMethod"
+      resourcePath   = "$context.resourcePath"
+      status         = "$context.status"
+      protocol       = "$context.protocol"
+      responseLength = "$context.responseLength"
+      errorMessage   = "$context.error.message"
+    })
+  }
+
+  tags = local.common_tags
+}
+
+# CloudWatch Log Group for API Gateway access logs
+resource "aws_cloudwatch_log_group" "api_gateway_logs" {
+  name              = "/aws/apigateway/${var.environment}-${var.project_name}"
+  retention_in_days = var.environment == "local" ? 1 : 7
+
+  tags = local.common_tags
+}
+
+# Method settings for throttling and caching
+resource "aws_api_gateway_method_settings" "api_method_settings" {
+  rest_api_id = aws_api_gateway_rest_api.api.id
+  stage_name  = aws_api_gateway_stage.api_stage.stage_name
+  method_path = "*/*"
+
+  settings {
+    # Throttling settings - prevent spam/abuse
+    throttling_rate_limit  = var.environment == "local" ? 100 : 1000  # requests per second
+    throttling_burst_limit = var.environment == "local" ? 50 : 500    # burst capacity
+
+    # Metrics and logging
+    metrics_enabled    = true
+    logging_level      = var.environment == "local" ? "INFO" : "ERROR"
+    data_trace_enabled = var.environment == "local" ? true : false
+
+    # Caching disabled for real-time updates
+    caching_enabled = false
+  }
+}
+
+# Request validator - validates request body and parameters
+resource "aws_api_gateway_request_validator" "body_validator" {
+  rest_api_id           = aws_api_gateway_rest_api.api.id
+  name                  = "${var.environment}-${var.project_name}-body-validator"
+  validate_request_body = true
+  validate_request_parameters = true
+}
+
+# Request model - JSON schema for status update
+resource "aws_api_gateway_model" "status_update_model" {
+  rest_api_id  = aws_api_gateway_rest_api.api.id
+  name         = "StatusUpdateModel"
+  description  = "Schema for bin status update request"
+  content_type = "application/json"
+
+  schema = jsonencode({
+    "$schema" = "http://json-schema.org/draft-04/schema#"
+    title     = "StatusUpdateRequest"
+    type      = "object"
+    required  = ["status"]
+    properties = {
+      status = {
+        type        = "integer"
+        minimum     = 0
+        maximum     = 100
+        description = "Bin fill level percentage (0-100)"
+      }
+    }
+  })
+}
+
+# Usage Plan - for rate limiting per API key (optional for future admin keys)
+resource "aws_api_gateway_usage_plan" "api_usage_plan" {
+  name        = "${var.environment}-${var.project_name}-usage-plan"
+  description = "Usage plan for EcoScan API with rate limiting"
+
+  # Throttle limits
+  throttle_settings {
+    rate_limit  = var.environment == "local" ? 100 : 1000
+    burst_limit = var.environment == "local" ? 50 : 500
+  }
+
+  # Quota limits (daily)
+  quota_settings {
+    limit  = var.environment == "local" ? 10000 : 100000
+    period = "DAY"
+  }
+
+  api_stages {
+    api_id = aws_api_gateway_rest_api.api.id
+    stage  = aws_api_gateway_stage.api_stage.stage_name
+  }
 
   tags = local.common_tags
 }

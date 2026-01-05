@@ -22,9 +22,18 @@ async fn test_update_bin_status_e2e() {
     // 3. Assert the response
     assert_eq!(response.status(), 200, "Expected status code 200");
 
-    let response_body: serde_json::Value = response.json().await.expect("Failed to parse response body");
+    let response_body: serde_json::Value = response
+        .json()
+        .await
+        .expect("Failed to parse response body");
     println!("Received response body: {}", response_body);
 
-    assert_eq!(response_body["success"], true, "Expected success to be true");
-    assert!(response_body["message"].as_str().is_some(), "Expected a message string");
+    assert_eq!(
+        response_body["success"], true,
+        "Expected success to be true"
+    );
+    assert!(
+        response_body["message"].as_str().is_some(),
+        "Expected a message string"
+    );
 }

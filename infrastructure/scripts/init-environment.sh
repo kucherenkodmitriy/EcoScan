@@ -77,10 +77,14 @@ if [[ "$ENVIRONMENT" == "local" ]]; then
     fi
 fi
 
-# Build Lambda function
-echo -e "${YELLOW}--- Building Lambda function ---${NC}"
-chmod +x "$PROJECT_ROOT/scripts/build-lambda.sh"
-"$PROJECT_ROOT/scripts/build-lambda.sh"
+# Build Lambda function (skip if lambda.zip already exists)
+if [[ ! -f "$PROJECT_ROOT/services/target/lambda.zip" ]]; then
+    echo -e "${YELLOW}--- Building Lambda function ---${NC}"
+    chmod +x "$PROJECT_ROOT/scripts/build-lambda.sh"
+    "$PROJECT_ROOT/scripts/build-lambda.sh"
+else
+    echo -e "${GREEN}Lambda package already exists, skipping build${NC}"
+fi
 
 # Deploy layers in order
 # Note: 03-api creates SQS queue that 02-compute consumes from

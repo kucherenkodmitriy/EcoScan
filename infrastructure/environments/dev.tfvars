@@ -15,7 +15,7 @@ dynamodb_write_capacity = null
 # Lambda settings
 lambda_memory_size  = 256
 lambda_timeout      = 60
-lambda_architecture = "arm64"
+lambda_architecture = "x86_64"
 lambda_zip_path     = "../../../services/target/lambda.zip"
 
 # S3 bucket settings (AWS requires unique global names)

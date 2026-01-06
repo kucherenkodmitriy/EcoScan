@@ -92,6 +92,11 @@ out/
 **/terraform.tfstate.backup
 **/terraform-local.tfstate
 **/terraform-local.tfstate.backup
+
+# Ignore Terraform plan output files
+**/tfplan
+**/*.tfplan
+
 **/*.tfvars.json
 **/*_override.tf
 **/*_override.tf.json

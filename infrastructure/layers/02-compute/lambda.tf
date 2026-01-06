@@ -23,7 +23,16 @@ resource "aws_lambda_function" "update_bin_status" {
       TRASH_BINS_TABLE_NAME     = local.trash_bins_table_name
       STATUS_REPORTS_TABLE_NAME = local.status_reports_table_name
       DYNAMODB_ENDPOINT_URL     = local.dynamodb_endpoint_url
+
+      # Enable X-Ray tracing
+      AWS_XRAY_TRACING_NAME    = "${var.environment}-${var.project_name}-update-bin-status"
+      AWS_XRAY_CONTEXT_MISSING = "LOG_ERROR"
     }
+  }
+
+  # Enable active X-Ray tracing
+  tracing_config {
+    mode = "Active"
   }
 
   tags = merge(

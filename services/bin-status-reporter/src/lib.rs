@@ -9,7 +9,7 @@ use aws_lambda_events::event::sqs::{BatchItemFailure, SqsBatchResponse, SqsEvent
 use aws_lambda_events::http::HeaderMap;
 use lambda_runtime::{Error, LambdaEvent};
 use serde::Deserialize;
-use tracing::{error, info};
+use tracing::{error, info, info_span, Instrument};
 use uuid::Uuid;
 
 use crate::application::handle_status_update;
@@ -59,12 +59,54 @@ pub async fn sqs_handler(event: LambdaEvent<SqsEvent>) -> Result<SqsBatchRespons
     for record in event.payload.records {
         let message_id = record.message_id.clone().unwrap_or_default();
 
-        match process_sqs_record(&repo, &record).await {
+        // Extract correlation IDs from SQS message attributes
+        let request_id = record
+            .message_attributes
+            .get("RequestId")
+            .and_then(|attr| attr.string_value.as_ref())
+            .map(|s| s.as_str())
+            .unwrap_or("unknown");
+
+        let trace_id = record
+            .message_attributes
+            .get("TraceId")
+            .and_then(|attr| attr.string_value.as_ref())
+            .map(|s| s.as_str())
+            .unwrap_or("unknown");
+
+        let source_ip = record
+            .message_attributes
+            .get("SourceIp")
+            .and_then(|attr| attr.string_value.as_ref())
+            .map(|s| s.as_str())
+            .unwrap_or("unknown");
+
+        // Create a tracing span with correlation IDs for structured logging
+        let span = info_span!(
+            "process_message",
+            message_id = %message_id,
+            request_id = %request_id,
+            trace_id = %trace_id,
+            source_ip = %source_ip
+        );
+
+        // Process the record within the span context
+        match process_sqs_record(&repo, &record)
+            .instrument(span.clone())
+            .await
+        {
             Ok(_) => {
-                info!("Successfully processed message {}", message_id);
+                info!(
+                    parent: &span,
+                    "Successfully processed message"
+                );
             }
             Err(e) => {
-                error!("Failed to process message {}: {}", message_id, e);
+                error!(
+                    parent: &span,
+                    error = %e,
+                    "Failed to process message"
+                );
                 failures.push(BatchItemFailure {
                     item_identifier: message_id,
                 });

@@ -57,8 +57,14 @@ resource "aws_api_gateway_integration" "sqs_integration" {
 
   # Transform the incoming JSON to SQS message format
   # Combine binId from path with status from body into a JSON message
+  # Add message attributes for distributed tracing:
+  #   - RequestId: API Gateway request ID (for correlation)
+  #   - TraceId: X-Ray trace ID (for distributed tracing)
+  #   - SourceIp: Client IP address
   request_templates = {
-    "application/json" = "Action=SendMessage&MessageBody=$util.urlEncode(\"{\"\"binId\"\":\"\"$input.params('bin_id')\"\",\"\"status\"\":$input.json('$.status')}\")"
+    "application/json" = <<EOF
+Action=SendMessage&MessageBody=$util.urlEncode("{\"binId\":\"$input.params('bin_id')\",\"status\":$input.json('$.status')}")&MessageAttribute.1.Name=RequestId&MessageAttribute.1.Value.StringValue=$context.requestId&MessageAttribute.1.Value.DataType=String&MessageAttribute.2.Name=TraceId&MessageAttribute.2.Value.StringValue=$context.xrayTraceId&MessageAttribute.2.Value.DataType=String&MessageAttribute.3.Name=SourceIp&MessageAttribute.3.Value.StringValue=$context.identity.sourceIp&MessageAttribute.3.Value.DataType=String
+EOF
   }
 
   # Define how to handle the response

@@ -24,7 +24,7 @@ resource "aws_iam_role" "lambda_exec_role" {
 
 resource "aws_iam_policy" "lambda_policy" {
   name        = "${var.environment}-${var.project_name}-lambda-policy"
-  description = "IAM policy for Lambda to access DynamoDB and CloudWatch Logs"
+  description = "IAM policy for Lambda to access DynamoDB, CloudWatch Logs, and X-Ray"
 
   policy = jsonencode({
     Version = "2012-10-17"
@@ -42,13 +42,23 @@ resource "aws_iam_policy" "lambda_policy" {
         Action = [
           "dynamodb:PutItem",
           "dynamodb:GetItem",
-          "dynamodb:UpdateItem"
+          "dynamodb:UpdateItem",
+          "dynamodb:Query"  # Required for get_recent_reports
         ]
         Effect = "Allow"
         Resource = [
           local.trash_bins_table_arn,
           local.status_reports_table_arn
         ]
+      },
+      {
+        # X-Ray tracing permissions
+        Action = [
+          "xray:PutTraceSegments",
+          "xray:PutTelemetryRecords"
+        ]
+        Effect   = "Allow"
+        Resource = "*"
       }
     ]
   })

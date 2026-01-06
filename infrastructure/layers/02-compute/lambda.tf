@@ -12,13 +12,6 @@ resource "aws_lambda_function" "update_bin_status" {
 
   environment {
     variables = {
-      # Standard AWS Lambda environment variables
-      AWS_LAMBDA_FUNCTION_NAME        = "${var.environment}-${var.project_name}-update-bin-status"
-      AWS_LAMBDA_FUNCTION_MEMORY_SIZE = tostring(var.lambda_memory_size)
-      AWS_LAMBDA_FUNCTION_VERSION     = "$LATEST"
-      AWS_LAMBDA_LOG_STREAM_NAME      = "2025/01/01/[$LATEST]placeholder"
-      AWS_LAMBDA_LOG_GROUP_NAME       = "/aws/lambda/${var.environment}-${var.project_name}-update-bin-status"
-
       # Application-specific environment variables
       TRASH_BINS_TABLE_NAME     = local.trash_bins_table_name
       STATUS_REPORTS_TABLE_NAME = local.status_reports_table_name

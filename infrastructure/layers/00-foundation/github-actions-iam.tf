@@ -44,9 +44,8 @@ resource "aws_iam_role" "github_actions_role" {
             "token.actions.githubusercontent.com:aud" = "sts.amazonaws.com"
           }
           StringLike = {
-            # Replace with your GitHub org/repo
-            # Format: "repo:OWNER/REPO:*" or "repo:OWNER/REPO:ref:refs/heads/BRANCH"
-            "token.actions.githubusercontent.com:sub" = "repo:YOUR_GITHUB_ORG/EcoScan:*"
+            # Allow GitHub Actions from main branch and pull requests
+            "token.actions.githubusercontent.com:sub" = "repo:kucherenkodmitriy/EcoScan:*"
           }
         }
       }

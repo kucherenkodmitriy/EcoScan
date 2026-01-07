@@ -1,5 +1,17 @@
 #!/bin/bash
 # build-lambda.sh: Builds the Rust Lambda function for deployment.
+#
+# Usage:
+#   ./build-lambda.sh [ARCHITECTURE]
+#
+# Arguments:
+#   ARCHITECTURE - Optional. Either 'x86_64' (default) or 'arm64'
+#                  If not specified, defaults to 'x86_64' for AWS Lambda
+#
+# Examples:
+#   ./build-lambda.sh           # Build for x86_64 (AWS default)
+#   ./build-lambda.sh x86_64    # Build for x86_64 (AWS)
+#   ./build-lambda.sh arm64     # Build for arm64 (LocalStack on Apple Silicon)
 
 set -e # Exit immediately if a command exits with a non-zero status.
 
@@ -7,18 +19,42 @@ set -e # Exit immediately if a command exits with a non-zero status.
 PROJECT_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 SERVICE_DIR="$PROJECT_ROOT/services"
 TARGET_DIR="$SERVICE_DIR/target"
-RUST_TARGET="x86_64-unknown-linux-musl"
+
+# Determine target architecture
+ARCH="${1:-x86_64}"  # Default to x86_64 if not specified
+
+# Set Rust target and Docker image based on architecture
+case "$ARCH" in
+  x86_64)
+    RUST_TARGET="x86_64-unknown-linux-musl"
+    DOCKER_IMAGE="clux/muslrust"
+    DOCKER_PLATFORM=""  # Native
+    ;;
+  arm64|aarch64)
+    RUST_TARGET="aarch64-unknown-linux-musl"
+    DOCKER_IMAGE="messense/rust-musl-cross:aarch64-musl"
+    DOCKER_PLATFORM="--platform linux/arm64"
+    ;;
+  *)
+    echo "Error: Unsupported architecture '$ARCH'. Use 'x86_64' or 'arm64'" >&2
+    exit 1
+    ;;
+esac
+
 SOURCE_ARTIFACT="$TARGET_DIR/$RUST_TARGET/release/bootstrap"
 ZIP_PATH="$TARGET_DIR/lambda.zip"
 
 # --- Build the Lambda function using Docker ---
-# We're building for x86_64-unknown-linux-musl for AWS Lambda
-echo "--- Building Lambda function for $RUST_TARGET (clux/muslrust) ---"
+echo "--- Building Lambda function for $ARCH ($RUST_TARGET) using $DOCKER_IMAGE ---"
 
-# Use the clux/muslrust image which is a modern, well-maintained builder for static Rust binaries.
-docker run --rm -v "$SERVICE_DIR":/home/rust/src -w /home/rust/src \
-  -e RUSTFLAGS='-C target-feature=+crt-static -C link-arg=-static -C link-arg=-no-pie' \
-  clux/muslrust cargo build --release --target $RUST_TARGET -p bin-status-reporter
+# Use Docker to build for the target architecture
+# This ensures consistent builds across Linux, Mac, and Windows
+docker run --rm $DOCKER_PLATFORM \
+  -v "$SERVICE_DIR":/home/rust/src \
+  -w /home/rust/src \
+  -e RUSTFLAGS='-C target-feature=+crt-static -C link-arg=-static' \
+  "$DOCKER_IMAGE" \
+  cargo build --release --target "$RUST_TARGET" -p bin-status-reporter
 
 # --- Packaging artifact ---
 echo "--- Packaging artifact ---"
@@ -28,7 +64,8 @@ if [ ! -f "$SOURCE_ARTIFACT" ]; then
     exit 1
 fi
 
-chmod +x "$SOURCE_ARTIFACT"
+# Note: chmod not needed as Docker already sets executable permissions
+# and trying to chmod outside container can cause permission issues
 
 zip -j "$ZIP_PATH" "$SOURCE_ARTIFACT"
 

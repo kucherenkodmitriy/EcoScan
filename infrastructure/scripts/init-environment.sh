@@ -81,7 +81,18 @@ fi
 if [[ ! -f "$PROJECT_ROOT/services/target/lambda.zip" ]]; then
     echo -e "${YELLOW}--- Building Lambda function ---${NC}"
     chmod +x "$PROJECT_ROOT/scripts/build-lambda.sh"
-    "$PROJECT_ROOT/scripts/build-lambda.sh"
+
+    # Determine architecture based on environment
+    # LocalStack uses arm64 (for Apple Silicon), AWS uses x86_64
+    if [[ "$ENVIRONMENT" == "local" ]]; then
+        ARCH="arm64"
+        echo "Building for LocalStack (arm64 architecture)"
+    else
+        ARCH="x86_64"
+        echo "Building for AWS Lambda (x86_64 architecture)"
+    fi
+
+    "$PROJECT_ROOT/scripts/build-lambda.sh" "$ARCH"
 else
     echo -e "${GREEN}Lambda package already exists, skipping build${NC}"
 fi

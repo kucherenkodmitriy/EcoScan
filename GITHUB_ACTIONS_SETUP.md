@@ -77,7 +77,7 @@ The deployment policy grants the following permissions to manage all EcoScan res
    - Name: `AWS_ROLE_ARN`
    - Value: `arn:aws:iam::019891040755:role/dev-ecoscan-github-actions-role`
 
-2. **Your workflow is already configured** to use OIDC in `.github/workflows/deploy-dev.yml`:
+2. **Your workflow is configured** to use OIDC in `.github/workflows/ci.yml`:
    ```yaml
    - name: Configure AWS credentials
      uses: aws-actions/configure-aws-credentials@v4
@@ -92,6 +92,55 @@ The deployment policy grants the following permissions to manage all EcoScan res
    - Automatic credential rotation
    - More secure than access keys
    - Follows AWS best practices
+
+## CI/CD Pipeline Overview
+
+The pipeline uses **smart change detection** to only build and deploy what has changed.
+
+### Pipeline Jobs
+
+```
+detect-changes
+     │
+     ├── [Rust changed?] ──► lint ──► test ──► build-lambda ──► upload-lambda-s3
+     │
+     ├── [Infra changed?] ──► terraform-validate
+     │
+     └── [Deploy to dev branch]
+              │
+              ├── deploy-foundation (if foundation/* or tfvars changed)
+              │         │
+              ├── deploy-data (if data/* or tfvars changed)
+              │         │
+              ├── deploy-api (if api/* or tfvars changed)
+              │         │
+              └── deploy-compute (if compute/*, tfvars, or rust changed)
+```
+
+### Change Detection Rules
+
+| Path Pattern | Triggers |
+|--------------|----------|
+| `services/**`, `Cargo.toml`, `Cargo.lock` | Lint, Test, Build Lambda |
+| `infrastructure/layers/00-foundation/**` | Deploy Foundation |
+| `infrastructure/layers/01-data/**` | Deploy Data |
+| `infrastructure/layers/02-compute/**` | Deploy Compute |
+| `infrastructure/layers/03-api/**` | Deploy API |
+| `infrastructure/environments/**`, `infrastructure/backend/**` | Deploy all affected layers |
+
+### Deployment Order
+
+Infrastructure layers are deployed in dependency order:
+1. **00-foundation** - S3, IAM basics
+2. **01-data** - DynamoDB tables
+3. **03-api** - API Gateway, SQS queues
+4. **02-compute** - Lambda function (requires SQS from api layer)
+
+### Lambda Artifact Management
+
+- Built Lambda packages are uploaded to S3: `s3://ecoscan-terraform-state-dev/lambda-artifacts/`
+- If only infrastructure changes (no Rust code), the latest Lambda artifact is downloaded from S3
+- This prevents unnecessary rebuilds when only Terraform configuration changes
 
 ### Option 2: IAM User with Access Keys (Alternative)
 

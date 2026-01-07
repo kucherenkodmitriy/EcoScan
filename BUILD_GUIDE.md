@@ -2,6 +2,20 @@
 
 This guide explains how to build the Rust Lambda function for different environments and platforms.
 
+## Build Strategy Overview
+
+| Environment | Build Location | Architecture | Use Case |
+|-------------|----------------|--------------|----------|
+| **AWS (dev/prod)** | GitHub Actions CI | x86_64 | Production deployments |
+| **LocalStack** | Local (Docker) | arm64 (Apple Silicon) or x86_64 (Intel/Linux) | Local development |
+
+### Key Principles
+
+1. **CI/CD builds for AWS**: Lambda artifacts for AWS are always built in GitHub Actions
+2. **Local builds for LocalStack only**: Use Docker-based builds locally for LocalStack testing
+3. **Change detection**: CI only builds/deploys what has changed
+4. **Artifact storage**: Lambda packages are stored in S3 for Terraform to use
+
 ## Build Architecture Strategy
 
 The project uses **Docker-based builds** to ensure consistent compilation across different development platforms (Linux, Mac, Windows). This approach provides:
@@ -80,9 +94,24 @@ lambda_architecture = "x86_64"  # Standard AWS Lambda
 lambda_architecture = "x86_64"  # Standard AWS Lambda
 ```
 
-## GitHub Actions
+## GitHub Actions CI/CD
 
-GitHub Actions builds are configured to always use x86_64 for AWS deployments:
+GitHub Actions handles all builds and deployments for AWS environments with **smart change detection**.
+
+### Change Detection
+
+The CI/CD pipeline only builds and deploys what has changed:
+
+| Changed Files | Actions Triggered |
+|---------------|-------------------|
+| `services/**` | Lint, Test, Build Lambda, Deploy Compute |
+| `infrastructure/layers/00-foundation/**` | Deploy Foundation |
+| `infrastructure/layers/01-data/**` | Deploy Data |
+| `infrastructure/layers/02-compute/**` | Deploy Compute |
+| `infrastructure/layers/03-api/**` | Deploy API |
+| `infrastructure/environments/**` | Deploy all layers |
+
+### Lambda Build in CI
 
 ```yaml
 - name: Build Lambda function
@@ -90,6 +119,14 @@ GitHub Actions builds are configured to always use x86_64 for AWS deployments:
     chmod +x ./scripts/build-lambda.sh
     ./scripts/build-lambda.sh x86_64
 ```
+
+### Artifact Storage
+
+Lambda packages are stored in S3 for Terraform:
+- `s3://ecoscan-terraform-state-dev/lambda-artifacts/lambda-latest.zip`
+- `s3://ecoscan-terraform-state-dev/lambda-artifacts/lambda-{hash}.zip`
+
+This allows compute layer deployments without rebuilding if only infrastructure changed.
 
 ## Quick Reference
 
@@ -228,13 +265,42 @@ The build system is designed to work seamlessly across different platforms:
 - **Consistent**: Same binary output regardless of host OS
 - **Flexible**: Easy to switch between x86_64 and arm64
 
-For most use cases, simply run:
-```bash
-# Local development
-./infrastructure/scripts/init-environment.sh local
+### Local Development (LocalStack)
 
-# AWS deployment
-./infrastructure/scripts/init-environment.sh dev
+```bash
+# Start LocalStack and deploy infrastructure
+./infrastructure/scripts/init-environment.sh local
 ```
 
-The build script will handle the rest automatically!
+This will:
+1. Start LocalStack via Docker Compose
+2. Build Lambda for your local architecture (arm64 on Apple Silicon)
+3. Deploy all infrastructure layers to LocalStack
+
+### AWS Deployment (CI/CD)
+
+Push to the `dev` branch to trigger GitHub Actions:
+
+```bash
+git push origin dev
+```
+
+The CI/CD pipeline will:
+1. Detect what changed (Rust code, infrastructure, or both)
+2. Build Lambda only if Rust code changed
+3. Deploy only the affected infrastructure layers
+4. Store Lambda artifacts in S3 for future deployments
+
+### Manual AWS Deployment (not recommended)
+
+If you need to deploy manually (e.g., for debugging):
+
+```bash
+# Build for AWS
+./scripts/build-lambda.sh x86_64
+
+# Deploy (requires AWS credentials)
+./infrastructure/scripts/init-environment.sh dev -auto-approve
+```
+
+**Note**: Prefer CI/CD for AWS deployments to ensure consistent builds.

@@ -11,16 +11,21 @@ resource "aws_lambda_function" "update_bin_status" {
   source_code_hash = filebase64sha256(var.lambda_zip_path)
 
   environment {
-    variables = {
-      # Application-specific environment variables
-      TRASH_BINS_TABLE_NAME     = local.trash_bins_table_name
-      STATUS_REPORTS_TABLE_NAME = local.status_reports_table_name
-      DYNAMODB_ENDPOINT_URL     = local.dynamodb_endpoint_url
+    variables = merge(
+      {
+        # Application-specific environment variables
+        TRASH_BINS_TABLE_NAME     = local.trash_bins_table_name
+        STATUS_REPORTS_TABLE_NAME = local.status_reports_table_name
 
-      # Enable X-Ray tracing
-      AWS_XRAY_TRACING_NAME    = "${var.environment}-${var.project_name}-update-bin-status"
-      AWS_XRAY_CONTEXT_MISSING = "LOG_ERROR"
-    }
+        # Enable X-Ray tracing
+        AWS_XRAY_TRACING_NAME    = "${var.environment}-${var.project_name}-update-bin-status"
+        AWS_XRAY_CONTEXT_MISSING = "LOG_ERROR"
+      },
+      # Only set DYNAMODB_ENDPOINT_URL for LocalStack
+      var.use_localstack ? {
+        DYNAMODB_ENDPOINT_URL = local.dynamodb_endpoint_url
+      } : {}
+    )
   }
 
   # Enable active X-Ray tracing

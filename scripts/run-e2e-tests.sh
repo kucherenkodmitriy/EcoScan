@@ -38,8 +38,9 @@ echo "--- Running E2E Integration Tests ---"
 cd "$PROJECT_ROOT/services/e2e-tests"
 
 if ! cargo test -- --nocapture; then
+    echo "--- E2E test failed. Fetching Lambda logs ---"
+
     if [[ "$ENVIRONMENT" == "local" ]]; then
-        echo "--- E2E test failed. Fetching Lambda logs ---"
         LOG_GROUP_NAME="/aws/lambda/local-ecoscan-update-bin-status"
 
         sleep 5
@@ -52,6 +53,17 @@ if ! cargo test -- --nocapture; then
         else
             echo "Could not find any log streams"
         fi
+    else
+        # For AWS environments, fetch Lambda logs
+        LOG_GROUP_NAME="/aws/lambda/${ENVIRONMENT}-ecoscan-update-bin-status"
+
+        sleep 5
+
+        echo "--- Recent Lambda logs (last 2 minutes) ---"
+        START_TIME=$(($(date +%s) * 1000 - 120000))
+
+        aws logs tail "$LOG_GROUP_NAME" --since 2m --format short 2>/dev/null || \
+            echo "Could not fetch Lambda logs. Check CloudWatch manually."
     fi
     exit 1
 fi

@@ -98,6 +98,7 @@ For more detailed information:
 
 - **[Architecture](docs/ARCHITECTURE.md)**: System design, components, and data model
 - **[Infrastructure README](infrastructure/README.md)**: Terraform setup and deployment guide
+- **[Testing Automation Guide](docs/TESTING_AUTOMATION.md)**: Automated testing, smoke tests, and CI/CD
 - **[API Gateway → SQS → Lambda Flow](docs/api-sqs-lambda-flow.md)**: Async message flow details
 - **[LocalStack Debugging Insights](docs/localstack-debugging-insights.md)**: LocalStack tips and solutions
 
@@ -119,8 +120,13 @@ For more detailed information:
 cd services
 cargo test
 
-# E2E tests (requires LocalStack + deployed infrastructure)
-./scripts/run-e2e-tests.sh
+# Smoke tests (quick validation after deployment)
+./scripts/smoke-test.sh local   # LocalStack
+./scripts/smoke-test.sh dev     # AWS dev environment
+
+# E2E tests (full integration testing)
+ENVIRONMENT=local ./scripts/run-e2e-tests.sh  # LocalStack
+ENVIRONMENT=dev ./scripts/run-e2e-tests.sh    # AWS dev environment
 ```
 
 ### Deploying Infrastructure
@@ -154,13 +160,26 @@ The message is queued in SQS and processed asynchronously by Lambda.
 
 ## Testing
 
-The project includes comprehensive tests:
+The project includes comprehensive automated tests:
 
-- **Unit Tests**: Rust service tests
+- **Unit Tests**: Rust service tests (`cargo test`)
 - **Integration Tests**: DynamoDB repository tests
+- **Smoke Tests**: Quick validation after deployment (API, Lambda, DynamoDB)
 - **E2E Tests**: Full API → SQS → Lambda → DynamoDB flow
+- **CI/CD Tests**: Automated testing in GitHub Actions on every push
 
-All tests pass with LocalStack! ✅
+### Automated Testing in CI/CD
+
+Every push to `dev` branch automatically:
+1. ✅ Runs unit tests and linting
+2. ✅ Validates Terraform configuration
+3. ✅ Deploys to AWS dev environment
+4. ✅ Runs smoke tests to verify deployment
+5. ✅ Runs E2E tests for full flow validation
+
+See [Testing Automation Guide](docs/TESTING_AUTOMATION.md) for details.
+
+All tests pass with both LocalStack and AWS! ✅
 
 ## Contributing
 

@@ -49,25 +49,24 @@ echo "--- Building Lambda function for $ARCH ($RUST_TARGET) using $DOCKER_IMAGE 
 
 # Use Docker to build for the target architecture
 # This ensures consistent builds across Linux, Mac, and Windows
+# Also package the zip inside the container to avoid permission issues
 docker run --rm $DOCKER_PLATFORM \
   -v "$SERVICE_DIR":/home/rust/src \
   -w /home/rust/src \
   -e RUSTFLAGS='-C target-feature=+crt-static -C link-arg=-static' \
   "$DOCKER_IMAGE" \
-  cargo build --release --target "$RUST_TARGET" -p bin-status-reporter
+  sh -c "cargo build --release --target $RUST_TARGET -p bin-status-reporter && \
+         echo '--- Packaging artifact ---' && \
+         cd target/$RUST_TARGET/release && \
+         zip -j /home/rust/src/target/lambda.zip bootstrap"
 
-# --- Packaging artifact ---
-echo "--- Packaging artifact ---"
+# --- Verify artifact ---
+echo "--- Verifying artifact ---"
 
-if [ ! -f "$SOURCE_ARTIFACT" ]; then
-    echo "Error: Build artifact not found at $SOURCE_ARTIFACT" >&2
+if [ ! -f "$ZIP_PATH" ]; then
+    echo "Error: Lambda package not found at $ZIP_PATH" >&2
     exit 1
 fi
-
-# Note: chmod not needed as Docker already sets executable permissions
-# and trying to chmod outside container can cause permission issues
-
-zip -j "$ZIP_PATH" "$SOURCE_ARTIFACT"
 
 echo -e "\n\xE2\x9C\x85 Build successful!"
 echo "Lambda package created at: $ZIP_PATH"

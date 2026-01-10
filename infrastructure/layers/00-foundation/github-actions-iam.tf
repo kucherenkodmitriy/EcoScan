@@ -446,6 +446,19 @@ resource "aws_iam_policy" "github_actions_extra_policy" {
           "arn:aws:apigateway:*::/account",
         ]
       },
+      # Lambda Extended Permissions
+      {
+        Sid    = "LambdaExtended"
+        Effect = "Allow"
+        Action = [
+          "lambda:GetFunctionCodeSigningConfig",
+          "lambda:PutFunctionCodeSigningConfig",
+          "lambda:DeleteFunctionCodeSigningConfig",
+        ]
+        Resource = [
+          "arn:aws:lambda:*:*:function:${var.environment}-${var.project_name}-*",
+        ]
+      },
     ]
   })
 

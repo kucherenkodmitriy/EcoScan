@@ -101,6 +101,7 @@ resource "aws_iam_policy" "github_actions_deployment_policy" {
         ]
         Resource = [
           "arn:aws:s3:::${var.environment}-${var.project_name}-*",
+          "arn:aws:s3:::${var.project_name}-${var.environment}-*",
           "arn:aws:s3:::ecoscan-terraform-state-${var.environment}",
         ]
       },
@@ -118,6 +119,7 @@ resource "aws_iam_policy" "github_actions_deployment_policy" {
         ]
         Resource = [
           "arn:aws:s3:::${var.environment}-${var.project_name}-*/*",
+          "arn:aws:s3:::${var.project_name}-${var.environment}-*/*",
           "arn:aws:s3:::ecoscan-terraform-state-${var.environment}/*",
         ]
       },
@@ -246,6 +248,23 @@ resource "aws_iam_policy" "github_actions_deployment_policy" {
         ]
         Resource = [
           "arn:aws:iam::*:policy/${var.environment}-${var.project_name}-*",
+        ]
+      },
+      # IAM OIDC Provider Permissions (for GitHub Actions)
+      {
+        Sid    = "IAMOIDCProviderManagement"
+        Effect = "Allow"
+        Action = [
+          "iam:CreateOpenIDConnectProvider",
+          "iam:DeleteOpenIDConnectProvider",
+          "iam:GetOpenIDConnectProvider",
+          "iam:ListOpenIDConnectProviders",
+          "iam:TagOpenIDConnectProvider",
+          "iam:UntagOpenIDConnectProvider",
+          "iam:UpdateOpenIDConnectProviderThumbprint",
+        ]
+        Resource = [
+          "arn:aws:iam::*:oidc-provider/token.actions.githubusercontent.com",
         ]
       },
       # API Gateway Permissions

@@ -4,7 +4,7 @@ data "terraform_remote_state" "foundation" {
 
   config = var.use_localstack ? {
     path = "../00-foundation/terraform-local.tfstate"
-  } : {
+    } : {
     bucket = "ecoscan-terraform-state-${var.environment}"
     key    = "layers/00-foundation/terraform.tfstate"
     region = var.aws_region
@@ -17,7 +17,7 @@ data "terraform_remote_state" "data" {
 
   config = var.use_localstack ? {
     path = "../01-data/terraform-local.tfstate"
-  } : {
+    } : {
     bucket = "ecoscan-terraform-state-${var.environment}"
     key    = "layers/01-data/terraform.tfstate"
     region = var.aws_region
@@ -30,7 +30,7 @@ data "terraform_remote_state" "api" {
 
   config = var.use_localstack ? {
     path = "../03-api/terraform-local.tfstate"
-  } : {
+    } : {
     bucket = "ecoscan-terraform-state-${var.environment}"
     key    = "layers/03-api/terraform.tfstate"
     region = var.aws_region

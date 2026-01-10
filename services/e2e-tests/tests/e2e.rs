@@ -18,9 +18,16 @@ async fn test_update_bin_status_e2e() {
         .await
         .expect("Failed to send request");
 
-    assert!(response.status().is_success(), "Request failed with status: {}", response.status());
+    assert!(
+        response.status().is_success(),
+        "Request failed with status: {}",
+        response.status()
+    );
 
-    let body: serde_json::Value = response.json().await.expect("Failed to parse response body");
+    let body: serde_json::Value = response
+        .json()
+        .await
+        .expect("Failed to parse response body");
     println!("Received response body: {}", body);
 
     // With the async SQS architecture, the API Gateway returns a queued message

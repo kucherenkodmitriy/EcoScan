@@ -2,11 +2,11 @@ resource "aws_iam_role" "lambda_exec_role" {
   name = "${var.environment}-${var.project_name}-lambda-exec-role"
 
   assume_role_policy = jsonencode({
-    Version   = "2012-10-17",
+    Version = "2012-10-17",
     Statement = [
       {
-        Action    = "sts:AssumeRole",
-        Effect    = "Allow",
+        Action = "sts:AssumeRole",
+        Effect = "Allow",
         Principal = {
           Service = "lambda.amazonaws.com"
         }
@@ -20,10 +20,10 @@ resource "aws_iam_policy" "lambda_policy" {
   description = "IAM policy for Lambda to access DynamoDB and CloudWatch Logs"
 
   policy = jsonencode({
-    Version   = "2012-10-17",
+    Version = "2012-10-17",
     Statement = [
       {
-        Action   = [
+        Action = [
           "logs:CreateLogGroup",
           "logs:CreateLogStream",
           "logs:PutLogEvents"
@@ -32,12 +32,12 @@ resource "aws_iam_policy" "lambda_policy" {
         Resource = "arn:aws:logs:*:*:*"
       },
       {
-        Action   = [
+        Action = [
           "dynamodb:PutItem",
           "dynamodb:GetItem",
           "dynamodb:UpdateItem"
         ],
-        Effect   = "Allow",
+        Effect = "Allow",
         Resource = [
           aws_dynamodb_table.trash_bins.arn,
           aws_dynamodb_table.status_reports.arn

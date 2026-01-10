@@ -2,7 +2,7 @@
 resource "aws_sqs_queue" "status_updates_dlq" {
   name = "${var.environment}-${var.project_name}-status-updates-dlq"
 
-  message_retention_seconds = 1209600 # 14 days
+  message_retention_seconds  = 1209600 # 14 days
   visibility_timeout_seconds = 300     # 5 minutes
 
   tags = merge(

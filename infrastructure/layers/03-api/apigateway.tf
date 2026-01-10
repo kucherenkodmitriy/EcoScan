@@ -169,8 +169,8 @@ resource "aws_api_gateway_method_settings" "api_method_settings" {
 
   settings {
     # Throttling settings - prevent spam/abuse
-    throttling_rate_limit  = var.environment == "local" ? 100 : 1000  # requests per second
-    throttling_burst_limit = var.environment == "local" ? 50 : 500    # burst capacity
+    throttling_rate_limit  = var.environment == "local" ? 100 : 1000 # requests per second
+    throttling_burst_limit = var.environment == "local" ? 50 : 500   # burst capacity
 
     # Metrics and logging
     metrics_enabled    = true
@@ -184,9 +184,9 @@ resource "aws_api_gateway_method_settings" "api_method_settings" {
 
 # Request validator - validates request body and parameters
 resource "aws_api_gateway_request_validator" "body_validator" {
-  rest_api_id           = aws_api_gateway_rest_api.api.id
-  name                  = "${var.environment}-${var.project_name}-body-validator"
-  validate_request_body = true
+  rest_api_id                 = aws_api_gateway_rest_api.api.id
+  name                        = "${var.environment}-${var.project_name}-body-validator"
+  validate_request_body       = true
   validate_request_parameters = true
 }
 

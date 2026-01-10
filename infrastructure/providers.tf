@@ -12,11 +12,11 @@ provider "aws" {
   skip_requesting_account_id  = true
 
   endpoints {
-    apigateway     = var.environment == "local" ? "http://localhost:4566" : null
-    dynamodb       = var.environment == "local" ? "http://localhost:4566" : null
-    iam            = var.environment == "local" ? "http://localhost:4566" : null
-    lambda         = var.environment == "local" ? "http://localhost:4566" : null
-    s3             = var.environment == "local" ? "http://localhost:4566" : null
-    sts            = var.environment == "local" ? "http://localhost:4566" : null
+    apigateway = var.environment == "local" ? "http://localhost:4566" : null
+    dynamodb   = var.environment == "local" ? "http://localhost:4566" : null
+    iam        = var.environment == "local" ? "http://localhost:4566" : null
+    lambda     = var.environment == "local" ? "http://localhost:4566" : null
+    s3         = var.environment == "local" ? "http://localhost:4566" : null
+    sts        = var.environment == "local" ? "http://localhost:4566" : null
   }
 }

@@ -1,14 +1,14 @@
 # AWS Dev environment configuration
-environment    = "dev"
-aws_region     = "eu-central-1"
-project_name   = "ecoscan"
+environment  = "dev"
+aws_region   = "eu-central-1"
+project_name = "ecoscan"
 
 # AWS-specific settings
 use_localstack      = false
 localstack_endpoint = ""
 
 # DynamoDB settings (PAY_PER_REQUEST for production-like environments)
-dynamodb_billing_mode  = "PAY_PER_REQUEST"
+dynamodb_billing_mode   = "PAY_PER_REQUEST"
 dynamodb_read_capacity  = null
 dynamodb_write_capacity = null
 

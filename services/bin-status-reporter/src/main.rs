@@ -13,8 +13,7 @@ async fn main() -> Result<(), Error> {
         .without_time() // CloudWatch adds timestamp
         .with_span_events(FmtSpan::CLOSE) // Log when spans close
         .with_env_filter(
-            EnvFilter::try_from_default_env()
-                .unwrap_or_else(|_| EnvFilter::new("info"))
+            EnvFilter::try_from_default_env().unwrap_or_else(|_| EnvFilter::new("info")),
         )
         .json() // Use JSON format for structured logging
         .init();

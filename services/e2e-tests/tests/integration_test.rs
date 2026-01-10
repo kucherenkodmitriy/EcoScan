@@ -24,16 +24,23 @@ async fn test_full_async_flow() {
         .await
         .expect("Failed to send request");
 
-    assert!(response.status().is_success(),
-        "Request failed with status: {}", response.status());
+    assert!(
+        response.status().is_success(),
+        "Request failed with status: {}",
+        response.status()
+    );
 
-    let body: serde_json::Value = response.json().await
+    let body: serde_json::Value = response
+        .json()
+        .await
         .expect("Failed to parse response body");
     println!("[1] API Gateway Response: {}", body);
 
     // Verify API Gateway returns queued message
-    assert_eq!(body["message"], "Status update queued for processing",
-        "API Gateway should return queued confirmation");
+    assert_eq!(
+        body["message"], "Status update queued for processing",
+        "API Gateway should return queued confirmation"
+    );
 
     println!("\n[2] API Gateway successfully queued the message to SQS");
 
@@ -72,9 +79,14 @@ async fn test_api_gateway_returns_immediately() {
     assert!(response.status().is_success());
 
     // API Gateway should return quickly (< 2 seconds) since it's async
-    assert!(elapsed.as_secs() < 2,
-        "API Gateway should return quickly with async processing, took: {:?}", elapsed);
+    assert!(
+        elapsed.as_secs() < 2,
+        "API Gateway should return quickly with async processing, took: {:?}",
+        elapsed
+    );
 
-    println!("✅ API Gateway returned in {:?} (async processing)", elapsed);
+    println!(
+        "✅ API Gateway returned in {:?} (async processing)",
+        elapsed
+    );
 }
-

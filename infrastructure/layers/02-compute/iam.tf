@@ -43,7 +43,7 @@ resource "aws_iam_policy" "lambda_policy" {
           "dynamodb:PutItem",
           "dynamodb:GetItem",
           "dynamodb:UpdateItem",
-          "dynamodb:Query"  # Required for get_recent_reports
+          "dynamodb:Query" # Required for get_recent_reports
         ]
         Effect = "Allow"
         Resource = [

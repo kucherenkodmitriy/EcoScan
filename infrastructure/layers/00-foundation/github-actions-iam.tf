@@ -338,11 +338,25 @@ resource "aws_iam_policy" "github_actions_deployment_policy" {
           "logs:TagLogGroup",
           "logs:UntagLogGroup",
           "logs:ListTagsLogGroup",
+          "logs:ListTagsForResource",
+          "logs:TagResource",
+          "logs:UntagResource",
         ]
         Resource = [
           "arn:aws:logs:*:*:log-group:/aws/lambda/${var.environment}-${var.project_name}-*",
+          "arn:aws:logs:*:*:log-group:/aws/lambda/${var.environment}-${var.project_name}-*:*",
           "arn:aws:logs:*:*:log-group:/aws/apigateway/${var.environment}-${var.project_name}*",
+          "arn:aws:logs:*:*:log-group:/aws/apigateway/${var.environment}-${var.project_name}*:*",
         ]
+      },
+      # CloudWatch Logs Describe (requires broader permissions)
+      {
+        Sid    = "CloudWatchLogsDescribe"
+        Effect = "Allow"
+        Action = [
+          "logs:DescribeLogGroups",
+        ]
+        Resource = "*"
       },
       # X-Ray Permissions
       {

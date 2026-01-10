@@ -419,6 +419,48 @@ resource "aws_iam_role_policy_attachment" "github_actions_role_policy" {
   policy_arn = aws_iam_policy.github_actions_deployment_policy.arn
 }
 
+# Additional policy for extra permissions (split due to size limits)
+resource "aws_iam_policy" "github_actions_extra_policy" {
+  name        = "${var.environment}-${var.project_name}-github-actions-extra"
+  description = "Additional permissions for GitHub Actions (split policy)"
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      # API Gateway Extended Resources
+      {
+        Sid    = "APIGatewayExtended"
+        Effect = "Allow"
+        Action = [
+          "apigateway:GET",
+          "apigateway:POST",
+          "apigateway:PUT",
+          "apigateway:PATCH",
+          "apigateway:DELETE",
+        ]
+        Resource = [
+          "arn:aws:apigateway:*::/usageplans",
+          "arn:aws:apigateway:*::/usageplans/*",
+          "arn:aws:apigateway:*::/apikeys",
+          "arn:aws:apigateway:*::/apikeys/*",
+          "arn:aws:apigateway:*::/account",
+        ]
+      },
+    ]
+  })
+
+  tags = {
+    Name        = "${var.project_name}-github-actions-extra"
+    Environment = var.environment
+    ManagedBy   = "terraform"
+  }
+}
+
+resource "aws_iam_role_policy_attachment" "github_actions_role_extra_policy" {
+  role       = aws_iam_role.github_actions_role.name
+  policy_arn = aws_iam_policy.github_actions_extra_policy.arn
+}
+
 # ============================================================================
 # Attach policy to existing GITHUB user (Option 2)
 # ============================================================================

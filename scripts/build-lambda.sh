@@ -47,18 +47,33 @@ ZIP_PATH="$TARGET_DIR/lambda.zip"
 # --- Build the Lambda function using Docker ---
 echo "--- Building Lambda function for $ARCH ($RUST_TARGET) using $DOCKER_IMAGE ---"
 
+# Get current user/group ID for fixing permissions
+USER_ID=$(id -u)
+GROUP_ID=$(id -g)
+
 # Use Docker to build for the target architecture
 # This ensures consistent builds across Linux, Mac, and Windows
-# Also package the zip inside the container to avoid permission issues
 docker run --rm $DOCKER_PLATFORM \
   -v "$SERVICE_DIR":/home/rust/src \
   -w /home/rust/src \
   -e RUSTFLAGS='-C target-feature=+crt-static -C link-arg=-static' \
   "$DOCKER_IMAGE" \
   sh -c "cargo build --release --target $RUST_TARGET -p bin-status-reporter && \
-         echo '--- Packaging artifact ---' && \
-         cd target/$RUST_TARGET/release && \
-         zip -j /home/rust/src/target/lambda.zip bootstrap"
+         chown -R $USER_ID:$GROUP_ID target/$RUST_TARGET/release/bootstrap target || true"
+
+# --- Packaging artifact ---
+echo "--- Packaging artifact ---"
+
+if [ ! -f "$SOURCE_ARTIFACT" ]; then
+    echo "Error: Build artifact not found at $SOURCE_ARTIFACT" >&2
+    exit 1
+fi
+
+# Remove old zip if exists
+rm -f "$ZIP_PATH"
+
+# Create the zip package (on host where zip is available)
+zip -j "$ZIP_PATH" "$SOURCE_ARTIFACT"
 
 # --- Verify artifact ---
 echo "--- Verifying artifact ---"

@@ -117,6 +117,8 @@ resource "aws_iam_policy" "github_actions_deployment_policy" {
           "s3:PutBucketOwnershipControls",
           "s3:GetObjectLockConfiguration",
           "s3:PutObjectLockConfiguration",
+          "s3:GetBucketObjectLockConfiguration",
+          "s3:PutBucketObjectLockConfiguration",
         ]
         Resource = [
           "arn:aws:s3:::${var.environment}-${var.project_name}-*",

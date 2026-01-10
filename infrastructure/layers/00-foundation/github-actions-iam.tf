@@ -152,6 +152,20 @@ resource "aws_iam_policy" "github_actions_deployment_policy" {
           "arn:aws:dynamodb:*:*:table/${var.environment}-${var.project_name}-*",
         ]
       },
+      # DynamoDB Terraform State Lock Permissions
+      {
+        Sid    = "DynamoDBTerraformLock"
+        Effect = "Allow"
+        Action = [
+          "dynamodb:GetItem",
+          "dynamodb:PutItem",
+          "dynamodb:DeleteItem",
+          "dynamodb:DescribeTable",
+        ]
+        Resource = [
+          "arn:aws:dynamodb:*:*:table/ecoscan-terraform-locks-${var.environment}",
+        ]
+      },
       # Lambda Permissions
       {
         Sid    = "LambdaManagement"

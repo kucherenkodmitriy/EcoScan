@@ -1,17 +1,19 @@
 #!/bin/bash
-# build-lambda.sh: Builds the Rust Lambda function for deployment.
+# build-lambda.sh: Builds Rust Lambda functions for deployment.
 #
 # Usage:
-#   ./build-lambda.sh [ARCHITECTURE]
+#   ./build-lambda.sh [ARCHITECTURE] [SERVICE]
 #
 # Arguments:
 #   ARCHITECTURE - Optional. Either 'x86_64' (default) or 'arm64'
-#                  If not specified, defaults to 'x86_64' for AWS Lambda
+#   SERVICE      - Optional. Which service to build:
+#                  'all' (default), 'bin-status-reporter', 'lambda-authorizer', 'admin-dashboard-api'
 #
 # Examples:
-#   ./build-lambda.sh           # Build for x86_64 (AWS default)
-#   ./build-lambda.sh x86_64    # Build for x86_64 (AWS)
-#   ./build-lambda.sh arm64     # Build for arm64 (LocalStack on Apple Silicon)
+#   ./build-lambda.sh                          # Build all services for x86_64
+#   ./build-lambda.sh x86_64                   # Build all services for x86_64
+#   ./build-lambda.sh arm64                    # Build all services for arm64
+#   ./build-lambda.sh x86_64 bin-status-reporter  # Build only bin-status-reporter
 
 set -e # Exit immediately if a command exits with a non-zero status.
 
@@ -22,6 +24,7 @@ TARGET_DIR="$SERVICE_DIR/target"
 
 # Determine target architecture
 ARCH="${1:-x86_64}"  # Default to x86_64 if not specified
+SERVICE="${2:-all}"  # Default to all services
 
 # Set Rust target and Docker image based on architecture
 case "$ARCH" in
@@ -41,47 +44,79 @@ case "$ARCH" in
     ;;
 esac
 
-SOURCE_ARTIFACT="$TARGET_DIR/$RUST_TARGET/release/bootstrap"
-ZIP_PATH="$TARGET_DIR/lambda.zip"
-
-# --- Build the Lambda function using Docker ---
-echo "--- Building Lambda function for $ARCH ($RUST_TARGET) using $DOCKER_IMAGE ---"
-
 # Get current user/group ID for fixing permissions
 USER_ID=$(id -u)
 GROUP_ID=$(id -g)
 
-# Use Docker to build for the target architecture
-# This ensures consistent builds across Linux, Mac, and Windows
-docker run --rm $DOCKER_PLATFORM \
-  -v "$SERVICE_DIR":/home/rust/src \
-  -w /home/rust/src \
-  -e RUSTFLAGS='-C target-feature=+crt-static -C link-arg=-static' \
-  "$DOCKER_IMAGE" \
-  sh -c "cargo build --release --target $RUST_TARGET -p bin-status-reporter && \
-         chown -R $USER_ID:$GROUP_ID target/$RUST_TARGET/release/bootstrap target || true"
+# Function to build a single service
+build_service() {
+    local package_name="$1"
+    local binary_name="$2"
+    local zip_name="$3"
 
-# --- Packaging artifact ---
-echo "--- Packaging artifact ---"
+    echo ""
+    echo "=== Building $package_name for $ARCH ($RUST_TARGET) ==="
 
-if [ ! -f "$SOURCE_ARTIFACT" ]; then
-    echo "Error: Build artifact not found at $SOURCE_ARTIFACT" >&2
+    # Build the service
+    docker run --rm $DOCKER_PLATFORM \
+      -v "$SERVICE_DIR":/home/rust/src \
+      -w /home/rust/src \
+      -e RUSTFLAGS='-C target-feature=+crt-static -C link-arg=-static' \
+      "$DOCKER_IMAGE" \
+      sh -c "cargo build --release --target $RUST_TARGET -p $package_name && \
+             chown -R $USER_ID:$GROUP_ID target/$RUST_TARGET/release/$binary_name target || true"
+
+    # Check if build succeeded
+    local source_artifact="$TARGET_DIR/$RUST_TARGET/release/$binary_name"
+    if [ ! -f "$source_artifact" ]; then
+        echo "Error: Build artifact not found at $source_artifact" >&2
+        return 1
+    fi
+
+    # Package the artifact
+    local zip_path="$TARGET_DIR/$zip_name"
+    rm -f "$zip_path"
+
+    # Lambda expects the binary to be named 'bootstrap'
+    local temp_dir=$(mktemp -d)
+    cp "$source_artifact" "$temp_dir/bootstrap"
+    zip -j "$zip_path" "$temp_dir/bootstrap"
+    rm -rf "$temp_dir"
+
+    echo "Created: $zip_path"
+}
+
+# Build services based on selection
+case "$SERVICE" in
+  all)
+    echo "--- Building all Lambda services for $ARCH ---"
+    build_service "bin-status-reporter" "bootstrap" "lambda.zip"
+    build_service "lambda-authorizer" "authorizer-bootstrap" "authorizer.zip"
+    build_service "admin-dashboard-api" "admin-bootstrap" "admin-dashboard.zip"
+    ;;
+  bin-status-reporter)
+    build_service "bin-status-reporter" "bootstrap" "lambda.zip"
+    ;;
+  lambda-authorizer)
+    build_service "lambda-authorizer" "authorizer-bootstrap" "authorizer.zip"
+    ;;
+  admin-dashboard-api)
+    build_service "admin-dashboard-api" "admin-bootstrap" "admin-dashboard.zip"
+    ;;
+  *)
+    echo "Error: Unknown service '$SERVICE'. Use 'all', 'bin-status-reporter', 'lambda-authorizer', or 'admin-dashboard-api'" >&2
     exit 1
-fi
+    ;;
+esac
 
-# Remove old zip if exists
-rm -f "$ZIP_PATH"
+# --- Verify artifacts ---
+echo ""
+echo "--- Build Summary ---"
+echo "Architecture: $ARCH ($RUST_TARGET)"
+echo "Artifacts:"
 
-# Create the zip package (on host where zip is available)
-zip -j "$ZIP_PATH" "$SOURCE_ARTIFACT"
-
-# --- Verify artifact ---
-echo "--- Verifying artifact ---"
-
-if [ ! -f "$ZIP_PATH" ]; then
-    echo "Error: Lambda package not found at $ZIP_PATH" >&2
-    exit 1
-fi
+[ -f "$TARGET_DIR/lambda.zip" ] && echo "  - lambda.zip (bin-status-reporter): $(ls -lh "$TARGET_DIR/lambda.zip" | awk '{print $5}')"
+[ -f "$TARGET_DIR/authorizer.zip" ] && echo "  - authorizer.zip (lambda-authorizer): $(ls -lh "$TARGET_DIR/authorizer.zip" | awk '{print $5}')"
+[ -f "$TARGET_DIR/admin-dashboard.zip" ] && echo "  - admin-dashboard.zip (admin-dashboard-api): $(ls -lh "$TARGET_DIR/admin-dashboard.zip" | awk '{print $5}')"
 
 echo -e "\n\xE2\x9C\x85 Build successful!"
-echo "Lambda package created at: $ZIP_PATH"

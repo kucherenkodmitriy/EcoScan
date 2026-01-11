@@ -44,9 +44,34 @@ variable "lambda_architecture" {
 }
 
 variable "lambda_zip_path" {
-  description = "Path to Lambda deployment package"
+  description = "Path to Lambda deployment package (bin-status-reporter)"
   type        = string
   default     = "../../../services/target/lambda.zip"
+}
+
+variable "authorizer_zip_path" {
+  description = "Path to Lambda authorizer deployment package"
+  type        = string
+  default     = "../../../services/target/authorizer.zip"
+}
+
+variable "admin_dashboard_zip_path" {
+  description = "Path to Admin Dashboard API deployment package"
+  type        = string
+  default     = "../../../services/target/admin-dashboard.zip"
+}
+
+variable "jwt_secret" {
+  description = "Secret key for JWT token signing"
+  type        = string
+  default     = "ecoscan-jwt-secret-change-in-production"
+  sensitive   = true
+}
+
+variable "jwt_expiry_hours" {
+  description = "JWT token expiry time in hours"
+  type        = number
+  default     = 24
 }
 
 variable "lambda_sqs_batch_size" {

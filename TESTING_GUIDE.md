@@ -1,67 +1,20 @@
 # EcoScan Testing Guide
 
-## ✅ Completed Tasks
+This guide covers manual testing steps, E2E testing, and validation procedures for the EcoScan system.
 
-### 1. **Created Fullness Calculation Module** (`services/bin-status-reporter/src/domain/fullness.rs`)
-- Implements weighted average calculation for bin status
-- More recent reports have higher weight (linear weighting)
-- Default window size: 10 most recent reports
-- Full test coverage (16 tests)
+## Overview
 
-**Key Features:**
-```rust
-// Most recent report gets weight N, oldest gets weight 1
-calculate_fullness_default(&reports) -> i32  // Returns 0-100
-```
+EcoScan has multiple layers of tests:
+- **Unit Tests** - Test individual Rust functions and modules (`cargo test`)
+- **Integration Tests** - Test DynamoDB repository layer
+- **Smoke Tests** - Quick validation after deployment (`./scripts/smoke-test.sh`)
+- **E2E Tests** - Full end-to-end flow testing (`./scripts/run-e2e-tests.sh`)
 
-### 2. **Implemented get_recent_reports in DynamoDB Repository**
-- Fetches N most recent status reports for a bin
-- Ordered from newest to oldest
-- Used by update_status to calculate weighted average
-- Replaces simple moving average with more accurate calculation
-
-### 3. **Added Comprehensive API Gateway Security**
-
-#### Rate Limiting & Throttling:
-- **Local (LocalStack):** 100 requests/sec, burst: 50, daily quota: 10,000
-- **AWS Dev:** 1,000 requests/sec, burst: 500, daily quota: 100,000
-- Prevents spam and abuse attacks
-
-#### Request Validation:
-- JSON Schema validation for request body
-- Required field: `status` (integer, 0-100)
-- Validates both body and parameters
-- Returns 400 Bad Request for invalid inputs
-
-#### Monitoring & Logging:
-- CloudWatch access logs with detailed request info
-- X-Ray tracing enabled for debugging
-- Metrics collection for performance monitoring
-- Error tracking and alerting
-
-#### Files Modified:
-- `infrastructure/layers/03-api/apigateway.tf`
-
-**New Resources Added:**
-```terraform
-- aws_api_gateway_request_validator
-- aws_api_gateway_model (JSON schema)
-- aws_api_gateway_method_settings (throttling)
-- aws_api_gateway_usage_plan
-- aws_cloudwatch_log_group
-```
-
-### 4. **All Unit Tests Passing**
-```bash
-29 tests passed:
-✅ Domain layer tests (BinStatus, fullness calculation)
-✅ Application layer tests (handle_status_update)
-✅ Request/Response serialization tests
-```
+For CI/CD testing automation, see [Testing Automation Guide](docs/TESTING_AUTOMATION.md).
 
 ---
 
-## 🧪 Manual Testing Steps (Run on Your Local Machine)
+## Manual Testing Steps (Run on Your Local Machine)
 
 Since Docker is not available in this environment, please run these commands on your local machine where Docker is installed:
 
@@ -440,33 +393,7 @@ awslocal sqs receive-message \
 
 ---
 
-## 📝 Summary of Changes
-
-### Code Changes:
-1. ✅ Added `services/bin-status-reporter/src/domain/fullness.rs` (271 lines, 16 tests)
-2. ✅ Modified `src/infrastructure/dynamodb.rs` - Implemented weighted average calculation
-3. ✅ Modified `src/domain/mod.rs` - Added fullness module exports
-4. ✅ All unit tests passing (29 tests total)
-
-### Infrastructure Changes:
-1. ✅ Added rate limiting to API Gateway (100/1000 req/sec)
-2. ✅ Added request validation with JSON schema
-3. ✅ Added CloudWatch logging and X-Ray tracing
-4. ✅ Added usage plan with daily quotas
-5. ✅ Added method settings for throttling
-
-### Security Features Added:
-- ✅ Rate limiting (prevents spam)
-- ✅ Request validation (prevents invalid data)
-- ✅ CloudWatch logging (audit trail)
-- ✅ X-Ray tracing (debugging)
-- ✅ Throttling (burst protection)
-
----
-
-## ✅ Next Steps
-
-Run these commands on your local machine to complete the testing:
+## Quick Start
 
 ```bash
 # 1. Build Lambda
@@ -478,34 +405,25 @@ Run these commands on your local machine to complete the testing:
 # 3. Run E2E tests
 ./scripts/run-e2e-tests.sh
 
-# 4. Test rate limiting (manual)
-# (Use curl commands from Step 4 above)
-
-# 5. Validate DynamoDB data (manual)
-# (Use aws CLI commands from Step 5 above)
-```
-
-**When everything works:**
-- ✅ API Gateway accepts valid requests
-- ✅ API Gateway rejects invalid requests (400)
-- ✅ API Gateway throttles excessive requests (429)
-- ✅ SQS queues messages correctly
-- ✅ Lambda processes messages in batches
-- ✅ DynamoDB shows weighted average calculation
-- ✅ CloudWatch logs show request details
-- ✅ No messages in Dead Letter Queue
-
-Then you can deploy to AWS Dev:
-```bash
+# 4. Deploy to AWS Dev (after local testing passes)
 ./infrastructure/scripts/init-environment.sh dev
 ```
 
+**Expected results when everything works:**
+- API Gateway accepts valid requests (200)
+- API Gateway rejects invalid requests (400)
+- API Gateway throttles excessive requests (429)
+- SQS queues messages correctly
+- Lambda processes messages in batches
+- DynamoDB shows weighted average calculation
+- CloudWatch logs show request details
+- No messages in Dead Letter Queue
+
 ---
 
-## 📚 Documentation
+## Related Documentation
 
-For more details, see:
-- **Infrastructure README:** `infrastructure/README.md`
-- **Project README:** `README.md`
-- **Makefile:** Common development tasks
-- **E2E Tests:** `services/e2e-tests/tests/bin_status_test.rs`
+- [Infrastructure README](infrastructure/README.md) - Deployment guide
+- [Testing Automation](docs/TESTING_AUTOMATION.md) - CI/CD testing
+- [Architecture](docs/ARCHITECTURE.md) - System design
+- [Distributed Tracing Guide](DISTRIBUTED_TRACING_GUIDE.md) - Observability

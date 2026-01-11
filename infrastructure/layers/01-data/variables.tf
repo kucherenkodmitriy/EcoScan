@@ -48,3 +48,10 @@ variable "tags" {
   type        = map(string)
   default     = {}
 }
+
+variable "jwt_secret_override" {
+  description = "Optional JWT secret override (if not set, a random secret is generated)"
+  type        = string
+  default     = ""
+  sensitive   = true
+}

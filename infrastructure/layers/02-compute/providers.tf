@@ -5,14 +5,15 @@ provider "aws" {
   dynamic "endpoints" {
     for_each = var.use_localstack ? [1] : []
     content {
-      apigateway = var.localstack_endpoint
-      dynamodb   = var.localstack_endpoint
-      iam        = var.localstack_endpoint
-      lambda     = var.localstack_endpoint
-      s3         = var.localstack_endpoint
-      sts        = var.localstack_endpoint
-      cloudwatch = var.localstack_endpoint
-      logs       = var.localstack_endpoint
+      apigateway      = var.localstack_endpoint
+      dynamodb        = var.localstack_endpoint
+      iam             = var.localstack_endpoint
+      lambda          = var.localstack_endpoint
+      s3              = var.localstack_endpoint
+      sts             = var.localstack_endpoint
+      cloudwatch      = var.localstack_endpoint
+      logs            = var.localstack_endpoint
+      secretsmanager  = var.localstack_endpoint
     }
   }
 

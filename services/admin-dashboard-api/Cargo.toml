@@ -14,6 +14,7 @@ serde_json = { workspace = true }
 lambda_runtime = { workspace = true }
 lambda-web = { workspace = true }
 aws-sdk-dynamodb = { workspace = true }
+aws-sdk-secretsmanager = { workspace = true }
 aws-config = { workspace = true }
 uuid = { workspace = true }
 chrono = { workspace = true }
@@ -24,3 +25,7 @@ tracing-subscriber = { workspace = true }
 # Admin-specific dependencies
 jsonwebtoken = "9.0"
 base64 = "0.21"
+bcrypt = "0.15"
+async-trait = "0.1"
+aws_lambda_events = "0.11"
+anyhow = "1.0"

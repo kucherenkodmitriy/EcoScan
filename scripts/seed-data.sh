@@ -1,4 +1,14 @@
 #!/bin/bash
+# seed-data.sh: Seeds initial data for local development
+#
+# Usage:
+#   ./seed-data.sh [ENVIRONMENT]
+#
+# Environment variables:
+#   ENVIRONMENT - local, dev, or prod (default: local)
+#   ENDPOINT_URL - LocalStack endpoint (default: http://localhost:4566)
+
+set -e
 
 # Set AWS credentials for local testing
 export AWS_ACCESS_KEY_ID=test
@@ -6,26 +16,99 @@ export AWS_SECRET_ACCESS_KEY=test
 export AWS_DEFAULT_REGION=${AWS_DEFAULT_REGION:-eu-central-1}
 
 # Set environment
-ENVIRONMENT=${ENVIRONMENT:-dev}
+ENVIRONMENT=${1:-${ENVIRONMENT:-local}}
+ENDPOINT_URL=${ENDPOINT_URL:-http://localhost:4566}
 
-# Table name from environment variable, with a default for local testing
-TABLE_NAME=${BINS_TABLE_NAME:-${ENVIRONMENT}-ecoscan-trash-bins}
+# Table names
+BINS_TABLE="${ENVIRONMENT}-ecoscan-trash-bins"
+USERS_TABLE="${ENVIRONMENT}-ecoscan-admin-users"
 
-if [ -z "$TABLE_NAME" ]; then
-    echo "Error: BINS_TABLE_NAME environment variable is not set." >&2
-    exit 1
-fi
+echo "=== Seeding Data for Environment: $ENVIRONMENT ==="
+echo "Endpoint: $ENDPOINT_URL"
+echo ""
 
-# Create default trash bin
-echo "Creating default trash bin in table: $TABLE_NAME..."
-aws --endpoint-url=http://localhost:4566 dynamodb put-item \
-    --table-name "$TABLE_NAME" \
+# --- Seed Trash Bins ---
+echo "--- Seeding Trash Bins ---"
+
+# Test bin 1
+echo "Creating test bin 1..."
+aws --endpoint-url="$ENDPOINT_URL" dynamodb put-item \
+    --table-name "$BINS_TABLE" \
     --item '{
         "binId": {"S": "00000000-0000-0000-0000-000000000001"},
-        "Name": {"S": "Default Bin"},
-        "Status": {"N": "0"},
-        "LastUpdated": {"S": "'$(date -u +"%Y-%m-%dT%H:%M:%SZ")'"},
-        "ReportsCount": {"N": "0"}
-    }'
+        "Name": {"S": "Main Street Bin"},
+        "status": {"N": "0"},
+        "lastUpdated": {"S": "'$(date -u +"%Y-%m-%dT%H:%M:%SZ")'"},
+        "reportsCount": {"N": "0"},
+        "isActive": {"BOOL": true}
+    }' 2>/dev/null || echo "  (bin may already exist)"
 
-echo "Default data seeded successfully!"
+# Test bin 2
+echo "Creating test bin 2..."
+aws --endpoint-url="$ENDPOINT_URL" dynamodb put-item \
+    --table-name "$BINS_TABLE" \
+    --item '{
+        "binId": {"S": "00000000-0000-0000-0000-000000000002"},
+        "Name": {"S": "Park Entrance Bin"},
+        "status": {"N": "25"},
+        "lastUpdated": {"S": "'$(date -u +"%Y-%m-%dT%H:%M:%SZ")'"},
+        "reportsCount": {"N": "5"},
+        "isActive": {"BOOL": true}
+    }' 2>/dev/null || echo "  (bin may already exist)"
+
+# Test bin 3
+echo "Creating test bin 3..."
+aws --endpoint-url="$ENDPOINT_URL" dynamodb put-item \
+    --table-name "$BINS_TABLE" \
+    --item '{
+        "binId": {"S": "00000000-0000-0000-0000-000000000003"},
+        "Name": {"S": "Shopping Center Bin"},
+        "status": {"N": "75"},
+        "lastUpdated": {"S": "'$(date -u +"%Y-%m-%dT%H:%M:%SZ")'"},
+        "reportsCount": {"N": "15"},
+        "isActive": {"BOOL": true}
+    }' 2>/dev/null || echo "  (bin may already exist)"
+
+echo "Trash bins seeded."
+echo ""
+
+# --- Seed Admin User ---
+echo "--- Seeding Admin User ---"
+
+# Pre-computed bcrypt hash for password "admin123" (cost 12)
+# You can generate this with: echo -n "admin123" | htpasswd -bnBC 12 "" | tr -d ':\n' | sed 's/$2y/$2b/'
+# Or use any bcrypt generator online
+ADMIN_PASSWORD_HASH='$2b$12$LQv3c1yqBWVHxkd0LHAkCOYz6TtxMQJqhN8/X4.AH.fO.8BaYKnmy'
+
+echo "Creating default admin user..."
+aws --endpoint-url="$ENDPOINT_URL" dynamodb put-item \
+    --table-name "$USERS_TABLE" \
+    --item '{
+        "email": {"S": "admin@ecoscan.local"},
+        "passwordHash": {"S": "'"$ADMIN_PASSWORD_HASH"'"},
+        "name": {"S": "Admin User"},
+        "role": {"S": "admin"},
+        "createdAt": {"S": "'$(date -u +"%Y-%m-%dT%H:%M:%SZ")'"},
+        "isActive": {"BOOL": true}
+    }' 2>/dev/null || echo "  (user may already exist)"
+
+echo "Admin user seeded."
+echo ""
+
+# --- Summary ---
+echo "=== Seed Data Summary ==="
+echo ""
+echo "Trash Bins Table: $BINS_TABLE"
+echo "  - 00000000-0000-0000-0000-000000000001 (Main Street Bin)"
+echo "  - 00000000-0000-0000-0000-000000000002 (Park Entrance Bin)"
+echo "  - 00000000-0000-0000-0000-000000000003 (Shopping Center Bin)"
+echo ""
+echo "Admin Users Table: $USERS_TABLE"
+echo "  - admin@ecoscan.local (password: admin123)"
+echo ""
+echo "To test login:"
+echo "  curl -X POST http://localhost:4566/.../auth/login \\"
+echo "    -H 'Content-Type: application/json' \\"
+echo "    -d '{\"email\": \"admin@ecoscan.local\", \"password\": \"admin123\"}'"
+echo ""
+echo "Seeding complete!"

@@ -98,8 +98,11 @@ else
 fi
 
 # Deploy layers in order
-# Note: 03-api creates SQS queue that 02-compute consumes from
-LAYERS=("00-foundation" "01-data" "03-api" "02-compute")
+# Note: There's a circular dependency:
+# - 03-api needs Lambda ARNs from 02-compute (for authorizer and admin API)
+# - 02-compute needs SQS queue ARN from 03-api (for event source mapping)
+# Solution: Deploy 02-compute first (without SQS event source), then 03-api, then update 02-compute with SQS
+LAYERS=("00-foundation" "01-data" "02-compute" "03-api")
 
 for layer in "${LAYERS[@]}"; do
     echo ""
@@ -129,15 +132,52 @@ for layer in "${LAYERS[@]}"; do
         -var-file="$INFRA_ROOT/environments/${ENVIRONMENT}.tfvars" \
         -out=tfplan
 
-    # Apply
+    # Apply (compute layer may fail on SQS event source mapping, that's OK - we'll fix it later)
     echo "Applying..."
-    terraform apply $APPROVE_FLAG tfplan
+    if [[ "$layer" == "02-compute" ]]; then
+        # Compute layer will fail on SQS event source mapping (SQS doesn't exist yet)
+        # This is expected - we'll update it after API layer is deployed
+        terraform apply $APPROVE_FLAG tfplan || echo "Note: Compute layer deployment had errors (expected - SQS queue not created yet)"
+    else
+        terraform apply $APPROVE_FLAG tfplan
+    fi
 
     # Clean up plan file
     rm -f tfplan
 
     echo -e "${GREEN}✓ Layer $layer deployed successfully${NC}"
 done
+
+# After API layer is deployed, update compute layer to add SQS event source mapping
+# (Compute layer needs SQS queue ARN from API layer)
+if [[ " ${LAYERS[@]} " =~ " 03-api " ]]; then
+    echo ""
+    echo -e "${YELLOW}=== Updating Compute Layer with SQS Event Source Mapping ===${NC}"
+    LAYER_DIR="$LAYERS_DIR/02-compute"
+    cd "$LAYER_DIR"
+    
+    # Re-initialize to get updated remote state from API layer
+    if [[ "$ENVIRONMENT" == "local" ]]; then
+        terraform init \
+            -backend-config="path=terraform-${ENVIRONMENT}.tfstate" \
+            -reconfigure
+    else
+        terraform init \
+            -backend-config="$INFRA_ROOT/backend/${ENVIRONMENT}.tfbackend" \
+            -backend-config="key=layers/02-compute/terraform.tfstate" \
+            -reconfigure
+    fi
+    
+    # Plan and apply to add SQS event source mapping
+    terraform plan \
+        -var-file="$INFRA_ROOT/environments/${ENVIRONMENT}.tfvars" \
+        -out=tfplan
+    
+    terraform apply $APPROVE_FLAG tfplan
+    rm -f tfplan
+    
+    echo -e "${GREEN}✓ Compute layer updated with SQS event source mapping${NC}"
+fi
 
 # Export outputs for testing
 echo ""

@@ -56,9 +56,9 @@ EcoScan/
 ├── infrastructure/
 │   ├── layers/
 │   │   ├── 00-foundation/      # S3 buckets, GitHub Actions IAM
-│   │   ├── 01-data/            # DynamoDB tables
-│   │   ├── 02-compute/         # Lambda functions, IAM roles
-│   │   └── 03-api/             # API Gateway, SQS, Lambda authorizer
+│   │   ├── 01-data/            # DynamoDB tables, Secrets Manager, SQS queues
+│   │   ├── 02-compute/         # Lambda functions, IAM roles, SQS event mapping
+│   │   └── 03-api/             # API Gateway, Lambda authorizer config
 │   ├── environments/           # tfvars for local/dev/prod
 │   ├── backend/                # Terraform backend configs
 │   └── scripts/                # init-environment.sh
@@ -255,14 +255,14 @@ curl -X POST http://localhost:4566/.../auth/login \
 
 ## Infrastructure Layers
 
-Deploy order matters: 00 → 01 → 03 → 02 (API before Compute due to SQS dependency)
+Deploy order: 00 → 01 → 02 → 03 (unidirectional dependency flow)
 
 | Layer | Purpose | Key Resources |
 |-------|---------|---------------|
 | 00-foundation | Base resources | S3 buckets, GitHub Actions IAM |
-| 01-data | Data storage | DynamoDB tables (3), Secrets Manager (JWT secret) |
-| 02-compute | Processing | Lambda functions (3), IAM roles |
-| 03-api | API layer | API Gateway, SQS, Lambda authorizer config |
+| 01-data | Data storage | DynamoDB tables (3), Secrets Manager (JWT secret), SQS queues |
+| 02-compute | Processing | Lambda functions (3), IAM roles, SQS event source mapping |
+| 03-api | API layer | API Gateway, Lambda authorizer config |
 
 ## DynamoDB Tables
 

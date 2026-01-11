@@ -12,8 +12,8 @@ data "terraform_remote_state" "data" {
 }
 
 # Import outputs from compute layer (for Lambda authorizer and admin dashboard API)
-# Note: This creates a dependency - compute layer must be deployed before API layer
-# can reference the Lambda ARNs. The deployment script handles this.
+# Note: This will fail if compute layer hasn't been deployed yet, but that's OK
+# The deployment script handles this by deploying compute first, then enabling admin features
 data "terraform_remote_state" "compute" {
   backend = var.use_localstack ? "local" : "s3"
 

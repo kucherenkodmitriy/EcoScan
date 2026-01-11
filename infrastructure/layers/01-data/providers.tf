@@ -10,6 +10,7 @@ provider "aws" {
       iam             = var.localstack_endpoint
       lambda          = var.localstack_endpoint
       s3              = var.localstack_endpoint
+      sqs             = var.localstack_endpoint
       sts             = var.localstack_endpoint
       cloudwatch      = var.localstack_endpoint
       logs            = var.localstack_endpoint

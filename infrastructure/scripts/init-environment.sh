@@ -59,10 +59,10 @@ if [[ "$ENVIRONMENT" == "local" ]]; then
         echo "Waiting for LocalStack to be ready..."
         sleep 5
 
-        # Health check
+        # Health check using /_localstack/health endpoint
         max_attempts=30
         attempt=0
-        until curl -sf http://localhost:4566/health > /dev/null 2>&1; do
+        until curl -sf http://localhost:4566/_localstack/health > /dev/null 2>&1; do
             attempt=$((attempt + 1))
             if [ $attempt -ge $max_attempts ]; then
                 echo -e "${RED}LocalStack failed to start${NC}"
@@ -98,10 +98,11 @@ else
 fi
 
 # Deploy layers in order
-# Note: There's a circular dependency:
-# - 03-api needs Lambda ARNs from 02-compute (for authorizer and admin API)
-# - 02-compute needs SQS queue ARN from 03-api (for event source mapping)
-# Solution: Deploy 02-compute first (without SQS event source), then 03-api, then update 02-compute with SQS
+# Dependency flow (no circular dependencies):
+#   00-foundation: S3 buckets, IAM for GitHub Actions
+#   01-data: DynamoDB tables, Secrets Manager, SQS queues
+#   02-compute: Lambda functions (depends on 01-data for tables, secrets, SQS)
+#   03-api: API Gateway (depends on 01-data for SQS, 02-compute for Lambda ARNs)
 LAYERS=("00-foundation" "01-data" "02-compute" "03-api")
 
 for layer in "${LAYERS[@]}"; do
@@ -132,52 +133,15 @@ for layer in "${LAYERS[@]}"; do
         -var-file="$INFRA_ROOT/environments/${ENVIRONMENT}.tfvars" \
         -out=tfplan
 
-    # Apply (compute layer may fail on SQS event source mapping, that's OK - we'll fix it later)
+    # Apply
     echo "Applying..."
-    if [[ "$layer" == "02-compute" ]]; then
-        # Compute layer will fail on SQS event source mapping (SQS doesn't exist yet)
-        # This is expected - we'll update it after API layer is deployed
-        terraform apply $APPROVE_FLAG tfplan || echo "Note: Compute layer deployment had errors (expected - SQS queue not created yet)"
-    else
-        terraform apply $APPROVE_FLAG tfplan
-    fi
+    terraform apply $APPROVE_FLAG tfplan
 
     # Clean up plan file
     rm -f tfplan
 
     echo -e "${GREEN}✓ Layer $layer deployed successfully${NC}"
 done
-
-# After API layer is deployed, update compute layer to add SQS event source mapping
-# (Compute layer needs SQS queue ARN from API layer)
-if [[ " ${LAYERS[@]} " =~ " 03-api " ]]; then
-    echo ""
-    echo -e "${YELLOW}=== Updating Compute Layer with SQS Event Source Mapping ===${NC}"
-    LAYER_DIR="$LAYERS_DIR/02-compute"
-    cd "$LAYER_DIR"
-    
-    # Re-initialize to get updated remote state from API layer
-    if [[ "$ENVIRONMENT" == "local" ]]; then
-        terraform init \
-            -backend-config="path=terraform-${ENVIRONMENT}.tfstate" \
-            -reconfigure
-    else
-        terraform init \
-            -backend-config="$INFRA_ROOT/backend/${ENVIRONMENT}.tfbackend" \
-            -backend-config="key=layers/02-compute/terraform.tfstate" \
-            -reconfigure
-    fi
-    
-    # Plan and apply to add SQS event source mapping
-    terraform plan \
-        -var-file="$INFRA_ROOT/environments/${ENVIRONMENT}.tfvars" \
-        -out=tfplan
-    
-    terraform apply $APPROVE_FLAG tfplan
-    rm -f tfplan
-    
-    echo -e "${GREEN}✓ Compute layer updated with SQS event source mapping${NC}"
-fi
 
 # Export outputs for testing
 echo ""

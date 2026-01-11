@@ -17,10 +17,9 @@ locals {
   # Get JWT secret from data layer
   jwt_secret_arn = data.terraform_remote_state.data.outputs.jwt_secret_arn
 
-  # Get SQS queue info from api layer (may not exist on first deployment)
-  # Use try() to handle missing state gracefully
-  sqs_queue_arn  = try(data.terraform_remote_state.api.outputs.sqs_queue_arn, "")
-  sqs_queue_name = try(data.terraform_remote_state.api.outputs.sqs_queue_name, "")
+  # Get SQS queue info from data layer (no circular dependency)
+  sqs_queue_arn  = data.terraform_remote_state.data.outputs.sqs_queue_arn
+  sqs_queue_name = data.terraform_remote_state.data.outputs.sqs_queue_name
 
   # Lambda environment-specific endpoint
   dynamodb_endpoint_url = var.use_localstack ? "http://localstack:4566" : ""

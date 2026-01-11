@@ -47,10 +47,7 @@ resource "aws_lambda_function" "update_bin_status" {
 }
 
 # SQS Event Source Mapping - Lambda triggered by SQS messages
-# Only create if SQS queue ARN is available (API layer must be deployed first)
 resource "aws_lambda_event_source_mapping" "sqs_trigger" {
-  count = local.sqs_queue_arn != "" ? 1 : 0
-  
   event_source_arn = local.sqs_queue_arn
   function_name    = aws_lambda_function.update_bin_status.arn
 

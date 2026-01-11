@@ -10,6 +10,47 @@ resource "aws_api_gateway_rest_api" "api" {
   )
 }
 
+# =============================================================================
+# IAM Role for API Gateway to send messages to SQS
+# =============================================================================
+
+resource "aws_iam_role" "apigateway_sqs_role" {
+  name = "${var.environment}-${var.project_name}-apigateway-sqs-role"
+
+  assume_role_policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Action = "sts:AssumeRole"
+        Effect = "Allow"
+        Principal = {
+          Service = "apigateway.amazonaws.com"
+        }
+      }
+    ]
+  })
+
+  tags = local.common_tags
+}
+
+resource "aws_iam_role_policy" "apigateway_sqs_policy" {
+  name = "${var.environment}-${var.project_name}-apigateway-sqs-policy"
+  role = aws_iam_role.apigateway_sqs_role.id
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Effect = "Allow"
+        Action = [
+          "sqs:SendMessage"
+        ]
+        Resource = local.sqs_queue_arn
+      }
+    ]
+  })
+}
+
 resource "aws_api_gateway_resource" "bins" {
   rest_api_id = aws_api_gateway_rest_api.api.id
   parent_id   = aws_api_gateway_rest_api.api.root_resource_id
@@ -49,7 +90,7 @@ resource "aws_api_gateway_integration" "sqs_integration" {
   integration_http_method = "POST"
   type                    = "AWS"
   credentials             = aws_iam_role.apigateway_sqs_role.arn
-  uri                     = "arn:aws:apigateway:${var.aws_region}:sqs:path/${data.aws_caller_identity.current.account_id}/${aws_sqs_queue.status_updates.name}"
+  uri                     = "arn:aws:apigateway:${var.aws_region}:sqs:path/${data.aws_caller_identity.current.account_id}/${local.sqs_queue_name}"
 
   request_parameters = {
     "integration.request.header.Content-Type" = "'application/x-www-form-urlencoded'"
@@ -124,7 +165,6 @@ resource "aws_api_gateway_deployment" "api_deployment" {
       aws_api_gateway_method.get_admin_bin.id,
       aws_api_gateway_method.put_admin_bin.id,
       aws_api_gateway_method.delete_admin_bin.id,
-      # Authorizer
       aws_api_gateway_authorizer.jwt_authorizer.id,
     ]))
   }
@@ -133,15 +173,11 @@ resource "aws_api_gateway_deployment" "api_deployment" {
     create_before_destroy = true
   }
 
+  # Base dependencies (always present)
+  # Conditional admin resources are handled by their own resource dependencies
   depends_on = [
     aws_api_gateway_integration.sqs_integration,
     aws_api_gateway_integration_response.sqs_integration_response,
-    aws_api_gateway_integration.auth_login_integration,
-    aws_api_gateway_integration.get_admin_bins_integration,
-    aws_api_gateway_integration.post_admin_bins_integration,
-    aws_api_gateway_integration.get_admin_bin_integration,
-    aws_api_gateway_integration.put_admin_bin_integration,
-    aws_api_gateway_integration.delete_admin_bin_integration,
   ]
 }
 
@@ -265,11 +301,11 @@ resource "aws_api_gateway_usage_plan" "api_usage_plan" {
 # ADMIN DASHBOARD API - Lambda Authorizer and Routes
 # =============================================================================
 
-# Lambda Authorizer
+# Lambda Authorizer for JWT validation
 resource "aws_api_gateway_authorizer" "jwt_authorizer" {
   name                   = "${var.environment}-${var.project_name}-jwt-authorizer"
   rest_api_id            = aws_api_gateway_rest_api.api.id
-  authorizer_uri         = "arn:aws:apigateway:${var.aws_region}:lambda:path/2015-03-31/functions/${data.terraform_remote_state.compute.outputs.lambda_authorizer_arn}/invocations"
+  authorizer_uri         = "arn:aws:apigateway:${var.aws_region}:lambda:path/2015-03-31/functions/${local.lambda_authorizer_arn}/invocations"
   authorizer_credentials = aws_iam_role.apigateway_lambda_role.arn
   type                   = "TOKEN"
   identity_source        = "method.request.header.Authorization"
@@ -278,7 +314,7 @@ resource "aws_api_gateway_authorizer" "jwt_authorizer" {
   authorizer_result_ttl_in_seconds = var.environment == "local" ? 0 : 300
 }
 
-# IAM Role for API Gateway to invoke Lambda Authorizer
+# IAM Role for API Gateway to invoke Lambda Authorizer and Admin Dashboard
 resource "aws_iam_role" "apigateway_lambda_role" {
   name = "${var.environment}-${var.project_name}-apigateway-lambda-role"
 
@@ -309,8 +345,8 @@ resource "aws_iam_role_policy" "apigateway_lambda_policy" {
         Effect = "Allow"
         Action = "lambda:InvokeFunction"
         Resource = [
-          data.terraform_remote_state.compute.outputs.lambda_authorizer_arn,
-          data.terraform_remote_state.compute.outputs.admin_dashboard_lambda_arn
+          local.lambda_authorizer_arn,
+          local.admin_dashboard_arn
         ]
       }
     ]
@@ -347,7 +383,7 @@ resource "aws_api_gateway_integration" "auth_login_integration" {
   http_method             = aws_api_gateway_method.post_auth_login.http_method
   integration_http_method = "POST"
   type                    = "AWS_PROXY"
-  uri                     = "arn:aws:apigateway:${var.aws_region}:lambda:path/2015-03-31/functions/${data.terraform_remote_state.compute.outputs.admin_dashboard_lambda_arn}/invocations"
+  uri                     = "arn:aws:apigateway:${var.aws_region}:lambda:path/2015-03-31/functions/${local.admin_dashboard_arn}/invocations"
   credentials             = aws_iam_role.apigateway_lambda_role.arn
 }
 
@@ -388,7 +424,7 @@ resource "aws_api_gateway_integration" "get_admin_bins_integration" {
   http_method             = aws_api_gateway_method.get_admin_bins.http_method
   integration_http_method = "POST"
   type                    = "AWS_PROXY"
-  uri                     = "arn:aws:apigateway:${var.aws_region}:lambda:path/2015-03-31/functions/${data.terraform_remote_state.compute.outputs.admin_dashboard_lambda_arn}/invocations"
+  uri                     = "arn:aws:apigateway:${var.aws_region}:lambda:path/2015-03-31/functions/${local.admin_dashboard_arn}/invocations"
   credentials             = aws_iam_role.apigateway_lambda_role.arn
 }
 
@@ -407,7 +443,7 @@ resource "aws_api_gateway_integration" "post_admin_bins_integration" {
   http_method             = aws_api_gateway_method.post_admin_bins.http_method
   integration_http_method = "POST"
   type                    = "AWS_PROXY"
-  uri                     = "arn:aws:apigateway:${var.aws_region}:lambda:path/2015-03-31/functions/${data.terraform_remote_state.compute.outputs.admin_dashboard_lambda_arn}/invocations"
+  uri                     = "arn:aws:apigateway:${var.aws_region}:lambda:path/2015-03-31/functions/${local.admin_dashboard_arn}/invocations"
   credentials             = aws_iam_role.apigateway_lambda_role.arn
 }
 
@@ -430,7 +466,7 @@ resource "aws_api_gateway_integration" "get_admin_bin_integration" {
   http_method             = aws_api_gateway_method.get_admin_bin.http_method
   integration_http_method = "POST"
   type                    = "AWS_PROXY"
-  uri                     = "arn:aws:apigateway:${var.aws_region}:lambda:path/2015-03-31/functions/${data.terraform_remote_state.compute.outputs.admin_dashboard_lambda_arn}/invocations"
+  uri                     = "arn:aws:apigateway:${var.aws_region}:lambda:path/2015-03-31/functions/${local.admin_dashboard_arn}/invocations"
   credentials             = aws_iam_role.apigateway_lambda_role.arn
 }
 
@@ -453,7 +489,7 @@ resource "aws_api_gateway_integration" "put_admin_bin_integration" {
   http_method             = aws_api_gateway_method.put_admin_bin.http_method
   integration_http_method = "POST"
   type                    = "AWS_PROXY"
-  uri                     = "arn:aws:apigateway:${var.aws_region}:lambda:path/2015-03-31/functions/${data.terraform_remote_state.compute.outputs.admin_dashboard_lambda_arn}/invocations"
+  uri                     = "arn:aws:apigateway:${var.aws_region}:lambda:path/2015-03-31/functions/${local.admin_dashboard_arn}/invocations"
   credentials             = aws_iam_role.apigateway_lambda_role.arn
 }
 
@@ -476,6 +512,6 @@ resource "aws_api_gateway_integration" "delete_admin_bin_integration" {
   http_method             = aws_api_gateway_method.delete_admin_bin.http_method
   integration_http_method = "POST"
   type                    = "AWS_PROXY"
-  uri                     = "arn:aws:apigateway:${var.aws_region}:lambda:path/2015-03-31/functions/${data.terraform_remote_state.compute.outputs.admin_dashboard_lambda_arn}/invocations"
+  uri                     = "arn:aws:apigateway:${var.aws_region}:lambda:path/2015-03-31/functions/${local.admin_dashboard_arn}/invocations"
   credentials             = aws_iam_role.apigateway_lambda_role.arn
 }

@@ -11,7 +11,7 @@ data "terraform_remote_state" "foundation" {
   }
 }
 
-# Import outputs from data layer
+# Import outputs from data layer (includes DynamoDB, Secrets Manager, and SQS)
 data "terraform_remote_state" "data" {
   backend = var.use_localstack ? "local" : "s3"
 
@@ -24,15 +24,4 @@ data "terraform_remote_state" "data" {
   }
 }
 
-# Import outputs from api layer (for SQS queue info)
-data "terraform_remote_state" "api" {
-  backend = var.use_localstack ? "local" : "s3"
-
-  config = var.use_localstack ? {
-    path = "../03-api/terraform-local.tfstate"
-    } : {
-    bucket = "ecoscan-terraform-state-${var.environment}"
-    key    = "layers/03-api/terraform.tfstate"
-    region = var.aws_region
-  }
-}
+# Note: SQS is now in data layer, no need to import from api layer

@@ -1,0 +1,342 @@
+{
+	"info": {
+		"_postman_id": "ecoscan-api-collection",
+		"name": "EcoScan API",
+		"description": "API collection for EcoScan trash bin monitoring system.\n\n## Authentication\n- `/bins/{id}/status` - No authentication (IoT devices)\n- `/auth/login` - No authentication\n- `/admin/*` - Requires JWT Bearer token\n\n## Quick Start\n1. Select environment (Local or Dev)\n2. Run \"Login\" request to get JWT token (auto-saved)\n3. Use admin endpoints with automatic authorization",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+	},
+	"variable": [
+		{
+			"key": "base_url",
+			"value": "http://localhost:4566/restapis/API_ID/local/_user_request_",
+			"type": "string"
+		},
+		{
+			"key": "jwt_token",
+			"value": "",
+			"type": "string"
+		}
+	],
+	"auth": {
+		"type": "bearer",
+		"bearer": [
+			{
+				"key": "token",
+				"value": "{{jwt_token}}",
+				"type": "string"
+			}
+		]
+	},
+	"item": [
+		{
+			"name": "Auth",
+			"description": "Authentication endpoints",
+			"item": [
+				{
+					"name": "Login",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"if (pm.response.code === 200) {",
+									"    var jsonData = pm.response.json();",
+									"    if (jsonData.token) {",
+									"        pm.collectionVariables.set(\"jwt_token\", jsonData.token);",
+									"        console.log(\"JWT token saved to collection variables\");",
+									"    }",
+									"}"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"auth": {
+							"type": "noauth"
+						},
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"email\": \"{{admin_email}}\",\n    \"password\": \"{{admin_password}}\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/auth/login",
+							"host": ["{{base_url}}"],
+							"path": ["auth", "login"]
+						},
+						"description": "Authenticate and get JWT token.\n\nCredentials are loaded from environment variables:\n- `admin_email`\n- `admin_password`\n\nThe JWT token is automatically saved to collection variables for use in admin endpoints."
+					},
+					"response": [
+						{
+							"name": "Successful Login",
+							"originalRequest": {
+								"method": "POST",
+								"header": [],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n    \"email\": \"admin@ecoscan.local\",\n    \"password\": \"admin123\"\n}"
+								},
+								"url": {
+									"raw": "{{base_url}}/auth/login",
+									"host": ["{{base_url}}"],
+									"path": ["auth", "login"]
+								}
+							},
+							"status": "OK",
+							"code": 200,
+							"_postman_previewlanguage": "json",
+							"body": "{\n    \"token\": \"eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9...\",\n    \"expires_at\": \"2026-01-13T08:51:50.664434747+00:00\",\n    \"user\": {\n        \"email\": \"admin@ecoscan.local\",\n        \"name\": \"Admin User\",\n        \"role\": \"admin\"\n    }\n}"
+						}
+					]
+				}
+			]
+		},
+		{
+			"name": "Bins (IoT)",
+			"description": "Endpoints for IoT devices to report bin status. No authentication required.",
+			"item": [
+				{
+					"name": "Update Bin Status",
+					"request": {
+						"auth": {
+							"type": "noauth"
+						},
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"status\": 75\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/bins/00000000-0000-0000-0000-000000000001/status",
+							"host": ["{{base_url}}"],
+							"path": ["bins", "00000000-0000-0000-0000-000000000001", "status"]
+						},
+						"description": "Report bin fill level from IoT sensor.\n\n**Parameters:**\n- `bin_id` (path): UUID of the bin\n- `status` (body): Fill level 0-100\n\n**Processing:**\nThe status update is queued in SQS and processed asynchronously by Lambda. The response is immediate."
+					},
+					"response": [
+						{
+							"name": "Status Queued",
+							"originalRequest": {
+								"method": "POST",
+								"header": [],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n    \"status\": 75\n}"
+								},
+								"url": {
+									"raw": "{{base_url}}/bins/00000000-0000-0000-0000-000000000001/status",
+									"host": ["{{base_url}}"],
+									"path": ["bins", "00000000-0000-0000-0000-000000000001", "status"]
+								}
+							},
+							"status": "OK",
+							"code": 200,
+							"_postman_previewlanguage": "json",
+							"body": "{\n    \"message\": \"Status update queued for processing\"\n}"
+						}
+					]
+				}
+			]
+		},
+		{
+			"name": "Admin - Bins",
+			"description": "Admin endpoints for bin management. Requires JWT authentication.",
+			"item": [
+				{
+					"name": "List All Bins",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/admin/bins",
+							"host": ["{{base_url}}"],
+							"path": ["admin", "bins"]
+						},
+						"description": "Get all trash bins.\n\n**Authentication:** Bearer token required"
+					},
+					"response": [
+						{
+							"name": "Bins List",
+							"originalRequest": {
+								"method": "GET",
+								"header": [],
+								"url": {
+									"raw": "{{base_url}}/admin/bins",
+									"host": ["{{base_url}}"],
+									"path": ["admin", "bins"]
+								}
+							},
+							"status": "OK",
+							"code": 200,
+							"_postman_previewlanguage": "json",
+							"body": "{\n    \"bins\": [\n        {\n            \"bin_id\": \"00000000-0000-0000-0000-000000000001\",\n            \"name\": \"Main Street Bin\",\n            \"status\": 50,\n            \"is_active\": true,\n            \"last_updated\": \"2026-01-12T08:51:06Z\",\n            \"reports_count\": 10\n        }\n    ]\n}"
+						}
+					]
+				},
+				{
+					"name": "Get Bin by ID",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/admin/bins/00000000-0000-0000-0000-000000000001",
+							"host": ["{{base_url}}"],
+							"path": ["admin", "bins", "00000000-0000-0000-0000-000000000001"]
+						},
+						"description": "Get a specific bin by ID.\n\n**Authentication:** Bearer token required\n\n**Parameters:**\n- `bin_id` (path): UUID of the bin"
+					},
+					"response": [
+						{
+							"name": "Bin Details",
+							"originalRequest": {
+								"method": "GET",
+								"header": [],
+								"url": {
+									"raw": "{{base_url}}/admin/bins/00000000-0000-0000-0000-000000000001",
+									"host": ["{{base_url}}"],
+									"path": ["admin", "bins", "00000000-0000-0000-0000-000000000001"]
+								}
+							},
+							"status": "OK",
+							"code": 200,
+							"_postman_previewlanguage": "json",
+							"body": "{\n    \"bin_id\": \"00000000-0000-0000-0000-000000000001\",\n    \"name\": \"Main Street Bin\",\n    \"status\": 50,\n    \"is_active\": true,\n    \"last_updated\": \"2026-01-12T08:51:06Z\",\n    \"reports_count\": 10\n}"
+						}
+					]
+				},
+				{
+					"name": "Create Bin",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"name\": \"New Test Bin\",\n    \"location\": \"Test Location\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/admin/bins",
+							"host": ["{{base_url}}"],
+							"path": ["admin", "bins"]
+						},
+						"description": "Create a new trash bin.\n\n**Authentication:** Bearer token required\n\n**Body:**\n- `name` (required): Display name for the bin\n- `location` (optional): Physical location description"
+					},
+					"response": [
+						{
+							"name": "Bin Created",
+							"originalRequest": {
+								"method": "POST",
+								"header": [],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n    \"name\": \"New Test Bin\",\n    \"location\": \"Test Location\"\n}"
+								},
+								"url": {
+									"raw": "{{base_url}}/admin/bins",
+									"host": ["{{base_url}}"],
+									"path": ["admin", "bins"]
+								}
+							},
+							"status": "Created",
+							"code": 201,
+							"_postman_previewlanguage": "json",
+							"body": "{\n    \"bin_id\": \"550e8400-e29b-41d4-a716-446655440000\",\n    \"name\": \"New Test Bin\",\n    \"status\": 0,\n    \"is_active\": true,\n    \"last_updated\": \"2026-01-12T10:00:00Z\",\n    \"reports_count\": 0\n}"
+						}
+					]
+				},
+				{
+					"name": "Update Bin",
+					"request": {
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"name\": \"Updated Bin Name\",\n    \"is_active\": true\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/admin/bins/00000000-0000-0000-0000-000000000001",
+							"host": ["{{base_url}}"],
+							"path": ["admin", "bins", "00000000-0000-0000-0000-000000000001"]
+						},
+						"description": "Update an existing bin.\n\n**Authentication:** Bearer token required\n\n**Parameters:**\n- `bin_id` (path): UUID of the bin\n\n**Body:**\n- `name` (optional): New display name\n- `is_active` (optional): Enable/disable the bin"
+					},
+					"response": [
+						{
+							"name": "Bin Updated",
+							"originalRequest": {
+								"method": "PUT",
+								"header": [],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n    \"name\": \"Updated Bin Name\",\n    \"is_active\": true\n}"
+								},
+								"url": {
+									"raw": "{{base_url}}/admin/bins/00000000-0000-0000-0000-000000000001",
+									"host": ["{{base_url}}"],
+									"path": ["admin", "bins", "00000000-0000-0000-0000-000000000001"]
+								}
+							},
+							"status": "OK",
+							"code": 200,
+							"_postman_previewlanguage": "json",
+							"body": "{\n    \"bin_id\": \"00000000-0000-0000-0000-000000000001\",\n    \"name\": \"Updated Bin Name\",\n    \"status\": 50,\n    \"is_active\": true,\n    \"last_updated\": \"2026-01-12T10:00:00Z\",\n    \"reports_count\": 10\n}"
+						}
+					]
+				},
+				{
+					"name": "Delete Bin",
+					"request": {
+						"method": "DELETE",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/admin/bins/00000000-0000-0000-0000-000000000001",
+							"host": ["{{base_url}}"],
+							"path": ["admin", "bins", "00000000-0000-0000-0000-000000000001"]
+						},
+						"description": "Delete a bin.\n\n**Authentication:** Bearer token required\n\n**Parameters:**\n- `bin_id` (path): UUID of the bin to delete"
+					},
+					"response": [
+						{
+							"name": "Bin Deleted",
+							"originalRequest": {
+								"method": "DELETE",
+								"header": [],
+								"url": {
+									"raw": "{{base_url}}/admin/bins/00000000-0000-0000-0000-000000000001",
+									"host": ["{{base_url}}"],
+									"path": ["admin", "bins", "00000000-0000-0000-0000-000000000001"]
+								}
+							},
+							"status": "No Content",
+							"code": 204,
+							"_postman_previewlanguage": "text",
+							"body": ""
+						}
+					]
+				}
+			]
+		}
+	]
+}

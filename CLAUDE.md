@@ -71,6 +71,7 @@ EcoScan/
 │   └── test-authorizer.sh      # Test JWT authorizer
 │
 ├── docs/                       # All documentation
+│   ├── openapi.yaml            # OpenAPI 3.0 specification
 │   ├── ARCHITECTURE.md         # System design
 │   ├── BUILD_GUIDE.md          # Build instructions
 │   ├── TESTING_GUIDE.md        # Manual testing procedures

@@ -104,6 +104,8 @@ out/
 **/*.tfvars.json
 **/*_override.tf
 **/*_override.tf.json
+**/override.tf
+**/override.tf.json
 **/crash.log
 **/crash.*.log
 **/.terraformrc

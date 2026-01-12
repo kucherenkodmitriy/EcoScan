@@ -459,6 +459,27 @@ resource "aws_iam_policy" "github_actions_extra_policy" {
           "arn:aws:lambda:*:*:function:${var.environment}-${var.project_name}-*",
         ]
       },
+      # Secrets Manager Permissions (for JWT secret management)
+      {
+        Sid    = "SecretsManagerManagement"
+        Effect = "Allow"
+        Action = [
+          "secretsmanager:CreateSecret",
+          "secretsmanager:DeleteSecret",
+          "secretsmanager:DescribeSecret",
+          "secretsmanager:GetSecretValue",
+          "secretsmanager:PutSecretValue",
+          "secretsmanager:UpdateSecret",
+          "secretsmanager:TagResource",
+          "secretsmanager:UntagResource",
+          "secretsmanager:GetResourcePolicy",
+          "secretsmanager:PutResourcePolicy",
+          "secretsmanager:DeleteResourcePolicy",
+        ]
+        Resource = [
+          "arn:aws:secretsmanager:*:*:secret:${var.environment}-${var.project_name}-*",
+        ]
+      },
     ]
   })
 

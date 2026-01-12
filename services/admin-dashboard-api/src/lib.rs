@@ -15,7 +15,7 @@ use uuid::Uuid;
 
 use crate::application::{create_bin, delete_bin, get_bin, handle_login, list_bins, update_bin};
 use crate::config::Config;
-use crate::domain::{AppError, CreateBinRequest, LoginRequest, UpdateBinRequest};
+use crate::domain::{AppError, CreateBinRequest, LoginRequest, PublicBinInfo, UpdateBinRequest};
 use crate::infrastructure::{DynamoDbRepository, JwtConfig};
 
 /// Shared application state initialized at cold start
@@ -114,6 +114,12 @@ async fn api_handler_inner(
         // Login endpoint (no auth required)
         ("POST", p) if p.ends_with("/auth/login") => {
             handle_login_request(&request, &repo, &config).await
+        }
+
+        // Public bin info for QR report page (no auth required)
+        ("GET", p) if p.contains("/report/") => {
+            let bin_id = get_path_param(&request, "bin_id");
+            handle_get_public_bin(&repo, bin_id).await
         }
 
         // List bins
@@ -280,6 +286,33 @@ async fn handle_delete_bin(repo: &DynamoDbRepository, bin_id: Option<String>) ->
 
     match delete_bin(repo, &bin_id).await {
         Ok(()) => success_response(200, json!({ "message": "Bin deleted successfully" })),
+        Err(e) => {
+            let status = error_to_status_code(&e);
+            error_response(status, &e.to_string())
+        }
+    }
+}
+
+/// Public endpoint for QR report page - returns limited bin info without auth
+async fn handle_get_public_bin(
+    repo: &DynamoDbRepository,
+    bin_id: Option<String>,
+) -> ApiGatewayProxyResponse {
+    let bin_id = match bin_id.and_then(|s| Uuid::parse_str(&s).ok()) {
+        Some(id) => id,
+        None => return error_response(400, "Invalid bin ID"),
+    };
+
+    match get_bin(repo, &bin_id).await {
+        Ok(bin) => {
+            // Check if bin is active
+            if !bin.is_active {
+                return error_response(404, "Bin not found");
+            }
+            // Return only public info
+            let public_info = PublicBinInfo::from(&bin);
+            success_response(200, serde_json::to_value(public_info).unwrap())
+        }
         Err(e) => {
             let status = error_to_status_code(&e);
             error_response(status, &e.to_string())

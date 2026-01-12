@@ -22,6 +22,8 @@ pub async fn get_bin(repo: &dyn BinRepository, bin_id: &Uuid) -> Result<BinInfo>
 /// Create a new bin
 #[instrument(skip(repo, request))]
 pub async fn create_bin(repo: &dyn BinRepository, request: CreateBinRequest) -> Result<BinInfo> {
+    use crate::domain::BinType;
+
     // Validate input
     if request.name.trim().is_empty() {
         return Err(AppError::ValidationError("Bin name is required".to_string()));
@@ -31,7 +33,7 @@ pub async fn create_bin(repo: &dyn BinRepository, request: CreateBinRequest) -> 
     let bin_id = Uuid::new_v4();
 
     // Create in database
-    repo.create_bin(&bin_id, &request.name).await?;
+    repo.create_bin(&bin_id, &request).await?;
 
     info!(bin_id = %bin_id, name = %request.name, "Bin created");
 
@@ -39,6 +41,9 @@ pub async fn create_bin(repo: &dyn BinRepository, request: CreateBinRequest) -> 
     Ok(BinInfo {
         bin_id,
         name: request.name,
+        bin_type: request.bin_type.unwrap_or(BinType::Mixed),
+        address: request.address,
+        coordinates: request.coordinates,
         status: 0,
         reports_count: 0,
         last_updated: Some(chrono::Utc::now()),
@@ -87,6 +92,7 @@ pub async fn delete_bin(repo: &dyn BinRepository, bin_id: &Uuid) -> Result<()> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::domain::BinType;
     use async_trait::async_trait;
     use std::sync::{Arc, Mutex};
 
@@ -119,11 +125,14 @@ mod tests {
             Ok(bins.iter().find(|b| b.bin_id == *bin_id).cloned())
         }
 
-        async fn create_bin(&self, bin_id: &Uuid, name: &str) -> Result<()> {
+        async fn create_bin(&self, bin_id: &Uuid, request: &CreateBinRequest) -> Result<()> {
             let mut bins = self.bins.lock().unwrap();
             bins.push(BinInfo {
                 bin_id: *bin_id,
-                name: name.to_string(),
+                name: request.name.clone(),
+                bin_type: request.bin_type.unwrap_or_default(),
+                address: request.address.clone(),
+                coordinates: request.coordinates,
                 status: 0,
                 reports_count: 0,
                 last_updated: Some(chrono::Utc::now()),
@@ -137,6 +146,15 @@ mod tests {
             if let Some(bin) = bins.iter_mut().find(|b| b.bin_id == *bin_id) {
                 if let Some(name) = &request.name {
                     bin.name = name.clone();
+                }
+                if let Some(bin_type) = &request.bin_type {
+                    bin.bin_type = *bin_type;
+                }
+                if let Some(address) = &request.address {
+                    bin.address = Some(address.clone());
+                }
+                if let Some(coords) = &request.coordinates {
+                    bin.coordinates = Some(*coords);
                 }
                 if let Some(is_active) = request.is_active {
                     bin.is_active = is_active;
@@ -160,6 +178,9 @@ mod tests {
             BinInfo {
                 bin_id: Uuid::new_v4(),
                 name: "Bin 1".to_string(),
+                bin_type: BinType::Plastic,
+                address: Some("123 Main St".to_string()),
+                coordinates: None,
                 status: 50,
                 reports_count: 10,
                 last_updated: None,
@@ -168,6 +189,9 @@ mod tests {
             BinInfo {
                 bin_id: Uuid::new_v4(),
                 name: "Bin 2".to_string(),
+                bin_type: BinType::Glass,
+                address: None,
+                coordinates: None,
                 status: 75,
                 reports_count: 20,
                 last_updated: None,
@@ -187,11 +211,16 @@ mod tests {
 
         let request = CreateBinRequest {
             name: "New Bin".to_string(),
+            bin_type: Some(BinType::Paper),
+            address: Some("456 Oak Ave".to_string()),
+            coordinates: None,
         };
 
         let result = create_bin(&repo, request).await.unwrap();
 
         assert_eq!(result.name, "New Bin");
+        assert_eq!(result.bin_type, BinType::Paper);
+        assert_eq!(result.address, Some("456 Oak Ave".to_string()));
         assert_eq!(result.status, 0);
         assert!(result.is_active);
     }
@@ -202,6 +231,9 @@ mod tests {
 
         let request = CreateBinRequest {
             name: "   ".to_string(),
+            bin_type: None,
+            address: None,
+            coordinates: None,
         };
 
         let result = create_bin(&repo, request).await;
@@ -223,6 +255,9 @@ mod tests {
         let bins = vec![BinInfo {
             bin_id,
             name: "Test Bin".to_string(),
+            bin_type: BinType::Mixed,
+            address: None,
+            coordinates: None,
             status: 0,
             reports_count: 0,
             last_updated: None,

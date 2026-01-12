@@ -13,6 +13,39 @@ pub use error::AppError;
 pub use fullness::{calculate_fullness_default, ReportValue, DEFAULT_WINDOW_SIZE};
 pub type Result<T> = error::Result<T>;
 
+/// Source of the status report
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, Default)]
+#[serde(rename_all = "lowercase")]
+pub enum ReportSource {
+    /// User scanned QR code and reported status
+    #[default]
+    Qr,
+    /// IoT sensor reported status (future)
+    Iot,
+    /// Admin manually entered status
+    Manual,
+}
+
+impl fmt::Display for ReportSource {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            ReportSource::Qr => write!(f, "qr"),
+            ReportSource::Iot => write!(f, "iot"),
+            ReportSource::Manual => write!(f, "manual"),
+        }
+    }
+}
+
+impl ReportSource {
+    pub fn from_str(s: &str) -> Self {
+        match s.to_lowercase().as_str() {
+            "iot" => ReportSource::Iot,
+            "manual" => ReportSource::Manual,
+            _ => ReportSource::Qr,
+        }
+    }
+}
+
 #[derive(Debug, Serialize, Deserialize, Clone, PartialEq)]
 pub struct BinStatus {
     value: i32,
@@ -96,6 +129,8 @@ pub struct QRCode {
 pub struct StatusUpdateRequest {
     pub bin_id: Uuid,
     pub status: BinStatus,
+    #[serde(default)]
+    pub source: ReportSource,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -120,6 +155,7 @@ pub trait BinRepository: Send + Sync + 'static {
         &self,
         bin_id: &Uuid,
         status: BinStatus,
+        source: ReportSource,
         timestamp: DateTime<Utc>,
     ) -> Result<()>;
 
@@ -243,6 +279,7 @@ mod tests {
             let request = StatusUpdateRequest {
                 bin_id,
                 status: BinStatus::new(5).unwrap(),
+                source: ReportSource::Qr,
             };
 
             let json = serde_json::to_string(&request).unwrap();
@@ -250,6 +287,7 @@ mod tests {
 
             assert_eq!(request.bin_id, deserialized.bin_id);
             assert_eq!(request.status, deserialized.status);
+            assert_eq!(request.source, deserialized.source);
         }
 
         #[test]
@@ -265,6 +303,18 @@ mod tests {
 
             assert_eq!(response.success, deserialized.success);
             assert_eq!(response.message, deserialized.message);
+        }
+
+        #[test]
+        fn test_report_source_serialization() {
+            assert_eq!(ReportSource::Qr.to_string(), "qr");
+            assert_eq!(ReportSource::Iot.to_string(), "iot");
+            assert_eq!(ReportSource::Manual.to_string(), "manual");
+
+            assert_eq!(ReportSource::from_str("qr"), ReportSource::Qr);
+            assert_eq!(ReportSource::from_str("iot"), ReportSource::Iot);
+            assert_eq!(ReportSource::from_str("manual"), ReportSource::Manual);
+            assert_eq!(ReportSource::from_str("unknown"), ReportSource::Qr); // default
         }
     }
 }

@@ -98,13 +98,18 @@ resource "aws_api_gateway_integration" "sqs_integration" {
 
   # Transform the incoming JSON to SQS message format
   # Combine binId from path with status from body into a JSON message
+  # Include optional source field (defaults to "qr" if not provided)
   # Add message attributes for distributed tracing:
   #   - RequestId: API Gateway request ID (for correlation)
   #   - TraceId: X-Ray trace ID (for distributed tracing)
   #   - SourceIp: Client IP address
   request_templates = {
     "application/json" = <<TEMPLATE
-Action=SendMessage&MessageBody=$util.urlEncode("{""binId"":""$input.params().path.bin_id"",""status"":$input.json('$.status')}")
+#set($source = $input.json('$.source'))
+#if($source == "" || $source == "null")
+#set($source = "qr")
+#end
+Action=SendMessage&MessageBody=$util.urlEncode("{""binId"":""$input.params().path.bin_id"",""status"":$input.json('$.status'),""source"":$source}")
 TEMPLATE
   }
 
@@ -166,6 +171,11 @@ resource "aws_api_gateway_deployment" "api_deployment" {
       aws_api_gateway_method.put_admin_bin.id,
       aws_api_gateway_method.delete_admin_bin.id,
       aws_api_gateway_authorizer.jwt_authorizer.id,
+      # Public report endpoints
+      aws_api_gateway_resource.report.id,
+      aws_api_gateway_resource.report_bin_id.id,
+      aws_api_gateway_method.get_report_bin.id,
+      aws_api_gateway_integration.get_report_bin_integration.id,
     ]))
   }
 
@@ -265,6 +275,11 @@ resource "aws_api_gateway_model" "status_update_model" {
         minimum     = 0
         maximum     = 100
         description = "Bin fill level percentage (0-100)"
+      }
+      source = {
+        type        = "string"
+        enum        = ["qr", "iot", "manual"]
+        description = "Source of the status report (qr, iot, or manual). Defaults to qr."
       }
     }
   })
@@ -510,6 +525,44 @@ resource "aws_api_gateway_integration" "delete_admin_bin_integration" {
   rest_api_id             = aws_api_gateway_rest_api.api.id
   resource_id             = aws_api_gateway_resource.admin_bin_id.id
   http_method             = aws_api_gateway_method.delete_admin_bin.http_method
+  integration_http_method = "POST"
+  type                    = "AWS_PROXY"
+  uri                     = "arn:aws:apigateway:${var.aws_region}:lambda:path/2015-03-31/functions/${local.admin_dashboard_arn}/invocations"
+  credentials             = aws_iam_role.apigateway_lambda_role.arn
+}
+
+# =============================================================================
+# Public Report Resources (/report/{bin_id}) - QR code landing page endpoint
+# =============================================================================
+
+resource "aws_api_gateway_resource" "report" {
+  rest_api_id = aws_api_gateway_rest_api.api.id
+  parent_id   = aws_api_gateway_rest_api.api.root_resource_id
+  path_part   = "report"
+}
+
+resource "aws_api_gateway_resource" "report_bin_id" {
+  rest_api_id = aws_api_gateway_rest_api.api.id
+  parent_id   = aws_api_gateway_resource.report.id
+  path_part   = "{bin_id}"
+}
+
+# GET /report/{bin_id} - Get public bin info for QR report page (no auth required)
+resource "aws_api_gateway_method" "get_report_bin" {
+  rest_api_id   = aws_api_gateway_rest_api.api.id
+  resource_id   = aws_api_gateway_resource.report_bin_id.id
+  http_method   = "GET"
+  authorization = "NONE"
+
+  request_parameters = {
+    "method.request.path.bin_id" = true
+  }
+}
+
+resource "aws_api_gateway_integration" "get_report_bin_integration" {
+  rest_api_id             = aws_api_gateway_rest_api.api.id
+  resource_id             = aws_api_gateway_resource.report_bin_id.id
+  http_method             = aws_api_gateway_method.get_report_bin.http_method
   integration_http_method = "POST"
   type                    = "AWS_PROXY"
   uri                     = "arn:aws:apigateway:${var.aws_region}:lambda:path/2015-03-31/functions/${local.admin_dashboard_arn}/invocations"

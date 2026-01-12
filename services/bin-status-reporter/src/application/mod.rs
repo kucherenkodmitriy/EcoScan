@@ -7,20 +7,25 @@ pub async fn handle_status_update(
     repo: &dyn BinRepository,
     request: StatusUpdateRequest,
 ) -> Result<StatusUpdateResponse> {
-    info!("Processing status update for bin: {}", request.bin_id);
+    info!(
+        "Processing status update for bin: {} (source: {})",
+        request.bin_id, request.source
+    );
 
     let timestamp = Utc::now();
     let status = request.status.clone();
+    let source = request.source;
 
     info!(
-        "Received new status report: {} (value: {})",
+        "Received new status report: {} (value: {}, source: {})",
         status,
-        status.value()
+        status.value(),
+        source
     );
 
     // First, add the new report to history
     // This must happen before update_status so the weighted average includes this report
-    repo.add_report(&request.bin_id, status.clone(), timestamp)
+    repo.add_report(&request.bin_id, status.clone(), source, timestamp)
         .await
         .map_err(|e| {
             error!("Failed to add status report: {}", e);
@@ -52,7 +57,7 @@ pub async fn handle_status_update(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::domain::{error::RepositoryError, BinStatus, ReportValue};
+    use crate::domain::{error::RepositoryError, BinStatus, ReportSource, ReportValue};
     use crate::AppError;
     use async_trait::async_trait;
     use chrono::{DateTime, Utc};
@@ -64,7 +69,7 @@ mod tests {
     #[derive(Debug, Clone)]
     struct MockBinRepository {
         update_status_calls: Arc<Mutex<Vec<(Uuid, BinStatus, DateTime<Utc>)>>>,
-        add_report_calls: Arc<Mutex<Vec<(Uuid, BinStatus, DateTime<Utc>)>>>,
+        add_report_calls: Arc<Mutex<Vec<(Uuid, BinStatus, ReportSource, DateTime<Utc>)>>>,
         should_fail_update: Arc<Mutex<bool>>,
         should_fail_report: Arc<Mutex<bool>>,
     }
@@ -83,7 +88,8 @@ mod tests {
             self.update_status_calls.lock().await.clone()
         }
 
-        async fn get_add_report_calls(&self) -> Vec<(Uuid, BinStatus, DateTime<Utc>)> {
+        async fn get_add_report_calls(&self) -> Vec<(Uuid, BinStatus, ReportSource, DateTime<Utc>)>
+        {
             self.add_report_calls.lock().await.clone()
         }
 
@@ -121,6 +127,7 @@ mod tests {
             &self,
             bin_id: &Uuid,
             status: BinStatus,
+            source: ReportSource,
             timestamp: DateTime<Utc>,
         ) -> Result<()> {
             if *self.should_fail_report.lock().await {
@@ -132,7 +139,7 @@ mod tests {
             self.add_report_calls
                 .lock()
                 .await
-                .push((*bin_id, status, timestamp));
+                .push((*bin_id, status, source, timestamp));
             Ok(())
         }
 
@@ -159,6 +166,7 @@ mod tests {
         let request = StatusUpdateRequest {
             bin_id,
             status: status.clone(),
+            source: ReportSource::Qr,
         };
 
         let result = handle_status_update(&mock_repo, request).await;
@@ -178,6 +186,7 @@ mod tests {
         assert_eq!(update_calls[0].1, status);
         assert_eq!(report_calls[0].0, bin_id);
         assert_eq!(report_calls[0].1, status);
+        assert_eq!(report_calls[0].2, ReportSource::Qr);
     }
 
     #[tokio::test]
@@ -189,6 +198,7 @@ mod tests {
         let request = StatusUpdateRequest {
             bin_id,
             status: status.clone(),
+            source: ReportSource::Qr,
         };
 
         let result = handle_status_update(&mock_repo, request).await;
@@ -208,6 +218,7 @@ mod tests {
         let request = StatusUpdateRequest {
             bin_id,
             status: status.clone(),
+            source: ReportSource::Qr,
         };
 
         let result = handle_status_update(&mock_repo, request).await;
@@ -227,6 +238,7 @@ mod tests {
         let request = StatusUpdateRequest {
             bin_id,
             status: BinStatus::ok(),
+            source: ReportSource::Qr,
         };
 
         let result = handle_status_update(&mock_repo, request).await;
@@ -256,6 +268,7 @@ mod tests {
         let request = StatusUpdateRequest {
             bin_id,
             status: BinStatus::ok(),
+            source: ReportSource::Qr,
         };
 
         let result = handle_status_update(&mock_repo, request).await;
@@ -284,6 +297,7 @@ mod tests {
         let request = StatusUpdateRequest {
             bin_id,
             status: BinStatus::ok(),
+            source: ReportSource::Qr,
         };
 
         let before_call = Utc::now();

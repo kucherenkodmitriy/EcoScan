@@ -5,9 +5,15 @@ info:
     RESTful API for the EcoScan trash bin monitoring system.
 
     ## Overview
-    EcoScan provides two main API groups:
-    - **IoT Device API** - For trash bin sensors to report fill levels (no authentication)
+    EcoScan provides three main API groups:
+    - **Status Reporting API** - For QR code scans and IoT sensors to report fill levels (no authentication)
+    - **Public API** - Public endpoints for QR code landing pages (no authentication)
     - **Admin Dashboard API** - For administrators to manage bins (JWT authentication required)
+
+    ## QR Code Flow
+    1. User scans QR code on a bin (URL: `https://domain/report/{bin_id}`)
+    2. User lands on report page which calls `GET /report/{bin_id}` to fetch bin info
+    3. User selects fill level and submits via `POST /bins/{bin_id}/status`
 
     ## Authentication
     Admin endpoints require a JWT token obtained from `/auth/login`.
@@ -43,8 +49,10 @@ servers:
         description: API Gateway ID
 
 tags:
-  - name: IoT
-    description: IoT device endpoints for bin sensors
+  - name: Status Reporting
+    description: Endpoints for QR code scans and IoT devices to report bin fill levels
+  - name: Public
+    description: Public endpoints for QR code landing pages (no authentication)
   - name: Authentication
     description: User authentication endpoints
   - name: Admin - Bins
@@ -54,13 +62,17 @@ paths:
   /bins/{bin_id}/status:
     post:
       tags:
-        - IoT
+        - Status Reporting
       summary: Report bin fill level
       description: |
-        IoT devices use this endpoint to report the current fill level of a trash bin.
+        Report the current fill level of a trash bin. This endpoint is used by:
+        - **QR Code scans**: Users scan a QR code on the bin and report the fill level
+        - **IoT sensors**: Automated sensors report fill levels (future feature)
+        - **Manual entry**: Admin users enter status manually
+
         The request is queued to SQS for asynchronous processing by a Lambda function.
 
-        **Note:** This endpoint does not require authentication as it's designed for IoT sensors.
+        **Note:** This endpoint does not require authentication.
       operationId: updateBinStatus
       parameters:
         - name: bin_id
@@ -78,18 +90,25 @@ paths:
             schema:
               $ref: '#/components/schemas/StatusUpdateRequest'
             examples:
-              halfFull:
-                summary: Bin is half full
+              qrReport:
+                summary: QR code scan report (default)
                 value:
                   status: 50
-              almostFull:
-                summary: Bin is almost full
+              qrExplicit:
+                summary: QR code scan with explicit source
+                value:
+                  status: 75
+                  source: "qr"
+              iotReport:
+                summary: IoT sensor report (future)
                 value:
                   status: 85
-              empty:
-                summary: Bin was just emptied
+                  source: "iot"
+              manualReport:
+                summary: Manual entry by admin
                 value:
                   status: 0
+                  source: "manual"
       responses:
         '200':
           description: Status update queued successfully
@@ -111,6 +130,57 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
+
+  /report/{bin_id}:
+    get:
+      tags:
+        - Public
+      summary: Get public bin information
+      description: |
+        Retrieve public information about a bin for the QR code report page.
+        Returns only public fields (name, type, address) without sensitive data.
+
+        This endpoint is called by the static report page when a user scans a QR code.
+
+        **Note:** This endpoint does not require authentication.
+      operationId: getPublicBinInfo
+      parameters:
+        - name: bin_id
+          in: path
+          required: true
+          description: UUID of the trash bin
+          schema:
+            type: string
+            format: uuid
+            example: "00000000-0000-0000-0000-000000000001"
+      responses:
+        '200':
+          description: Public bin information retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PublicBinInfo'
+              example:
+                bin_id: "00000000-0000-0000-0000-000000000001"
+                name: "Main Street Bin"
+                bin_type: "mixed"
+                address: "123 Main Street, Kyiv"
+        '400':
+          description: Invalid bin ID format
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                error: "Invalid bin ID"
+        '404':
+          description: Bin not found or inactive
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                error: "Bin not found"
 
   /auth/login:
     post:
@@ -373,6 +443,16 @@ components:
         - `iat`: Issued at timestamp
 
   schemas:
+    ReportSource:
+      type: string
+      enum: [qr, iot, manual]
+      description: |
+        Source of the status report:
+        - `qr`: User scanned QR code and reported status (default)
+        - `iot`: IoT sensor reported status (future feature)
+        - `manual`: Admin manually entered status
+      example: "qr"
+
     StatusUpdateRequest:
       type: object
       required:
@@ -384,6 +464,8 @@ components:
           maximum: 100
           description: Bin fill level percentage (0-100)
           example: 75
+        source:
+          $ref: '#/components/schemas/ReportSource'
 
     StatusUpdateResponse:
       type: object
@@ -444,6 +526,33 @@ components:
           description: User's role in the system
           example: "admin"
 
+    BinType:
+      type: string
+      enum: [mixed, plastic, paper, glass]
+      description: Type of waste the bin collects
+      example: "mixed"
+
+    Coordinates:
+      type: object
+      properties:
+        latitude:
+          type: number
+          format: double
+          minimum: -90
+          maximum: 90
+          description: Latitude coordinate
+          example: 50.4501
+        longitude:
+          type: number
+          format: double
+          minimum: -180
+          maximum: 180
+          description: Longitude coordinate
+          example: 30.5234
+      required:
+        - latitude
+        - longitude
+
     BinInfo:
       type: object
       properties:
@@ -456,6 +565,18 @@ components:
           type: string
           description: Human-readable name for the bin
           example: "Main Street Bin"
+        bin_type:
+          $ref: '#/components/schemas/BinType'
+        address:
+          type: string
+          nullable: true
+          description: Physical address of the bin location
+          example: "123 Main Street, Kyiv"
+        coordinates:
+          allOf:
+            - $ref: '#/components/schemas/Coordinates'
+          nullable: true
+          description: GPS coordinates of the bin location
         status:
           type: integer
           minimum: 0
@@ -478,6 +599,27 @@ components:
           description: Whether the bin is active in the system
           example: true
 
+    PublicBinInfo:
+      type: object
+      description: Public bin information returned for QR code report pages (no sensitive data)
+      properties:
+        bin_id:
+          type: string
+          format: uuid
+          description: Unique identifier for the bin
+          example: "00000000-0000-0000-0000-000000000001"
+        name:
+          type: string
+          description: Human-readable name for the bin
+          example: "Main Street Bin"
+        bin_type:
+          $ref: '#/components/schemas/BinType'
+        address:
+          type: string
+          nullable: true
+          description: Physical address of the bin location
+          example: "123 Main Street, Kyiv"
+
     BinListResponse:
       type: object
       properties:
@@ -497,6 +639,14 @@ components:
           minLength: 1
           description: Human-readable name for the bin
           example: "Central Park Bin #5"
+        bin_type:
+          $ref: '#/components/schemas/BinType'
+        address:
+          type: string
+          description: Physical address of the bin location
+          example: "Central Park, near entrance"
+        coordinates:
+          $ref: '#/components/schemas/Coordinates'
 
     UpdateBinRequest:
       type: object
@@ -506,6 +656,14 @@ components:
           minLength: 1
           description: New name for the bin
           example: "Updated Bin Name"
+        bin_type:
+          $ref: '#/components/schemas/BinType'
+        address:
+          type: string
+          description: Physical address of the bin location
+          example: "123 Updated Street"
+        coordinates:
+          $ref: '#/components/schemas/Coordinates'
         is_active:
           type: boolean
           description: Whether the bin should be active

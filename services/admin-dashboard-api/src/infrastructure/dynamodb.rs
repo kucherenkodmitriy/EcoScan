@@ -7,7 +7,8 @@ use uuid::Uuid;
 
 use crate::config::Config;
 use crate::domain::{
-    AdminUser, AppError, BinInfo, BinRepository, Result, UpdateBinRequest, UserRepository, UserRole,
+    AdminUser, AppError, BinInfo, BinRepository, BinType, Coordinates, CreateBinRequest, Result,
+    UpdateBinRequest, UserRepository, UserRole,
 };
 
 pub struct DynamoDbRepository {
@@ -47,6 +48,72 @@ impl DynamoDbRepository {
             "operator" => UserRole::Operator,
             _ => UserRole::Viewer,
         }
+    }
+
+    fn parse_bin_item(
+        item: &std::collections::HashMap<String, AttributeValue>,
+    ) -> Option<BinInfo> {
+        let bin_id = item
+            .get("binId")
+            .and_then(|v| v.as_s().ok())
+            .and_then(|s| Uuid::parse_str(s).ok())?;
+
+        // Parse coordinates from nested map
+        let coordinates = item.get("coordinates").and_then(|v| {
+            v.as_m().ok().and_then(|m| {
+                let lat = m
+                    .get("latitude")
+                    .and_then(|v| v.as_n().ok())
+                    .and_then(|s| s.parse::<f64>().ok())?;
+                let lng = m
+                    .get("longitude")
+                    .and_then(|v| v.as_n().ok())
+                    .and_then(|s| s.parse::<f64>().ok())?;
+                Some(Coordinates {
+                    latitude: lat,
+                    longitude: lng,
+                })
+            })
+        });
+
+        Some(BinInfo {
+            bin_id,
+            name: item
+                .get("Name")
+                .and_then(|v| v.as_s().ok())
+                .cloned()
+                .unwrap_or_else(|| "Unknown".to_string()),
+            bin_type: item
+                .get("binType")
+                .and_then(|v| v.as_s().ok())
+                .map(|s| BinType::from_str(s))
+                .unwrap_or_default(),
+            address: item
+                .get("address")
+                .and_then(|v| v.as_s().ok())
+                .cloned(),
+            coordinates,
+            status: item
+                .get("status")
+                .and_then(|v| v.as_n().ok())
+                .and_then(|s| s.parse().ok())
+                .unwrap_or(0),
+            reports_count: item
+                .get("reportsCount")
+                .and_then(|v| v.as_n().ok())
+                .and_then(|s| s.parse().ok())
+                .unwrap_or(0),
+            last_updated: item
+                .get("lastUpdated")
+                .and_then(|v| v.as_s().ok())
+                .and_then(|s| DateTime::parse_from_rfc3339(s).ok())
+                .map(|dt| dt.with_timezone(&Utc)),
+            is_active: item
+                .get("isActive")
+                .and_then(|v| v.as_bool().ok())
+                .copied()
+                .unwrap_or(true),
+        })
     }
 }
 
@@ -159,42 +226,8 @@ impl BinRepository for DynamoDbRepository {
         let bins: Vec<BinInfo> = result
             .items
             .unwrap_or_default()
-            .into_iter()
-            .filter_map(|item| {
-                let bin_id = item
-                    .get("binId")
-                    .and_then(|v| v.as_s().ok())
-                    .and_then(|s| Uuid::parse_str(s).ok())?;
-
-                Some(BinInfo {
-                    bin_id,
-                    name: item
-                        .get("Name")
-                        .and_then(|v| v.as_s().ok())
-                        .cloned()
-                        .unwrap_or_else(|| "Unknown".to_string()),
-                    status: item
-                        .get("status")
-                        .and_then(|v| v.as_n().ok())
-                        .and_then(|s| s.parse().ok())
-                        .unwrap_or(0),
-                    reports_count: item
-                        .get("reportsCount")
-                        .and_then(|v| v.as_n().ok())
-                        .and_then(|s| s.parse().ok())
-                        .unwrap_or(0),
-                    last_updated: item
-                        .get("lastUpdated")
-                        .and_then(|v| v.as_s().ok())
-                        .and_then(|s| DateTime::parse_from_rfc3339(s).ok())
-                        .map(|dt| dt.with_timezone(&Utc)),
-                    is_active: item
-                        .get("isActive")
-                        .and_then(|v| v.as_bool().ok())
-                        .copied()
-                        .unwrap_or(true),
-                })
-            })
+            .iter()
+            .filter_map(Self::parse_bin_item)
             .collect();
 
         info!(count = bins.len(), "Listed bins");
@@ -212,60 +245,52 @@ impl BinRepository for DynamoDbRepository {
             .await
             .map_err(|e| AppError::DatabaseError(e.to_string()))?;
 
-        match result.item {
-            Some(item) => {
-                let bin = BinInfo {
-                    bin_id: *bin_id,
-                    name: item
-                        .get("Name")
-                        .and_then(|v| v.as_s().ok())
-                        .cloned()
-                        .unwrap_or_else(|| "Unknown".to_string()),
-                    status: item
-                        .get("status")
-                        .and_then(|v| v.as_n().ok())
-                        .and_then(|s| s.parse().ok())
-                        .unwrap_or(0),
-                    reports_count: item
-                        .get("reportsCount")
-                        .and_then(|v| v.as_n().ok())
-                        .and_then(|s| s.parse().ok())
-                        .unwrap_or(0),
-                    last_updated: item
-                        .get("lastUpdated")
-                        .and_then(|v| v.as_s().ok())
-                        .and_then(|s| DateTime::parse_from_rfc3339(s).ok())
-                        .map(|dt| dt.with_timezone(&Utc)),
-                    is_active: item
-                        .get("isActive")
-                        .and_then(|v| v.as_bool().ok())
-                        .copied()
-                        .unwrap_or(true),
-                };
-                Ok(Some(bin))
-            }
-            None => Ok(None),
-        }
+        Ok(result.item.as_ref().and_then(Self::parse_bin_item))
     }
 
-    #[instrument(skip(self), fields(table = %self.bins_table))]
-    async fn create_bin(&self, bin_id: &Uuid, name: &str) -> Result<()> {
+    #[instrument(skip(self, request), fields(table = %self.bins_table))]
+    async fn create_bin(&self, bin_id: &Uuid, request: &CreateBinRequest) -> Result<()> {
         let now = Utc::now();
+        let bin_type = request.bin_type.unwrap_or_default();
 
-        self.client
+        let mut put_item = self
+            .client
             .put_item()
             .table_name(&self.bins_table)
             .item("binId", AttributeValue::S(bin_id.to_string()))
-            .item("Name", AttributeValue::S(name.to_string()))
+            .item("Name", AttributeValue::S(request.name.clone()))
+            .item("binType", AttributeValue::S(bin_type.to_string()))
             .item("status", AttributeValue::N("0".to_string()))
             .item("reportsCount", AttributeValue::N("0".to_string()))
             .item("lastUpdated", AttributeValue::S(now.to_rfc3339()))
-            .item("isActive", AttributeValue::Bool(true))
+            .item("isActive", AttributeValue::Bool(true));
+
+        // Add optional address
+        if let Some(address) = &request.address {
+            put_item = put_item.item("address", AttributeValue::S(address.clone()));
+        }
+
+        // Add optional coordinates as a map
+        if let Some(coords) = &request.coordinates {
+            let coords_map = std::collections::HashMap::from([
+                (
+                    "latitude".to_string(),
+                    AttributeValue::N(coords.latitude.to_string()),
+                ),
+                (
+                    "longitude".to_string(),
+                    AttributeValue::N(coords.longitude.to_string()),
+                ),
+            ]);
+            put_item = put_item.item("coordinates", AttributeValue::M(coords_map));
+        }
+
+        put_item
             .send()
             .await
             .map_err(|e| AppError::DatabaseError(e.to_string()))?;
 
-        info!(bin_id = %bin_id, name = %name, "Bin created successfully");
+        info!(bin_id = %bin_id, name = %request.name, bin_type = %bin_type, "Bin created successfully");
         Ok(())
     }
 
@@ -275,8 +300,36 @@ impl BinRepository for DynamoDbRepository {
         let mut expression_values = std::collections::HashMap::new();
 
         if let Some(name) = &request.name {
-            update_expression_parts.push("Name = :name");
+            update_expression_parts.push("#n = :name");
             expression_values.insert(":name".to_string(), AttributeValue::S(name.clone()));
+        }
+
+        if let Some(bin_type) = &request.bin_type {
+            update_expression_parts.push("binType = :binType");
+            expression_values.insert(
+                ":binType".to_string(),
+                AttributeValue::S(bin_type.to_string()),
+            );
+        }
+
+        if let Some(address) = &request.address {
+            update_expression_parts.push("address = :address");
+            expression_values.insert(":address".to_string(), AttributeValue::S(address.clone()));
+        }
+
+        if let Some(coords) = &request.coordinates {
+            update_expression_parts.push("coordinates = :coords");
+            let coords_map = std::collections::HashMap::from([
+                (
+                    "latitude".to_string(),
+                    AttributeValue::N(coords.latitude.to_string()),
+                ),
+                (
+                    "longitude".to_string(),
+                    AttributeValue::N(coords.longitude.to_string()),
+                ),
+            ]);
+            expression_values.insert(":coords".to_string(), AttributeValue::M(coords_map));
         }
 
         if let Some(is_active) = request.is_active {
@@ -296,6 +349,12 @@ impl BinRepository for DynamoDbRepository {
             .table_name(&self.bins_table)
             .key("binId", AttributeValue::S(bin_id.to_string()))
             .update_expression(update_expression);
+
+        // Add expression attribute name for reserved word "Name"
+        if request.name.is_some() {
+            request_builder =
+                request_builder.expression_attribute_names("#n".to_string(), "Name".to_string());
+        }
 
         for (key, value) in expression_values {
             request_builder = request_builder.expression_attribute_values(key, value);

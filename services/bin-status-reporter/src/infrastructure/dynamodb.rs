@@ -6,8 +6,8 @@ use chrono::{DateTime, Utc};
 use uuid::Uuid;
 
 use crate::domain::{
-    calculate_fullness_default, error::RepositoryError, BinRepository, BinStatus, ReportValue,
-    Result, DEFAULT_WINDOW_SIZE,
+    calculate_fullness_default, error::RepositoryError, BinRepository, BinStatus, ReportSource,
+    ReportValue, Result, DEFAULT_WINDOW_SIZE,
 };
 
 pub struct DynamoDbRepository {
@@ -211,6 +211,7 @@ impl BinRepository for DynamoDbRepository {
         &self,
         bin_id: &Uuid,
         status: BinStatus,
+        source: ReportSource,
         timestamp: DateTime<Utc>,
     ) -> Result<()> {
         self.client
@@ -219,6 +220,7 @@ impl BinRepository for DynamoDbRepository {
             .item("binId", AttributeValue::S(bin_id.to_string()))
             .item("createdAt", AttributeValue::S(timestamp.to_rfc3339()))
             .item("status", AttributeValue::N(status.value().to_string()))
+            .item("source", AttributeValue::S(source.to_string()))
             .send()
             .await
             .map_err(|e| RepositoryError::DatabaseError(e.to_string()))?;

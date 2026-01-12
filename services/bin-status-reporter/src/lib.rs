@@ -13,12 +13,14 @@ use tracing::{error, info, info_span, Instrument};
 use uuid::Uuid;
 
 use crate::application::handle_status_update;
-use crate::domain::{BinStatus, StatusUpdateRequest};
+use crate::domain::{BinStatus, ReportSource, StatusUpdateRequest};
 use crate::infrastructure::dynamodb::DynamoDbRepository;
 
 #[derive(Debug, Deserialize)]
 struct StatusUpdateBody {
     status: i32,
+    #[serde(default)]
+    source: Option<String>,
 }
 
 #[derive(Debug, Deserialize)]
@@ -26,6 +28,8 @@ struct SqsMessageBody {
     #[serde(rename = "binId")]
     bin_id: String,
     status: i32,
+    #[serde(default)]
+    source: Option<String>,
 }
 
 // SQS event handler - processes messages from the SQS queue
@@ -141,7 +145,18 @@ async fn process_sqs_record(
     // Validate and create status
     let status = BinStatus::new(message.status).map_err(|e| Error::from(e.to_string()))?;
 
-    let request = StatusUpdateRequest { bin_id, status };
+    // Parse source (default to QR if not specified)
+    let source = message
+        .source
+        .as_deref()
+        .map(ReportSource::from_str)
+        .unwrap_or_default();
+
+    let request = StatusUpdateRequest {
+        bin_id,
+        status,
+        source,
+    };
 
     // Process the status update
     handle_status_update(repo, request)
@@ -211,7 +226,18 @@ fn parse_request(
     let status = BinStatus::new(update_body.status as i32)
         .map_err(|e| build_response(400, &e.to_string()))?;
 
-    Ok(StatusUpdateRequest { bin_id, status })
+    // Parse source (default to QR if not specified)
+    let source = update_body
+        .source
+        .as_deref()
+        .map(ReportSource::from_str)
+        .unwrap_or_default();
+
+    Ok(StatusUpdateRequest {
+        bin_id,
+        status,
+        source,
+    })
 }
 
 fn build_response(status_code: i64, body: &str) -> ApiGatewayProxyResponse {

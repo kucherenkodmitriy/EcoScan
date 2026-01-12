@@ -1,0 +1,31 @@
+{
+  "version": "2.0",
+  "routeKey": "PUT /bins/{binId}/status",
+  "rawPath": "/bins/550e8400-e29b-41d4-a716-446655440000/status",
+  "rawQueryString": "",
+  "headers": {
+    "Content-Type": "application/json",
+    "Accept": "*/*",
+    "X-Forwarded-Proto": "https",
+    "X-Forwarded-For": "123.45.67.89",
+    "X-Forwarded-Port": "443",
+    "Host": "api.example.com"
+  },
+  "requestContext": {
+    "http": {
+      "method": "PUT",
+      "path": "/bins/550e8400-e29b-41d4-a716-446655440000/status",
+      "protocol": "HTTP/1.1",
+      "sourceIp": "123.45.67.89",
+      "userAgent": "Mozilla/5.0"
+    },
+    "requestId": "c6af9ac6-7b61-11e6-9a41-93e8deadbeef",
+    "time": "14/Dec/2020:12:34:56 +0000",
+    "timeEpoch": 1607949296000
+  },
+  "pathParameters": {
+    "binId": "550e8400-e29b-41d4-a716-446655440000"
+  },
+  "body": "{\"status\":{\"value\":7}}",
+  "isBase64Encoded": false
+}

@@ -1,46 +1,55 @@
 use chrono::Utc;
-use tracing::{info, error};
+use tracing::{error, info};
 
-use crate::domain::{BinRepository, StatusUpdateRequest, StatusUpdateResponse};
-use crate::error::AppError;
+use crate::domain::{BinRepository, Result, StatusUpdateRequest, StatusUpdateResponse};
 
-pub async fn handle_status_update<R: BinRepository>(
-    repo: &R,
+pub async fn handle_status_update(
+    repo: &dyn BinRepository,
     request: StatusUpdateRequest,
-) -> Result<StatusUpdateResponse, AppError> {
-    info!("Processing status update for bin: {}", request.bin_id);
-    
+) -> Result<StatusUpdateResponse> {
+    info!(
+        "Processing status update for bin: {} (source: {})",
+        request.bin_id, request.source
+    );
+
     let timestamp = Utc::now();
     let status = request.status.clone();
-    
-    info!("Updating bin status to: {} (value: {})", status, status.value());
-    
-    match repo.update_status(&request.bin_id, status.clone(), timestamp).await {
-        Ok(_) => {
-            info!("Successfully updated bin status in database");
-        }
-        Err(e) => {
-            error!("Failed to update bin status: {}", e);
-            return Err(e);
-        }
-    }
-    
-    match repo.add_report(&request.bin_id, status.clone(), timestamp).await {
-        Ok(_) => {
-            info!("Successfully added status report to database");
-        }
-        Err(e) => {
+    let source = request.source;
+
+    info!(
+        "Received new status report: {} (value: {}, source: {})",
+        status,
+        status.value(),
+        source
+    );
+
+    // First, add the new report to history
+    // This must happen before update_status so the weighted average includes this report
+    repo.add_report(&request.bin_id, status.clone(), source, timestamp)
+        .await
+        .map_err(|e| {
             error!("Failed to add status report: {}", e);
-            return Err(e);
-        }
-    }
+            e
+        })?;
+
+    info!("Successfully added status report to history");
+
+    // Now update the bin's current status using weighted average of recent reports
+    repo.update_status(&request.bin_id, status.clone(), timestamp)
+        .await
+        .map_err(|e| {
+            error!("Failed to update bin status: {}", e);
+            e
+        })?;
+
+    info!("Successfully updated bin status with weighted average");
 
     let response = StatusUpdateResponse {
         success: true,
         message: format!("Bin status updated to {}", request.status),
         updated_at: timestamp,
     };
-    
+
     info!("Status update completed successfully: {}", response.message);
     Ok(response)
 }
@@ -48,18 +57,19 @@ pub async fn handle_status_update<R: BinRepository>(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::domain::BinStatus;
-    use chrono::{DateTime, Utc};
-    use uuid::Uuid;
+    use crate::domain::{error::RepositoryError, BinStatus, ReportSource, ReportValue};
+    use crate::AppError;
     use async_trait::async_trait;
+    use chrono::{DateTime, Utc};
     use std::sync::Arc;
     use tokio::sync::Mutex;
+    use uuid::Uuid;
 
     // Mock repository for isolated unit testing
     #[derive(Debug, Clone)]
     struct MockBinRepository {
         update_status_calls: Arc<Mutex<Vec<(Uuid, BinStatus, DateTime<Utc>)>>>,
-        add_report_calls: Arc<Mutex<Vec<(Uuid, BinStatus, DateTime<Utc>)>>>,
+        add_report_calls: Arc<Mutex<Vec<(Uuid, BinStatus, ReportSource, DateTime<Utc>)>>>,
         should_fail_update: Arc<Mutex<bool>>,
         should_fail_report: Arc<Mutex<bool>>,
     }
@@ -78,7 +88,9 @@ mod tests {
             self.update_status_calls.lock().await.clone()
         }
 
-        async fn get_add_report_calls(&self) -> Vec<(Uuid, BinStatus, DateTime<Utc>)> {
+        async fn get_add_report_calls(
+            &self,
+        ) -> Vec<(Uuid, BinStatus, ReportSource, DateTime<Utc>)> {
             self.add_report_calls.lock().await.clone()
         }
 
@@ -98,11 +110,13 @@ mod tests {
             bin_id: &Uuid,
             status: BinStatus,
             timestamp: DateTime<Utc>,
-        ) -> Result<(), AppError> {
+        ) -> Result<()> {
             if *self.should_fail_update.lock().await {
-                return Err(AppError::DatabaseError("Mock update failure".to_string()));
+                return Err(AppError::RepositoryError(RepositoryError::DatabaseError(
+                    "Mock update failure".to_string(),
+                )));
             }
-            
+
             self.update_status_calls
                 .lock()
                 .await
@@ -114,17 +128,33 @@ mod tests {
             &self,
             bin_id: &Uuid,
             status: BinStatus,
+            source: ReportSource,
             timestamp: DateTime<Utc>,
-        ) -> Result<(), AppError> {
+        ) -> Result<()> {
             if *self.should_fail_report.lock().await {
-                return Err(AppError::DatabaseError("Mock report failure".to_string()));
+                return Err(AppError::RepositoryError(RepositoryError::DatabaseError(
+                    "Mock report failure".to_string(),
+                )));
             }
-            
+
             self.add_report_calls
                 .lock()
                 .await
-                .push((*bin_id, status, timestamp));
+                .push((*bin_id, status, source, timestamp));
             Ok(())
+        }
+
+        async fn create_bin(&self, _bin_id: &Uuid, _name: &str) -> Result<()> {
+            Ok(())
+        }
+
+        async fn get_recent_reports(
+            &self,
+            _bin_id: &Uuid,
+            _limit: usize,
+        ) -> Result<Vec<ReportValue>> {
+            // Return empty for basic tests - specific tests can use a more complex mock
+            Ok(vec![])
         }
     }
 
@@ -132,30 +162,32 @@ mod tests {
     async fn test_handle_status_update_success() {
         let mock_repo = MockBinRepository::new();
         let bin_id = Uuid::new_v4();
-        let status = BinStatus::new(7).unwrap();
-        
+        let status = BinStatus::new(70).unwrap();
+
         let request = StatusUpdateRequest {
             bin_id,
             status: status.clone(),
+            source: ReportSource::Qr,
         };
 
         let result = handle_status_update(&mock_repo, request).await;
-        
+
         assert!(result.is_ok());
         let response = result.unwrap();
         assert!(response.success);
         assert_eq!(response.message, "Bin status updated to 70%");
-        
+
         // Verify both repository methods were called
         let update_calls = mock_repo.get_update_status_calls().await;
         let report_calls = mock_repo.get_add_report_calls().await;
-        
+
         assert_eq!(update_calls.len(), 1);
         assert_eq!(report_calls.len(), 1);
         assert_eq!(update_calls[0].0, bin_id);
         assert_eq!(update_calls[0].1, status);
         assert_eq!(report_calls[0].0, bin_id);
         assert_eq!(report_calls[0].1, status);
+        assert_eq!(report_calls[0].2, ReportSource::Qr);
     }
 
     #[tokio::test]
@@ -163,14 +195,15 @@ mod tests {
         let mock_repo = MockBinRepository::new();
         let bin_id = Uuid::new_v4();
         let status = BinStatus::empty();
-        
+
         let request = StatusUpdateRequest {
             bin_id,
             status: status.clone(),
+            source: ReportSource::Qr,
         };
 
         let result = handle_status_update(&mock_repo, request).await;
-        
+
         assert!(result.is_ok());
         let response = result.unwrap();
         assert!(response.success);
@@ -182,14 +215,15 @@ mod tests {
         let mock_repo = MockBinRepository::new();
         let bin_id = Uuid::new_v4();
         let status = BinStatus::full();
-        
+
         let request = StatusUpdateRequest {
             bin_id,
             status: status.clone(),
+            source: ReportSource::Qr,
         };
 
         let result = handle_status_update(&mock_repo, request).await;
-        
+
         assert!(result.is_ok());
         let response = result.unwrap();
         assert!(response.success);
@@ -200,77 +234,80 @@ mod tests {
     async fn test_handle_status_update_fails_on_update_error() {
         let mock_repo = MockBinRepository::new();
         mock_repo.set_should_fail_update(true).await;
-        
+
         let bin_id = Uuid::new_v4();
         let request = StatusUpdateRequest {
             bin_id,
             status: BinStatus::ok(),
+            source: ReportSource::Qr,
         };
 
         let result = handle_status_update(&mock_repo, request).await;
-        
+
         assert!(result.is_err());
         match result.unwrap_err() {
-            AppError::DatabaseError(msg) => {
+            AppError::RepositoryError(RepositoryError::DatabaseError(msg)) => {
                 assert_eq!(msg, "Mock update failure");
             }
             _ => panic!("Expected DatabaseError"),
         }
-        
-        // Verify update was called but report was not (due to early return)
+
+        // Verify report was called (happens first) but update failed
         let update_calls = mock_repo.get_update_status_calls().await;
         let report_calls = mock_repo.get_add_report_calls().await;
-        
-        assert_eq!(update_calls.len(), 0); // Mock fails before recording
-        assert_eq!(report_calls.len(), 0); // Never reached due to error
+
+        assert_eq!(report_calls.len(), 1); // Report succeeded (called first)
+        assert_eq!(update_calls.len(), 0); // Update failed before recording
     }
 
     #[tokio::test]
     async fn test_handle_status_update_fails_on_report_error() {
         let mock_repo = MockBinRepository::new();
         mock_repo.set_should_fail_report(true).await;
-        
+
         let bin_id = Uuid::new_v4();
         let request = StatusUpdateRequest {
             bin_id,
             status: BinStatus::ok(),
+            source: ReportSource::Qr,
         };
 
         let result = handle_status_update(&mock_repo, request).await;
-        
+
         assert!(result.is_err());
         match result.unwrap_err() {
-            AppError::DatabaseError(msg) => {
+            AppError::RepositoryError(RepositoryError::DatabaseError(msg)) => {
                 assert_eq!(msg, "Mock report failure");
             }
             _ => panic!("Expected DatabaseError"),
         }
-        
-        // Verify update was successful but report failed
+
+        // Verify report failed (happens first), update never called
         let update_calls = mock_repo.get_update_status_calls().await;
         let report_calls = mock_repo.get_add_report_calls().await;
-        
-        assert_eq!(update_calls.len(), 1); // Update succeeded
+
         assert_eq!(report_calls.len(), 0); // Report failed before recording
+        assert_eq!(update_calls.len(), 0); // Never reached due to error
     }
 
     #[tokio::test]
     async fn test_handle_status_update_response_timestamp() {
         let mock_repo = MockBinRepository::new();
         let bin_id = Uuid::new_v4();
-        
+
         let request = StatusUpdateRequest {
             bin_id,
             status: BinStatus::ok(),
+            source: ReportSource::Qr,
         };
 
         let before_call = Utc::now();
         let result = handle_status_update(&mock_repo, request).await;
         let after_call = Utc::now();
-        
+
         assert!(result.is_ok());
         let response = result.unwrap();
-        
+
         // Verify timestamp is within reasonable bounds
         assert!(response.updated_at >= before_call);
         assert!(response.updated_at <= after_call);

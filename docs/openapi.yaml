@@ -1,0 +1,682 @@
+openapi: 3.0.3
+info:
+  title: EcoScan API
+  description: |
+    RESTful API for the EcoScan trash bin monitoring system.
+
+    ## Overview
+    EcoScan provides three main API groups:
+    - **Status Reporting API** - For QR code scans and IoT sensors to report fill levels (no authentication)
+    - **Public API** - Public endpoints for QR code landing pages (no authentication)
+    - **Admin Dashboard API** - For administrators to manage bins (JWT authentication required)
+
+    ## QR Code Flow
+    1. User scans QR code on a bin (URL: `https://domain/report/{bin_id}`)
+    2. User lands on report page which calls `GET /report/{bin_id}` to fetch bin info
+    3. User selects fill level and submits via `POST /bins/{bin_id}/status`
+
+    ## Authentication
+    Admin endpoints require a JWT token obtained from `/auth/login`.
+    Include the token in the `Authorization` header as `Bearer <token>`.
+
+    ## Rate Limiting
+    - Production: 1000 requests/second, 500 burst capacity, 100,000 requests/day
+    - Development: 100 requests/second, 50 burst capacity, 10,000 requests/day
+  version: 1.0.0
+  contact:
+    name: EcoScan Team
+  license:
+    name: MIT
+
+servers:
+  - url: http://localhost:4566/restapis/{apiId}/local/_user_request_
+    description: LocalStack Development
+    variables:
+      apiId:
+        default: e0rnmt2zpn
+        description: API Gateway ID
+  - url: https://{apiId}.execute-api.eu-central-1.amazonaws.com/dev
+    description: AWS Development
+    variables:
+      apiId:
+        default: your-api-id
+        description: API Gateway ID
+  - url: https://{apiId}.execute-api.eu-central-1.amazonaws.com/prod
+    description: AWS Production
+    variables:
+      apiId:
+        default: your-api-id
+        description: API Gateway ID
+
+tags:
+  - name: Status Reporting
+    description: Endpoints for QR code scans and IoT devices to report bin fill levels
+  - name: Public
+    description: Public endpoints for QR code landing pages (no authentication)
+  - name: Authentication
+    description: User authentication endpoints
+  - name: Admin - Bins
+    description: Admin endpoints for bin management
+
+paths:
+  /bins/{bin_id}/status:
+    post:
+      tags:
+        - Status Reporting
+      summary: Report bin fill level
+      description: |
+        Report the current fill level of a trash bin. This endpoint is used by:
+        - **QR Code scans**: Users scan a QR code on the bin and report the fill level
+        - **IoT sensors**: Automated sensors report fill levels (future feature)
+        - **Manual entry**: Admin users enter status manually
+
+        The request is queued to SQS for asynchronous processing by a Lambda function.
+
+        **Note:** This endpoint does not require authentication.
+      operationId: updateBinStatus
+      parameters:
+        - name: bin_id
+          in: path
+          required: true
+          description: UUID of the trash bin
+          schema:
+            type: string
+            format: uuid
+            example: "00000000-0000-0000-0000-000000000001"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/StatusUpdateRequest'
+            examples:
+              qrReport:
+                summary: QR code scan report (default)
+                value:
+                  status: 50
+              qrExplicit:
+                summary: QR code scan with explicit source
+                value:
+                  status: 75
+                  source: "qr"
+              iotReport:
+                summary: IoT sensor report (future)
+                value:
+                  status: 85
+                  source: "iot"
+              manualReport:
+                summary: Manual entry by admin
+                value:
+                  status: 0
+                  source: "manual"
+      responses:
+        '200':
+          description: Status update queued successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/StatusUpdateResponse'
+        '400':
+          description: Invalid request body
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                message: "Invalid request body"
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /report/{bin_id}:
+    get:
+      tags:
+        - Public
+      summary: Get public bin information
+      description: |
+        Retrieve public information about a bin for the QR code report page.
+        Returns only public fields (name, type, address) without sensitive data.
+
+        This endpoint is called by the static report page when a user scans a QR code.
+
+        **Note:** This endpoint does not require authentication.
+      operationId: getPublicBinInfo
+      parameters:
+        - name: bin_id
+          in: path
+          required: true
+          description: UUID of the trash bin
+          schema:
+            type: string
+            format: uuid
+            example: "00000000-0000-0000-0000-000000000001"
+      responses:
+        '200':
+          description: Public bin information retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PublicBinInfo'
+              example:
+                bin_id: "00000000-0000-0000-0000-000000000001"
+                name: "Main Street Bin"
+                bin_type: "mixed"
+                address: "123 Main Street, Kyiv"
+        '400':
+          description: Invalid bin ID format
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                error: "Invalid bin ID"
+        '404':
+          description: Bin not found or inactive
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                error: "Bin not found"
+
+  /auth/login:
+    post:
+      tags:
+        - Authentication
+      summary: Admin login
+      description: |
+        Authenticate an admin user and receive a JWT token.
+        The token expires after 24 hours by default.
+      operationId: login
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LoginRequest'
+            example:
+              email: "admin@ecoscan.local"
+              password: "admin123"
+      responses:
+        '200':
+          description: Login successful
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LoginResponse'
+        '401':
+          description: Invalid credentials
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                error: "Invalid credentials"
+        '404':
+          description: User not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                error: "User not found"
+
+  /admin/bins:
+    get:
+      tags:
+        - Admin - Bins
+      summary: List all bins
+      description: Retrieve a list of all trash bins in the system.
+      operationId: listBins
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: List of bins retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BinListResponse'
+        '401':
+          description: Unauthorized - Invalid or missing JWT token
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                message: "Unauthorized"
+        '403':
+          description: Forbidden - Token valid but access denied
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+    post:
+      tags:
+        - Admin - Bins
+      summary: Create a new bin
+      description: Create a new trash bin entry in the system.
+      operationId: createBin
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateBinRequest'
+            example:
+              name: "Central Park Bin #5"
+      responses:
+        '201':
+          description: Bin created successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BinInfo'
+        '400':
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                error: "Validation error: Name cannot be empty"
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /admin/bins/{bin_id}:
+    get:
+      tags:
+        - Admin - Bins
+      summary: Get bin details
+      description: Retrieve detailed information about a specific trash bin.
+      operationId: getBin
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: bin_id
+          in: path
+          required: true
+          description: UUID of the trash bin
+          schema:
+            type: string
+            format: uuid
+            example: "00000000-0000-0000-0000-000000000001"
+      responses:
+        '200':
+          description: Bin details retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BinInfo'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Bin not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                error: "Bin not found: 00000000-0000-0000-0000-000000000001"
+
+    put:
+      tags:
+        - Admin - Bins
+      summary: Update bin
+      description: Update an existing trash bin's properties.
+      operationId: updateBin
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: bin_id
+          in: path
+          required: true
+          description: UUID of the trash bin
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateBinRequest'
+            examples:
+              updateName:
+                summary: Update bin name
+                value:
+                  name: "New Bin Name"
+              deactivate:
+                summary: Deactivate bin
+                value:
+                  is_active: false
+              fullUpdate:
+                summary: Update multiple fields
+                value:
+                  name: "Updated Bin Name"
+                  is_active: true
+      responses:
+        '200':
+          description: Bin updated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BinInfo'
+        '400':
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Bin not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+    delete:
+      tags:
+        - Admin - Bins
+      summary: Delete bin
+      description: Delete a trash bin from the system.
+      operationId: deleteBin
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: bin_id
+          in: path
+          required: true
+          description: UUID of the trash bin
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '204':
+          description: Bin deleted successfully
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Bin not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: |
+        JWT token obtained from `/auth/login`.
+
+        Token payload contains:
+        - `sub`: User email
+        - `role`: User role (admin, operator, viewer)
+        - `exp`: Expiration timestamp
+        - `iat`: Issued at timestamp
+
+  schemas:
+    ReportSource:
+      type: string
+      enum: [qr, iot, manual]
+      description: |
+        Source of the status report:
+        - `qr`: User scanned QR code and reported status (default)
+        - `iot`: IoT sensor reported status (future feature)
+        - `manual`: Admin manually entered status
+      example: "qr"
+
+    StatusUpdateRequest:
+      type: object
+      required:
+        - status
+      properties:
+        status:
+          type: integer
+          minimum: 0
+          maximum: 100
+          description: Bin fill level percentage (0-100)
+          example: 75
+        source:
+          $ref: '#/components/schemas/ReportSource'
+
+    StatusUpdateResponse:
+      type: object
+      properties:
+        message:
+          type: string
+          description: Confirmation message
+          example: "Status update queued for processing"
+
+    LoginRequest:
+      type: object
+      required:
+        - email
+        - password
+      properties:
+        email:
+          type: string
+          format: email
+          description: User's email address
+          example: "admin@ecoscan.local"
+        password:
+          type: string
+          format: password
+          minLength: 6
+          description: User's password (minimum 6 characters)
+          example: "admin123"
+
+    LoginResponse:
+      type: object
+      properties:
+        token:
+          type: string
+          description: JWT token for authentication
+          example: "eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9..."
+        expires_at:
+          type: string
+          format: date-time
+          description: Token expiration timestamp
+          example: "2026-01-13T12:00:00Z"
+        user:
+          $ref: '#/components/schemas/UserInfo'
+
+    UserInfo:
+      type: object
+      properties:
+        email:
+          type: string
+          format: email
+          description: User's email address
+          example: "admin@ecoscan.local"
+        name:
+          type: string
+          description: User's display name
+          example: "Admin User"
+        role:
+          type: string
+          enum: [admin, operator, viewer]
+          description: User's role in the system
+          example: "admin"
+
+    BinType:
+      type: string
+      enum: [mixed, plastic, paper, glass]
+      description: Type of waste the bin collects
+      example: "mixed"
+
+    Coordinates:
+      type: object
+      properties:
+        latitude:
+          type: number
+          format: double
+          minimum: -90
+          maximum: 90
+          description: Latitude coordinate
+          example: 50.4501
+        longitude:
+          type: number
+          format: double
+          minimum: -180
+          maximum: 180
+          description: Longitude coordinate
+          example: 30.5234
+      required:
+        - latitude
+        - longitude
+
+    BinInfo:
+      type: object
+      properties:
+        bin_id:
+          type: string
+          format: uuid
+          description: Unique identifier for the bin
+          example: "00000000-0000-0000-0000-000000000001"
+        name:
+          type: string
+          description: Human-readable name for the bin
+          example: "Main Street Bin"
+        bin_type:
+          $ref: '#/components/schemas/BinType'
+        address:
+          type: string
+          nullable: true
+          description: Physical address of the bin location
+          example: "123 Main Street, Kyiv"
+        coordinates:
+          allOf:
+            - $ref: '#/components/schemas/Coordinates'
+          nullable: true
+          description: GPS coordinates of the bin location
+        status:
+          type: integer
+          minimum: 0
+          maximum: 100
+          description: Current fill level percentage (weighted average)
+          example: 58
+        reports_count:
+          type: integer
+          minimum: 0
+          description: Total number of status reports received
+          example: 15
+        last_updated:
+          type: string
+          format: date-time
+          nullable: true
+          description: Timestamp of last status update
+          example: "2026-01-12T10:30:00Z"
+        is_active:
+          type: boolean
+          description: Whether the bin is active in the system
+          example: true
+
+    PublicBinInfo:
+      type: object
+      description: Public bin information returned for QR code report pages (no sensitive data)
+      properties:
+        bin_id:
+          type: string
+          format: uuid
+          description: Unique identifier for the bin
+          example: "00000000-0000-0000-0000-000000000001"
+        name:
+          type: string
+          description: Human-readable name for the bin
+          example: "Main Street Bin"
+        bin_type:
+          $ref: '#/components/schemas/BinType'
+        address:
+          type: string
+          nullable: true
+          description: Physical address of the bin location
+          example: "123 Main Street, Kyiv"
+
+    BinListResponse:
+      type: object
+      properties:
+        bins:
+          type: array
+          items:
+            $ref: '#/components/schemas/BinInfo'
+          description: List of all bins
+
+    CreateBinRequest:
+      type: object
+      required:
+        - name
+      properties:
+        name:
+          type: string
+          minLength: 1
+          description: Human-readable name for the bin
+          example: "Central Park Bin #5"
+        bin_type:
+          $ref: '#/components/schemas/BinType'
+        address:
+          type: string
+          description: Physical address of the bin location
+          example: "Central Park, near entrance"
+        coordinates:
+          $ref: '#/components/schemas/Coordinates'
+
+    UpdateBinRequest:
+      type: object
+      properties:
+        name:
+          type: string
+          minLength: 1
+          description: New name for the bin
+          example: "Updated Bin Name"
+        bin_type:
+          $ref: '#/components/schemas/BinType'
+        address:
+          type: string
+          description: Physical address of the bin location
+          example: "123 Updated Street"
+        coordinates:
+          $ref: '#/components/schemas/Coordinates'
+        is_active:
+          type: boolean
+          description: Whether the bin should be active
+          example: true
+
+    ErrorResponse:
+      type: object
+      properties:
+        error:
+          type: string
+          description: Error message describing what went wrong
+          example: "An error occurred"
+        message:
+          type: string
+          description: Alternative error message field
+          example: "An error occurred"

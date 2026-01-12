@@ -2,55 +2,85 @@ name: Deploy to Dev Environment
 
 on:
   push:
-    branches:
-      - dev
+    branches: [ main ]
+    paths:
+      - 'services/bin-status-reporter/**'
+      - 'infrastructure/**'
+      - '.github/workflows/deploy-dev.yml'
+
+env:
+  CARGO_TERM_COLOR: always
+  RUST_BACKTRACE: full
+  AWS_REGION: eu-central-1
+  ENVIRONMENT: dev
 
 jobs:
   deploy:
+    name: Deploy Infrastructure and Lambda
     runs-on: ubuntu-latest
-    environment: dev
-    
+    permissions:
+      id-token: write
+      contents: read
+
     steps:
-      - name: Checkout code
+      - name: Checkout repository
         uses: actions/checkout@v4
-
-      - name: Cache Rust dependencies
-        uses: actions/cache@v4
-        with:
-          path: |
-            ~/.cargo/bin/
-            ~/.cargo/registry/index/
-            ~/.cargo/registry/cache/
-            ~/.cargo/git/db/
-            lambda/target/
-          key: ${{ runner.os }}-cargo-${{ hashFiles('lambda/Cargo.lock') }}
-          restore-keys: |
-            ${{ runner.os }}-cargo-
-
-      - name: Install Rust and cargo-lambda
-        run: |
-          if ! command -v cargo-lambda &> /dev/null; then
-            cargo install cargo-lambda
-          fi
-
-      - name: Install Zig
-        run: |
-          if ! command -v zig &> /dev/null; then
-            wget https://ziglang.org/download/0.11.0/zig-linux-x86_64-0.11.0.tar.xz
-            tar xf zig-linux-x86_64-0.11.0.tar.xz
-            sudo mv zig-linux-x86_64-0.11.0 /usr/local/zig
-            echo "/usr/local/zig" >> $GITHUB_PATH
-          fi
 
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v4
         with:
-          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
-          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          aws-region: eu-central-1
+          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+          role-session-name: GitHubActions-Deploy
 
-      - name: Deploy to AWS
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: 1.5.0
+
+      - name: Build Lambda function
         run: |
-          cd infrastructure
-          chmod +x deploy.sh
-          ./deploy.sh dev 
+          chmod +x ./scripts/build-lambda.sh
+          ./scripts/build-lambda.sh x86_64
+
+      - name: Deploy Foundation Layer
+        working-directory: infrastructure/layers/00-foundation
+        run: |
+          terraform init \
+            -backend-config="../../backend/dev.tfbackend" \
+            -backend-config="key=layers/00-foundation/terraform.tfstate"
+          terraform plan -var-file="../../environments/dev.tfvars" -out=tfplan
+          terraform apply -auto-approve tfplan
+
+      - name: Deploy Data Layer
+        working-directory: infrastructure/layers/01-data
+        run: |
+          terraform init \
+            -backend-config="../../backend/dev.tfbackend" \
+            -backend-config="key=layers/01-data/terraform.tfstate"
+          terraform plan -var-file="../../environments/dev.tfvars" -out=tfplan
+          terraform apply -auto-approve tfplan
+
+      - name: Deploy API Layer (creates SQS queue)
+        working-directory: infrastructure/layers/03-api
+        run: |
+          terraform init \
+            -backend-config="../../backend/dev.tfbackend" \
+            -backend-config="key=layers/03-api/terraform.tfstate"
+          terraform plan -var-file="../../environments/dev.tfvars" -out=tfplan
+          terraform apply -auto-approve tfplan
+
+      - name: Deploy Compute Layer (configures Lambda to consume from SQS)
+        working-directory: infrastructure/layers/02-compute
+        run: |
+          terraform init \
+            -backend-config="../../backend/dev.tfbackend" \
+            -backend-config="key=layers/02-compute/terraform.tfstate"
+          terraform plan -var-file="../../environments/dev.tfvars" -out=tfplan
+          terraform apply -auto-approve tfplan
+
+      - name: Verify deployment
+        working-directory: infrastructure/layers/03-api
+        run: |
+          API_URL=$(terraform output -raw api_gateway_invoke_url)
+          echo "Deployed API URL: $API_URL"

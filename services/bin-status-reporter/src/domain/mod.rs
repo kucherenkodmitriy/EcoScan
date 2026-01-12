@@ -1,9 +1,50 @@
+//! Domain models and business logic for the bin-status-reporter service
+
+use async_trait::async_trait;
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
-use uuid::Uuid;
 use std::fmt;
-use async_trait::async_trait;
-use crate::error::AppError;
+use uuid::Uuid;
+
+pub mod error;
+pub mod fullness;
+
+pub use error::AppError;
+pub use fullness::{calculate_fullness_default, ReportValue, DEFAULT_WINDOW_SIZE};
+pub type Result<T> = error::Result<T>;
+
+/// Source of the status report
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, Default)]
+#[serde(rename_all = "lowercase")]
+pub enum ReportSource {
+    /// User scanned QR code and reported status
+    #[default]
+    Qr,
+    /// IoT sensor reported status (future)
+    Iot,
+    /// Admin manually entered status
+    Manual,
+}
+
+impl fmt::Display for ReportSource {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            ReportSource::Qr => write!(f, "qr"),
+            ReportSource::Iot => write!(f, "iot"),
+            ReportSource::Manual => write!(f, "manual"),
+        }
+    }
+}
+
+impl ReportSource {
+    pub fn from_str(s: &str) -> Self {
+        match s.to_lowercase().as_str() {
+            "iot" => ReportSource::Iot,
+            "manual" => ReportSource::Manual,
+            _ => ReportSource::Qr,
+        }
+    }
+}
 
 #[derive(Debug, Serialize, Deserialize, Clone, PartialEq)]
 pub struct BinStatus {
@@ -11,10 +52,10 @@ pub struct BinStatus {
 }
 
 impl BinStatus {
-    pub fn new(value: i32) -> Result<Self, AppError> {
-        if value < 0 || value > 10 {
-            return Err(AppError::InvalidRequest(format!(
-                "Bin status must be between 0 and 10, got {}",
+    pub fn new(value: i32) -> Result<Self> {
+        if !(0..=100).contains(&value) {
+            return Err(AppError::ValidationError(format!(
+                "Bin status must be between 0 and 100, got {}",
                 value
             )));
         }
@@ -31,11 +72,11 @@ impl BinStatus {
     }
 
     pub fn ok() -> Self {
-        Self { value: 5 }
+        Self { value: 50 }
     }
 
     pub fn full() -> Self {
-        Self { value: 10 }
+        Self { value: 100 }
     }
 }
 
@@ -43,16 +84,16 @@ impl fmt::Display for BinStatus {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self.value {
             0 => write!(f, "Empty"),
-            10 => write!(f, "Full"),
-            _ => write!(f, "{}%", self.value * 10),
+            100 => write!(f, "Full"),
+            _ => write!(f, "{}%", self.value),
         }
     }
 }
 
 impl From<i32> for BinStatus {
     fn from(value: i32) -> Self {
-        Self { 
-            value: value.clamp(0, 10)
+        Self {
+            value: value.clamp(0, 100),
         }
     }
 }
@@ -88,6 +129,8 @@ pub struct QRCode {
 pub struct StatusUpdateRequest {
     pub bin_id: Uuid,
     pub status: BinStatus,
+    #[serde(default)]
+    pub source: ReportSource,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -98,20 +141,33 @@ pub struct StatusUpdateResponse {
 }
 
 #[async_trait]
-pub trait BinRepository {
+pub trait BinRepository: Send + Sync + 'static {
+    async fn create_bin(&self, bin_id: &Uuid, name: &str) -> Result<()>;
+
     async fn update_status(
         &self,
         bin_id: &Uuid,
         status: BinStatus,
         timestamp: DateTime<Utc>,
-    ) -> Result<(), AppError>;
+    ) -> Result<()>;
 
     async fn add_report(
         &self,
         bin_id: &Uuid,
         status: BinStatus,
+        source: ReportSource,
         timestamp: DateTime<Utc>,
-    ) -> Result<(), AppError>;
+    ) -> Result<()>;
+
+    /// Fetches the most recent N reports for a bin, ordered from newest to oldest.
+    ///
+    /// # Arguments
+    /// * `bin_id` - The UUID of the bin
+    /// * `limit` - Maximum number of reports to fetch
+    ///
+    /// # Returns
+    /// * Vector of report values ordered from newest to oldest
+    async fn get_recent_reports(&self, bin_id: &Uuid, limit: usize) -> Result<Vec<ReportValue>>;
 }
 
 #[cfg(test)]
@@ -126,7 +182,7 @@ mod tests {
             assert!(BinStatus::new(0).is_ok());
             assert!(BinStatus::new(5).is_ok());
             assert!(BinStatus::new(10).is_ok());
-            
+
             let status = BinStatus::new(7).unwrap();
             assert_eq!(status.value(), 7);
         }
@@ -134,27 +190,25 @@ mod tests {
         #[test]
         fn test_bin_status_new_invalid_values() {
             assert!(BinStatus::new(-1).is_err());
-            assert!(BinStatus::new(11).is_err());
-            assert!(BinStatus::new(-100).is_err());
-            assert!(BinStatus::new(100).is_err());
+            assert!(BinStatus::new(101).is_err());
         }
 
         #[test]
         fn test_bin_status_error_messages() {
             match BinStatus::new(-1) {
-                Err(AppError::InvalidRequest(msg)) => {
-                    assert!(msg.contains("Bin status must be between 0 and 10"));
+                Err(AppError::ValidationError(msg)) => {
+                    assert!(msg.contains("Bin status must be between 0 and 100"));
                     assert!(msg.contains("-1"));
                 }
-                _ => panic!("Expected InvalidRequest error"),
+                _ => panic!("Expected ValidationError"),
             }
 
-            match BinStatus::new(15) {
-                Err(AppError::InvalidRequest(msg)) => {
-                    assert!(msg.contains("Bin status must be between 0 and 10"));
-                    assert!(msg.contains("15"));
+            match BinStatus::new(101) {
+                Err(AppError::ValidationError(msg)) => {
+                    assert!(msg.contains("Bin status must be between 0 and 100"));
+                    assert!(msg.contains("101"));
                 }
-                _ => panic!("Expected InvalidRequest error"),
+                _ => panic!("Expected ValidationError"),
             }
         }
 
@@ -163,9 +217,9 @@ mod tests {
             assert_eq!(BinStatus::empty().to_string(), "Empty");
             assert_eq!(BinStatus::full().to_string(), "Full");
             assert_eq!(BinStatus::ok().to_string(), "50%");
-            assert_eq!(BinStatus::new(1).unwrap().to_string(), "10%");
-            assert_eq!(BinStatus::new(7).unwrap().to_string(), "70%");
-            assert_eq!(BinStatus::new(9).unwrap().to_string(), "90%");
+            assert_eq!(BinStatus::new(10).unwrap().to_string(), "10%");
+            assert_eq!(BinStatus::new(70).unwrap().to_string(), "70%");
+            assert_eq!(BinStatus::new(90).unwrap().to_string(), "90%");
         }
 
         #[test]
@@ -175,11 +229,11 @@ mod tests {
             assert_eq!(empty.to_string(), "Empty");
 
             let ok = BinStatus::ok();
-            assert_eq!(ok.value(), 5);
+            assert_eq!(ok.value(), 50);
             assert_eq!(ok.to_string(), "50%");
 
             let full = BinStatus::full();
-            assert_eq!(full.value(), 10);
+            assert_eq!(full.value(), 100);
             assert_eq!(full.to_string(), "Full");
         }
 
@@ -188,11 +242,11 @@ mod tests {
             let status_negative = BinStatus::from(-5);
             assert_eq!(status_negative.value(), 0);
 
-            let status_over_limit = BinStatus::from(15);
-            assert_eq!(status_over_limit.value(), 10);
+            let status_over_limit = BinStatus::from(101);
+            assert_eq!(status_over_limit.value(), 100);
 
-            let status_valid = BinStatus::from(7);
-            assert_eq!(status_valid.value(), 7);
+            let status_valid = BinStatus::from(75);
+            assert_eq!(status_valid.value(), 75);
         }
 
         #[test]
@@ -225,13 +279,15 @@ mod tests {
             let request = StatusUpdateRequest {
                 bin_id,
                 status: BinStatus::new(5).unwrap(),
+                source: ReportSource::Qr,
             };
 
             let json = serde_json::to_string(&request).unwrap();
             let deserialized: StatusUpdateRequest = serde_json::from_str(&json).unwrap();
-            
+
             assert_eq!(request.bin_id, deserialized.bin_id);
             assert_eq!(request.status, deserialized.status);
+            assert_eq!(request.source, deserialized.source);
         }
 
         #[test]
@@ -244,9 +300,21 @@ mod tests {
 
             let json = serde_json::to_string(&response).unwrap();
             let deserialized: StatusUpdateResponse = serde_json::from_str(&json).unwrap();
-            
+
             assert_eq!(response.success, deserialized.success);
             assert_eq!(response.message, deserialized.message);
+        }
+
+        #[test]
+        fn test_report_source_serialization() {
+            assert_eq!(ReportSource::Qr.to_string(), "qr");
+            assert_eq!(ReportSource::Iot.to_string(), "iot");
+            assert_eq!(ReportSource::Manual.to_string(), "manual");
+
+            assert_eq!(ReportSource::from_str("qr"), ReportSource::Qr);
+            assert_eq!(ReportSource::from_str("iot"), ReportSource::Iot);
+            assert_eq!(ReportSource::from_str("manual"), ReportSource::Manual);
+            assert_eq!(ReportSource::from_str("unknown"), ReportSource::Qr); // default
         }
     }
 }

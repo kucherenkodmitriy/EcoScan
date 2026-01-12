@@ -7,13 +7,20 @@ help: ## Show this help message
 	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | sort | awk 'BEGIN {FS = ":.*?## "}; {printf "\033[36m%-20s\033[0m %s\n", $$1, $$2}'
 
 # Development
-build: ## Build Lambda function for deployment
-	@echo "🔨 Building Lambda function..."
-	./scripts/build-lambda.sh
+build: build-lambda-aws ## Build Lambda function for AWS/LocalStack (default)
 
-test: ## Run all tests
-	@echo "🧪 Running tests..."
+build-lambda-aws: ## Build Lambda for AWS/LocalStack (Linux binary)
+	@echo "🔨 Building Lambda function for AWS (x86_64-unknown-linux-musl)..."
+	./scripts/build-lambda.sh aws
+
+build-lambda-local: ## Build Lambda for local macOS execution
+	@echo "🔨 Building Lambda function for local macOS..."
+	./scripts/build-lambda.sh local
+
+test: ## Run unit and e2e tests
+	@echo "🧪 Running unit tests..."
 	cd services/bin-status-reporter && cargo test --lib
+	@make test-e2e
 
 test-watch: ## Run tests in watch mode
 	@echo "👀 Watching tests..."
@@ -30,12 +37,20 @@ fix: ## Auto-fix linting and formatting issues
 	cd services/bin-status-reporter && cargo fmt
 
 # Local Development
+reset-local: ## Destroy local infrastructure and stop all containers
+	@echo "🔥 Destroying LocalStack infrastructure..."
+	@echo "Note: Destroying in reverse layer order..."
+	cd infrastructure/layers/02-compute && terraform destroy -auto-approve -var-file=../../environments/local.tfvars || true
+	cd infrastructure/layers/03-api && terraform destroy -auto-approve -var-file=../../environments/local.tfvars || true
+	cd infrastructure/layers/01-data && terraform destroy -auto-approve -var-file=../../environments/local.tfvars || true
+	cd infrastructure/layers/00-foundation && terraform destroy -auto-approve -var-file=../../environments/local.tfvars || true
+	@echo "🛑 Stopping Docker containers..."
+	docker-compose down --volumes
+	rm -rf ./volume
+
 local-up: ## Start LocalStack development environment
-	@echo "🚀 Starting LocalStack..."
-	docker-compose up -d
-	@echo "⏳ Waiting for LocalStack to be ready..."
-	sleep 10
-	./scripts/init-localstack.sh
+	@echo "🚀 Starting LocalStack and deploying infrastructure..."
+	./infrastructure/scripts/init-environment.sh local
 
 local-down: ## Stop LocalStack development environment
 	@echo "🛑 Stopping LocalStack..."
@@ -44,21 +59,9 @@ local-down: ## Stop LocalStack development environment
 local-logs: ## Show LocalStack logs
 	docker-compose logs -f localstack
 
-# Deployment
-deploy-local: build ## Deploy to LocalStack
-	@echo "📦 Deploying to LocalStack..."
-	aws --profile localstack --endpoint-url=http://localhost:4566 lambda update-function-code \
-		--function-name update-bin-status \
-		--zip-file fileb://services/bin-status-reporter/target/lambda.zip
-
-test-lambda: deploy-local ## Test Lambda function end-to-end
-	@echo "🧪 Testing Lambda function..."
-	aws --profile localstack --endpoint-url=http://localhost:4566 lambda invoke \
-		--function-name update-bin-status \
-		--payload file://services/bin-status-reporter/test-events/update-status-50-percent.json \
-		--cli-binary-format raw-in-base64-out output.json
-	@echo "📋 Test result:"
-	@cat output.json
+test-e2e: ## Run end-to-end tests against a running local environment
+	@echo "🔬 Running end-to-end tests..."
+	./scripts/run-e2e-tests.sh
 
 # Cleanup
 clean: ## Clean build artifacts

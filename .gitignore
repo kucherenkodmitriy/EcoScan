@@ -1,15 +1,16 @@
 # Environment variables
 .env
 .env.local
-.env.development.local
-.env.test.local
-.env.production.local
+.env.dev
+.env.prod
 
 # LocalStack and Docker volumes
 volume/
 .localstack/
 
 # Rust
+/target/
+lambda/target/
 services/target/
 services/*/target/
 **/*.rs.bk
@@ -17,9 +18,7 @@ services/*/target/
 
 # Lambda build artifacts
 *.zip
-lambda.zip
 bootstrap
-ecoscan-lambda.zip
 
 # AWS SAM
 .aws-sam/
@@ -62,6 +61,8 @@ coverage/
 *.swp
 *.swo
 *~
+.cursorrules
+.windsurfrules
 
 # OS generated files
 .DS_Store
@@ -75,7 +76,9 @@ Thumbs.db
 # Temporary files
 *.tmp
 *.temp
+*.bak
 .cache/
+output.json
 
 # Build outputs and artifacts
 build/
@@ -86,11 +89,35 @@ out/
 *-outputs.json
 
 # Terraform
-infrastructure/**/.terraform/
-infrastructure/**/.terraform.lock.hcl
-infrastructure/**/terraform.tfstate
-infrastructure/**/terraform.tfstate.backup
-infrastructure/**/*.tfvars
+# Ignore Terraform state files and directories
+**/.terraform/
+**/.terraform.lock.hcl
+**/terraform.tfstate
+**/terraform.tfstate.backup
+**/terraform-local.tfstate
+**/terraform-local.tfstate.backup
+
+# Ignore Terraform plan output files
+**/tfplan
+**/*.tfplan
+
+**/*.tfvars.json
+**/*_override.tf
+**/*_override.tf.json
+**/crash.log
+**/crash.*.log
+**/.terraformrc
+**/terraform.rc
+
+# Keep environment configuration files (non-sensitive)
+!infrastructure/environments/*.tfvars
+!infrastructure/backend/*.tfbackend
+
+# Ignore sensitive override files (if any)
+infrastructure/environments/*-secrets.tfvars
+infrastructure/environments/local-override.tfvars
+infrastructure/environments/dev-override.tfvars
+infrastructure/environments/prod-override.tfvars
 
 # Amplify
 frontend/amplify/backend/amplify-meta.json

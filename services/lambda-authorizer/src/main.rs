@@ -1,20 +1,20 @@
 use aws_config::BehaviorVersion;
 use aws_sdk_secretsmanager::Client as SecretsManagerClient;
-use jsonwebtoken::{decode, DecodingKey, Validation, Algorithm};
+use jsonwebtoken::{decode, Algorithm, DecodingKey, Validation};
 use lambda_runtime::{run, service_fn, Error, LambdaEvent};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::sync::Arc;
-use tracing::{error, info, warn, instrument};
+use tracing::{error, info, instrument, warn};
 use tracing_subscriber::fmt;
 
 /// JWT Claims structure
 #[derive(Debug, Serialize, Deserialize)]
 struct Claims {
-    sub: String,           // Subject (email)
-    exp: usize,            // Expiration time
-    iat: usize,            // Issued at
-    role: String,          // User role (e.g., "admin")
+    sub: String,  // Subject (email)
+    exp: usize,   // Expiration time
+    iat: usize,   // Issued at
+    role: String, // User role (e.g., "admin")
 }
 
 /// API Gateway Token Authorizer Request
@@ -131,9 +131,7 @@ async fn get_jwt_secret() -> Result<String, String> {
 
 /// Fetch secret from AWS Secrets Manager
 async fn fetch_from_secrets_manager(secret_arn: &str) -> Result<String, String> {
-    let config = aws_config::defaults(BehaviorVersion::latest())
-        .load()
-        .await;
+    let config = aws_config::defaults(BehaviorVersion::latest()).load().await;
 
     let client = SecretsManagerClient::new(&config);
 
@@ -174,7 +172,12 @@ fn validate_token(token: &str, secret: &str) -> Result<Claims, jsonwebtoken::err
 /// Create the handler with shared state
 fn create_handler(
     state: Arc<AuthorizerState>,
-) -> impl Fn(LambdaEvent<AuthorizerRequest>) -> std::pin::Pin<Box<dyn std::future::Future<Output = Result<AuthorizerResponse, Error>> + Send>> + Send + Sync {
+) -> impl Fn(
+    LambdaEvent<AuthorizerRequest>,
+) -> std::pin::Pin<
+    Box<dyn std::future::Future<Output = Result<AuthorizerResponse, Error>> + Send>,
+> + Send
+       + Sync {
     move |event| {
         let state = state.clone();
         Box::pin(async move { function_handler_inner(event, &state).await })
@@ -213,7 +216,11 @@ async fn function_handler_inner(
     match validate_token(token, &state.jwt_secret) {
         Ok(claims) => {
             info!(email = %claims.sub, role = %claims.role, "Token validated successfully");
-            Ok(AuthorizerResponse::allow(&claims.sub, &request.method_arn, &claims))
+            Ok(AuthorizerResponse::allow(
+                &claims.sub,
+                &request.method_arn,
+                &claims,
+            ))
         }
         Err(e) => {
             warn!(error = %e, "Token validation failed");
@@ -256,8 +263,8 @@ async fn main() -> Result<(), Error> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use jsonwebtoken::{encode, EncodingKey, Header};
     use chrono::Utc;
+    use jsonwebtoken::{encode, EncodingKey, Header};
 
     fn create_test_token(secret: &str, exp_offset: i64) -> String {
         let now = Utc::now().timestamp() as usize;
@@ -272,7 +279,8 @@ mod tests {
             &Header::new(Algorithm::HS256),
             &claims,
             &EncodingKey::from_secret(secret.as_bytes()),
-        ).unwrap()
+        )
+        .unwrap()
     }
 
     #[test]
@@ -327,7 +335,10 @@ mod tests {
     fn test_build_resource_arn() {
         let method_arn = "arn:aws:execute-api:us-east-1:123456789:abc123/dev/GET/admin/bins";
         let result = AuthorizerResponse::build_resource_arn(method_arn);
-        assert_eq!(result, "arn:aws:execute-api:us-east-1:123456789:abc123/dev/*");
+        assert_eq!(
+            result,
+            "arn:aws:execute-api:us-east-1:123456789:abc123/dev/*"
+        );
     }
 
     #[test]
@@ -342,12 +353,15 @@ mod tests {
         let response = AuthorizerResponse::allow(
             "test@example.com",
             "arn:aws:execute-api:us-east-1:123:abc/dev/GET/test",
-            &claims
+            &claims,
         );
 
         assert_eq!(response.principal_id, "test@example.com");
         assert_eq!(response.policy_document.statement[0].effect, "Allow");
-        assert_eq!(response.context.get("email"), Some(&"test@example.com".to_string()));
+        assert_eq!(
+            response.context.get("email"),
+            Some(&"test@example.com".to_string())
+        );
         assert_eq!(response.context.get("role"), Some(&"admin".to_string()));
     }
 
@@ -355,7 +369,7 @@ mod tests {
     fn test_authorizer_response_deny() {
         let response = AuthorizerResponse::deny(
             "anonymous",
-            "arn:aws:execute-api:us-east-1:123:abc/dev/GET/test"
+            "arn:aws:execute-api:us-east-1:123:abc/dev/GET/test",
         );
 
         assert_eq!(response.principal_id, "anonymous");
@@ -413,7 +427,8 @@ mod tests {
     #[test]
     fn test_build_resource_arn_single_part() {
         // Edge case: ARN without any slashes
-        let result = AuthorizerResponse::build_resource_arn("arn:aws:execute-api:us-east-1:123:abc");
+        let result =
+            AuthorizerResponse::build_resource_arn("arn:aws:execute-api:us-east-1:123:abc");
         assert_eq!(result, "arn:aws:execute-api:us-east-1:123:abc");
     }
 
@@ -464,7 +479,7 @@ mod tests {
         let response = AuthorizerResponse::allow(
             "test@example.com",
             "arn:aws:execute-api:us-east-1:123:abc/prod/GET/admin/bins/123",
-            &claims
+            &claims,
         );
 
         // Verify the resource ARN is wildcarded
@@ -507,7 +522,8 @@ mod tests {
             &Header::new(Algorithm::HS256),
             &claims,
             &EncodingKey::from_secret(secret.as_bytes()),
-        ).unwrap();
+        )
+        .unwrap();
 
         let result = validate_token(&token, secret);
         assert!(result.is_ok());

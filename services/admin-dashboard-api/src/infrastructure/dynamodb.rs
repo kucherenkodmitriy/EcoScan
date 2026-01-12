@@ -50,9 +50,7 @@ impl DynamoDbRepository {
         }
     }
 
-    fn parse_bin_item(
-        item: &std::collections::HashMap<String, AttributeValue>,
-    ) -> Option<BinInfo> {
+    fn parse_bin_item(item: &std::collections::HashMap<String, AttributeValue>) -> Option<BinInfo> {
         let bin_id = item
             .get("binId")
             .and_then(|v| v.as_s().ok())
@@ -88,10 +86,7 @@ impl DynamoDbRepository {
                 .and_then(|v| v.as_s().ok())
                 .map(|s| BinType::from_str(s))
                 .unwrap_or_default(),
-            address: item
-                .get("address")
-                .and_then(|v| v.as_s().ok())
-                .cloned(),
+            address: item.get("address").and_then(|v| v.as_s().ok()).cloned(),
             coordinates,
             status: item
                 .get("status")
@@ -182,7 +177,10 @@ impl UserRepository for DynamoDbRepository {
             .put_item()
             .table_name(&self.users_table)
             .item("email", AttributeValue::S(user.email.clone()))
-            .item("passwordHash", AttributeValue::S(user.password_hash.clone()))
+            .item(
+                "passwordHash",
+                AttributeValue::S(user.password_hash.clone()),
+            )
             .item("name", AttributeValue::S(user.name.clone()))
             .item("role", AttributeValue::S(user.role.to_string()))
             .item("createdAt", AttributeValue::S(user.created_at.to_rfc3339()))

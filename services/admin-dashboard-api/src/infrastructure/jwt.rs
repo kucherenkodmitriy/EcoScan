@@ -1,5 +1,5 @@
 use chrono::{Duration, Utc};
-use jsonwebtoken::{encode, EncodingKey, Header, Algorithm};
+use jsonwebtoken::{encode, Algorithm, EncodingKey, Header};
 use serde::{Deserialize, Serialize};
 
 use crate::domain::{AppError, Result, UserRole};
@@ -7,10 +7,10 @@ use crate::domain::{AppError, Result, UserRole};
 /// JWT Claims structure
 #[derive(Debug, Serialize, Deserialize)]
 pub struct Claims {
-    pub sub: String,           // Subject (email)
-    pub exp: usize,            // Expiration time
-    pub iat: usize,            // Issued at
-    pub role: String,          // User role
+    pub sub: String,  // Subject (email)
+    pub exp: usize,   // Expiration time
+    pub iat: usize,   // Issued at
+    pub role: String, // User role
 }
 
 /// JWT configuration
@@ -36,7 +36,11 @@ impl JwtConfig {
 }
 
 /// Generate a JWT token for a user
-pub fn generate_token(email: &str, role: &UserRole, config: &JwtConfig) -> Result<(String, String)> {
+pub fn generate_token(
+    email: &str,
+    role: &UserRole,
+    config: &JwtConfig,
+) -> Result<(String, String)> {
     let now = Utc::now();
     let expiry = now + Duration::hours(config.expiry_hours);
 
@@ -50,8 +54,8 @@ pub fn generate_token(email: &str, role: &UserRole, config: &JwtConfig) -> Resul
     let header = Header::new(Algorithm::HS256);
     let encoding_key = EncodingKey::from_secret(config.secret.as_bytes());
 
-    let token = encode(&header, &claims, &encoding_key)
-        .map_err(|e| AppError::JwtError(e.to_string()))?;
+    let token =
+        encode(&header, &claims, &encoding_key).map_err(|e| AppError::JwtError(e.to_string()))?;
 
     Ok((token, expiry.to_rfc3339()))
 }

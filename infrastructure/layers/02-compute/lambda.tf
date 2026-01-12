@@ -86,7 +86,7 @@ resource "aws_lambda_function" "authorizer" {
     variables = var.use_localstack ? {
       # LocalStack: use JWT_SECRET directly (simpler than configuring Secrets Manager endpoint)
       JWT_SECRET = var.jwt_secret
-    } : {
+      } : {
       # Production: fetch from Secrets Manager
       JWT_SECRET_ARN = local.jwt_secret_arn
     }
@@ -185,7 +185,7 @@ resource "aws_lambda_function" "admin_dashboard" {
         # LocalStack: use env vars directly
         DYNAMODB_ENDPOINT_URL = local.dynamodb_endpoint_url
         JWT_SECRET            = var.jwt_secret
-      } : {
+        } : {
         # Production: fetch secret from Secrets Manager
         JWT_SECRET_ARN = local.jwt_secret_arn
       }

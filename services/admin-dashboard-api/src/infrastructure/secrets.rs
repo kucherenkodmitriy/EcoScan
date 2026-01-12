@@ -48,9 +48,7 @@ async fn fetch_from_secrets_manager(
             .await
     } else {
         // Production AWS configuration
-        aws_config::defaults(BehaviorVersion::latest())
-            .load()
-            .await
+        aws_config::defaults(BehaviorVersion::latest()).load().await
     };
 
     let client = SecretsManagerClient::new(&config);
@@ -120,7 +118,9 @@ mod tests {
 
         let result = get_jwt_secret(None).await;
         assert!(result.is_err());
-        assert!(result.unwrap_err().contains("Neither JWT_SECRET_ARN nor JWT_SECRET"));
+        assert!(result
+            .unwrap_err()
+            .contains("Neither JWT_SECRET_ARN nor JWT_SECRET"));
 
         // Restore original values
         match original_secret {

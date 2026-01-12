@@ -1,5 +1,5 @@
 use chrono::Utc;
-use tracing::{info, warn, instrument};
+use tracing::{info, instrument, warn};
 
 use crate::domain::{
     AdminUser, AppError, LoginRequest, LoginResponse, Result, UserInfo, UserRepository, UserRole,
@@ -15,7 +15,9 @@ pub async fn handle_login(
 ) -> Result<LoginResponse> {
     // Validate input
     if request.email.is_empty() || request.password.is_empty() {
-        return Err(AppError::ValidationError("Email and password are required".to_string()));
+        return Err(AppError::ValidationError(
+            "Email and password are required".to_string(),
+        ));
     }
 
     // Get user from database
@@ -65,11 +67,15 @@ pub async fn create_user(
 ) -> Result<()> {
     // Validate input
     if email.is_empty() || password.is_empty() || name.is_empty() {
-        return Err(AppError::ValidationError("All fields are required".to_string()));
+        return Err(AppError::ValidationError(
+            "All fields are required".to_string(),
+        ));
     }
 
     if password.len() < 8 {
-        return Err(AppError::ValidationError("Password must be at least 8 characters".to_string()));
+        return Err(AppError::ValidationError(
+            "Password must be at least 8 characters".to_string(),
+        ));
     }
 
     // Check if user already exists

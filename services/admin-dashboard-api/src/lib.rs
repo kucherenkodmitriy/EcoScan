@@ -66,10 +66,7 @@ fn error_to_status_code(error: &AppError) -> i64 {
 
 /// Extract path parameter from API Gateway event
 fn get_path_param(event: &ApiGatewayProxyRequest, name: &str) -> Option<String> {
-    event
-        .path_parameters
-        .get(name)
-        .map(|v| v.to_string())
+    event.path_parameters.get(name).map(|v| v.to_string())
 }
 
 /// Create the Lambda handler with shared state
@@ -78,7 +75,12 @@ fn get_path_param(event: &ApiGatewayProxyRequest, name: &str) -> Option<String> 
 /// to be loaded once at cold start and reused across invocations.
 pub fn create_handler(
     state: AppState,
-) -> impl Fn(LambdaEvent<ApiGatewayProxyRequest>) -> std::pin::Pin<Box<dyn std::future::Future<Output = Result<ApiGatewayProxyResponse, Error>> + Send>> + Send + Sync {
+) -> impl Fn(
+    LambdaEvent<ApiGatewayProxyRequest>,
+) -> std::pin::Pin<
+    Box<dyn std::future::Future<Output = Result<ApiGatewayProxyResponse, Error>> + Send>,
+> + Send
+       + Sync {
     move |event| {
         let state = state.clone();
         Box::pin(async move { api_handler_inner(event, &state).await })
@@ -123,9 +125,7 @@ async fn api_handler_inner(
         }
 
         // List bins
-        ("GET", p) if p.ends_with("/admin/bins") => {
-            handle_list_bins(&repo).await
-        }
+        ("GET", p) if p.ends_with("/admin/bins") => handle_list_bins(&repo).await,
 
         // Get single bin
         ("GET", p) if p.contains("/admin/bins/") => {
@@ -134,9 +134,7 @@ async fn api_handler_inner(
         }
 
         // Create bin
-        ("POST", p) if p.ends_with("/admin/bins") => {
-            handle_create_bin(&request, &repo).await
-        }
+        ("POST", p) if p.ends_with("/admin/bins") => handle_create_bin(&request, &repo).await,
 
         // Update bin
         ("PUT", p) if p.contains("/admin/bins/") => {
@@ -205,7 +203,10 @@ async fn handle_list_bins(repo: &DynamoDbRepository) -> ApiGatewayProxyResponse 
     }
 }
 
-async fn handle_get_bin(repo: &DynamoDbRepository, bin_id: Option<String>) -> ApiGatewayProxyResponse {
+async fn handle_get_bin(
+    repo: &DynamoDbRepository,
+    bin_id: Option<String>,
+) -> ApiGatewayProxyResponse {
     let bin_id = match bin_id.and_then(|s| Uuid::parse_str(&s).ok()) {
         Some(id) => id,
         None => return error_response(400, "Invalid bin ID"),
@@ -278,7 +279,10 @@ async fn handle_update_bin(
     }
 }
 
-async fn handle_delete_bin(repo: &DynamoDbRepository, bin_id: Option<String>) -> ApiGatewayProxyResponse {
+async fn handle_delete_bin(
+    repo: &DynamoDbRepository,
+    bin_id: Option<String>,
+) -> ApiGatewayProxyResponse {
     let bin_id = match bin_id.and_then(|s| Uuid::parse_str(&s).ok()) {
         Some(id) => id,
         None => return error_response(400, "Invalid bin ID"),

@@ -28,16 +28,13 @@ impl Config {
             status_reports_table: std::env::var("STATUS_REPORTS_TABLE_NAME")
                 .unwrap_or_else(|_| "dev-ecoscan-status-reports".to_string()),
             dynamodb_endpoint: std::env::var("DYNAMODB_ENDPOINT_URL").ok(),
-            aws_region: std::env::var("AWS_REGION")
-                .unwrap_or_else(|_| "eu-central-1".to_string()),
-            jwt_secret: std::env::var("JWT_SECRET")
-                .unwrap_or_else(|_| "test-secret".to_string()),
+            aws_region: std::env::var("AWS_REGION").unwrap_or_else(|_| "eu-central-1".to_string()),
+            jwt_secret: std::env::var("JWT_SECRET").unwrap_or_else(|_| "test-secret".to_string()),
             jwt_expiry_hours: std::env::var("JWT_EXPIRY_HOURS")
                 .ok()
                 .and_then(|v| v.parse().ok())
                 .unwrap_or(24),
-            log_level: std::env::var("LOG_LEVEL")
-                .unwrap_or_else(|_| "INFO".to_string()),
+            log_level: std::env::var("LOG_LEVEL").unwrap_or_else(|_| "INFO".to_string()),
         }
     }
 
@@ -59,15 +56,13 @@ impl Config {
             status_reports_table: std::env::var("STATUS_REPORTS_TABLE_NAME")
                 .unwrap_or_else(|_| "dev-ecoscan-status-reports".to_string()),
             dynamodb_endpoint,
-            aws_region: std::env::var("AWS_REGION")
-                .unwrap_or_else(|_| "eu-central-1".to_string()),
+            aws_region: std::env::var("AWS_REGION").unwrap_or_else(|_| "eu-central-1".to_string()),
             jwt_secret: jwt_secret_value.secret,
             jwt_expiry_hours: std::env::var("JWT_EXPIRY_HOURS")
                 .ok()
                 .and_then(|v| v.parse().ok())
                 .unwrap_or(24),
-            log_level: std::env::var("LOG_LEVEL")
-                .unwrap_or_else(|_| "INFO".to_string()),
+            log_level: std::env::var("LOG_LEVEL").unwrap_or_else(|_| "INFO".to_string()),
         })
     }
 

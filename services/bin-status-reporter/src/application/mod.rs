@@ -88,8 +88,9 @@ mod tests {
             self.update_status_calls.lock().await.clone()
         }
 
-        async fn get_add_report_calls(&self) -> Vec<(Uuid, BinStatus, ReportSource, DateTime<Utc>)>
-        {
+        async fn get_add_report_calls(
+            &self,
+        ) -> Vec<(Uuid, BinStatus, ReportSource, DateTime<Utc>)> {
             self.add_report_calls.lock().await.clone()
         }
 

@@ -26,7 +26,9 @@ pub async fn create_bin(repo: &dyn BinRepository, request: CreateBinRequest) -> 
 
     // Validate input
     if request.name.trim().is_empty() {
-        return Err(AppError::ValidationError("Bin name is required".to_string()));
+        return Err(AppError::ValidationError(
+            "Bin name is required".to_string(),
+        ));
     }
 
     // Generate new bin ID

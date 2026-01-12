@@ -161,16 +161,25 @@ jobs:
           chmod +x ./scripts/build-lambda.sh
           ./scripts/build-lambda.sh x86_64
 
-      - name: Verify build artifact
+      - name: Verify build artifacts
         run: |
-          ls -lh services/target/lambda.zip
+          echo "=== Build artifacts ==="
+          ls -lh services/target/*.zip
+          echo ""
+          echo "=== lambda.zip (bin-status-reporter) ==="
           unzip -l services/target/lambda.zip
+          echo ""
+          echo "=== authorizer.zip (lambda-authorizer) ==="
+          unzip -l services/target/authorizer.zip
+          echo ""
+          echo "=== admin-dashboard.zip (admin-dashboard-api) ==="
+          unzip -l services/target/admin-dashboard.zip
 
-      - name: Upload Lambda artifact
+      - name: Upload Lambda artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: lambda-package
-          path: services/target/lambda.zip
+          name: lambda-packages
+          path: services/target/*.zip
           retention-days: 1
 
   # ============================================
@@ -187,10 +196,10 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Download Lambda artifact
+      - name: Download Lambda artifacts
         uses: actions/download-artifact@v4
         with:
-          name: lambda-package
+          name: lambda-packages
           path: services/target/
 
       - name: Configure AWS credentials
@@ -200,14 +209,28 @@ jobs:
           aws-region: ${{ env.AWS_REGION }}
           role-session-name: GitHubActions-UploadLambda
 
-      - name: Upload Lambda to S3
+      - name: Upload Lambda artifacts to S3
         run: |
+          # Upload bin-status-reporter
           HASH=$(sha256sum services/target/lambda.zip | cut -d' ' -f1)
           aws s3 cp services/target/lambda.zip \
             s3://ecoscan-terraform-state-dev/lambda-artifacts/lambda-${HASH}.zip
-          # Also upload as latest for easy reference
           aws s3 cp services/target/lambda.zip \
             s3://ecoscan-terraform-state-dev/lambda-artifacts/lambda-latest.zip
+
+          # Upload lambda-authorizer
+          HASH=$(sha256sum services/target/authorizer.zip | cut -d' ' -f1)
+          aws s3 cp services/target/authorizer.zip \
+            s3://ecoscan-terraform-state-dev/lambda-artifacts/authorizer-${HASH}.zip
+          aws s3 cp services/target/authorizer.zip \
+            s3://ecoscan-terraform-state-dev/lambda-artifacts/authorizer-latest.zip
+
+          # Upload admin-dashboard-api
+          HASH=$(sha256sum services/target/admin-dashboard.zip | cut -d' ' -f1)
+          aws s3 cp services/target/admin-dashboard.zip \
+            s3://ecoscan-terraform-state-dev/lambda-artifacts/admin-dashboard-${HASH}.zip
+          aws s3 cp services/target/admin-dashboard.zip \
+            s3://ecoscan-terraform-state-dev/lambda-artifacts/admin-dashboard-latest.zip
 
   # ============================================
   # TERRAFORM VALIDATION (runs if any infra changed)
@@ -396,21 +419,35 @@ jobs:
           aws-region: ${{ env.AWS_REGION }}
           role-session-name: GitHubActions-DeployCompute
 
-      # Download Lambda artifact if it was built in this run
-      - name: Download Lambda artifact
+      # Download Lambda artifacts if they were built in this run
+      - name: Download Lambda artifacts
         if: needs.build-lambda.result == 'success'
         uses: actions/download-artifact@v4
         with:
-          name: lambda-package
+          name: lambda-packages
           path: services/target/
 
       # If Lambda wasn't built, download from S3
-      - name: Download Lambda from S3
+      - name: Download Lambda artifacts from S3
         if: needs.build-lambda.result != 'success'
         run: |
           mkdir -p services/target
           aws s3 cp s3://ecoscan-terraform-state-dev/lambda-artifacts/lambda-latest.zip \
             services/target/lambda.zip
+          aws s3 cp s3://ecoscan-terraform-state-dev/lambda-artifacts/authorizer-latest.zip \
+            services/target/authorizer.zip
+          aws s3 cp s3://ecoscan-terraform-state-dev/lambda-artifacts/admin-dashboard-latest.zip \
+            services/target/admin-dashboard.zip
+
+      - name: Verify Lambda artifacts
+        run: |
+          echo "=== Lambda artifacts ==="
+          ls -la services/target/
+          echo ""
+          echo "Verifying all required artifacts exist..."
+          [ -f services/target/lambda.zip ] && echo "  - lambda.zip: OK" || echo "  - lambda.zip: MISSING"
+          [ -f services/target/authorizer.zip ] && echo "  - authorizer.zip: OK" || echo "  - authorizer.zip: MISSING"
+          [ -f services/target/admin-dashboard.zip ] && echo "  - admin-dashboard.zip: OK" || echo "  - admin-dashboard.zip: MISSING"
 
       - name: Terraform Init
         working-directory: infrastructure/layers/02-compute

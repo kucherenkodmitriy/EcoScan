@@ -67,24 +67,25 @@ EcoScan/
 │   ├── build-lambda.sh         # Build all Lambda services
 │   ├── seed-data.sh            # Seed test data + admin user
 │   ├── run-e2e-tests.sh        # Run E2E tests
-│   └── smoke-test.sh           # Quick deployment validation
+│   ├── smoke-test.sh           # Quick deployment validation
+│   └── test-authorizer.sh      # Test JWT authorizer
 │
-├── docs/                       # Additional documentation
-│   ├── ARCHITECTURE.md
-│   ├── TESTING_AUTOMATION.md
-│   ├── api-sqs-lambda-flow.md
-│   └── localstack-debugging-insights.md
+├── docs/                       # All documentation
+│   ├── ARCHITECTURE.md         # System design
+│   ├── BUILD_GUIDE.md          # Build instructions
+│   ├── TESTING_GUIDE.md        # Manual testing procedures
+│   ├── TESTING_AUTOMATION.md   # CI/CD testing
+│   ├── DISTRIBUTED_TRACING_GUIDE.md # X-Ray & CloudWatch
+│   ├── GITHUB_ACTIONS_SETUP.md # CI/CD IAM setup
+│   ├── api-sqs-lambda-flow.md  # API flow documentation
+│   └── localstack-debugging-insights.md # LocalStack tips
 │
 ├── .github/workflows/          # CI/CD pipelines
 │   ├── ci.yml                  # Main CI pipeline
 │   └── deploy-dev.yml          # Dev deployment
 │
 ├── README.md                   # Project overview
-├── BUILD_GUIDE.md              # Build instructions
-├── TESTING_GUIDE.md            # Testing procedures
-├── DISTRIBUTED_TRACING_GUIDE.md # Observability guide
-├── GITHUB_ACTIONS_SETUP.md     # CI/CD setup
-└── CLAUDE.md                   # This file
+└── CLAUDE.md                   # This file (AI context)
 ```
 
 ## Service Details

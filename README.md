@@ -7,15 +7,35 @@ A serverless application for monitoring trash bin status using AWS Lambda, Dynam
 EcoScan uses an event-driven, asynchronous architecture:
 
 ```
-Client → API Gateway → SQS Queue → Lambda → DynamoDB
-                         ↓
-                    Dead Letter Queue
+┌─────────────────────────────────────────────────────────────────┐
+│                        API Gateway                               │
+├─────────────────┬───────────────────────┬───────────────────────┤
+│ POST /bins/{id}/status │ POST /auth/login │ GET/POST /admin/*   │
+│ (IoT devices)          │ (No auth)        │ (JWT required)       │
+└────────┬───────────────┴────────┬────────┴──────────┬───────────┘
+         │                        │                    │
+         ▼                        │         ┌─────────▼─────────┐
+    ┌─────────┐                   │         │ Lambda Authorizer │
+    │   SQS   │                   │         └─────────┬─────────┘
+    └────┬────┘                   ▼                   │
+         │              ┌──────────────────┐          │
+         ▼              │ admin-dashboard- │◄─────────┘
+┌─────────────────┐     │ api Lambda       │
+│ bin-status-     │     └────────┬─────────┘
+│ reporter Lambda │              │
+└────────┬────────┘              │
+         └───────────┬───────────┘
+                     ▼
+              ┌───────────┐
+              │ DynamoDB  │
+              └───────────┘
 ```
 
 **Key Features:**
 - 🚀 Async processing with SQS for resilience and scalability
 - 📦 Rust Lambda functions for high performance
-- 🏗️ Multi-layer Terraform infrastructure
+- 🔐 JWT authentication for admin endpoints
+- 🏗️ Multi-layer Terraform infrastructure (no circular dependencies)
 - 🧪 LocalStack for local development
 - ✅ Comprehensive E2E testing
 
@@ -73,19 +93,18 @@ docker-compose up -d
 ```
 EcoScan/
 ├── services/                      # Rust microservices
-│   ├── bin-status-reporter/      # Main Lambda function (SQS handler)
-│   │   ├── src/                  # Source code
-│   │   ├── tests/                # Unit & integration tests
-│   │   └── test-events/          # Sample Lambda event payloads
+│   ├── bin-status-reporter/      # SQS-triggered status processor
+│   ├── lambda-authorizer/        # JWT token validator
+│   ├── admin-dashboard-api/      # Admin CRUD API
 │   ├── e2e-tests/                # End-to-end integration tests
-│   └── shared/                   # Shared domain models
+│   └── shared/                   # Shared domain models (stub)
 ├── infrastructure/               # Terraform IaC
 │   ├── layers/                   # Multi-layer architecture
-│   │   ├── 00-foundation/       # S3 buckets
-│   │   ├── 01-data/             # DynamoDB tables
-│   │   ├── 02-compute/          # Lambda functions
-│   │   └── 03-api/              # API Gateway + SQS
-│   ├── environments/            # Environment configs
+│   │   ├── 00-foundation/       # S3 buckets, GitHub Actions IAM
+│   │   ├── 01-data/             # DynamoDB, Secrets Manager, SQS
+│   │   ├── 02-compute/          # Lambda functions, SQS event mapping
+│   │   └── 03-api/              # API Gateway, Lambda authorizer config
+│   ├── environments/            # Environment configs (local/dev/prod)
 │   └── scripts/                 # Deployment scripts
 ├── scripts/                      # Build and utility scripts
 ├── docs/                         # Documentation
@@ -94,13 +113,16 @@ EcoScan/
 
 ## Documentation
 
-For more detailed information:
+All documentation is in the `docs/` folder:
 
-- **[Architecture](docs/ARCHITECTURE.md)**: System design, components, and data model
-- **[Infrastructure README](infrastructure/README.md)**: Terraform setup and deployment guide
-- **[Testing Automation Guide](docs/TESTING_AUTOMATION.md)**: Automated testing, smoke tests, and CI/CD
-- **[API Gateway → SQS → Lambda Flow](docs/api-sqs-lambda-flow.md)**: Async message flow details
-- **[LocalStack Debugging Insights](docs/localstack-debugging-insights.md)**: LocalStack tips and solutions
+- **[Architecture](docs/ARCHITECTURE.md)** - System design and data model
+- **[Build Guide](docs/BUILD_GUIDE.md)** - Lambda build instructions
+- **[Testing Guide](docs/TESTING_GUIDE.md)** - Manual testing procedures
+- **[Testing Automation](docs/TESTING_AUTOMATION.md)** - CI/CD and automated tests
+- **[Distributed Tracing](docs/DISTRIBUTED_TRACING_GUIDE.md)** - X-Ray and CloudWatch
+- **[GitHub Actions Setup](docs/GITHUB_ACTIONS_SETUP.md)** - CI/CD IAM configuration
+- **[API Flow](docs/api-sqs-lambda-flow.md)** - API Gateway → SQS → Lambda flow
+- **[LocalStack Debugging](docs/localstack-debugging-insights.md)** - LocalStack tips
 
 ## Development
 
@@ -147,16 +169,28 @@ ENVIRONMENT=dev ./scripts/run-e2e-tests.sh    # AWS dev environment
 Once deployed, you can interact with the API:
 
 ```bash
-# Update bin status
-curl -X POST "http://localhost:4566/restapis/<API_ID>/local/_user_request_/bins/<BIN_ID>/status" \
+# Get API Gateway ID
+API_ID=$(cd infrastructure/layers/03-api && terraform output -raw api_gateway_id)
+BASE_URL="http://localhost:4566/restapis/${API_ID}/local/_user_request_"
+
+# Update bin status (IoT devices - no auth required)
+curl -X POST "${BASE_URL}/bins/00000000-0000-0000-0000-000000000001/status" \
   -H "Content-Type: application/json" \
   -d '{"status": 75}'
+# Response: {"message":"Status update queued for processing"}
 
-# Response
-{"message":"Status update queued for processing"}
+# Admin login
+curl -X POST "${BASE_URL}/auth/login" \
+  -H "Content-Type: application/json" \
+  -d '{"email": "admin@ecoscan.local", "password": "admin123"}'
+# Response: {"token": "eyJ...", "user": {...}}
+
+# List bins (requires JWT)
+TOKEN="<token from login>"
+curl "${BASE_URL}/admin/bins" -H "Authorization: Bearer ${TOKEN}"
 ```
 
-The message is queued in SQS and processed asynchronously by Lambda.
+The status update is queued in SQS and processed asynchronously by Lambda.
 
 ## Testing
 

@@ -61,6 +61,8 @@ coverage/
 *.swp
 *.swo
 *~
+.cursorrules
+.windsurfrules
 
 # OS generated files
 .DS_Store
@@ -74,7 +76,9 @@ Thumbs.db
 # Temporary files
 *.tmp
 *.temp
+*.bak
 .cache/
+output.json
 
 # Build outputs and artifacts
 build/

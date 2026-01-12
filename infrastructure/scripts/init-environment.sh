@@ -112,6 +112,15 @@ for layer in "${LAYERS[@]}"; do
     LAYER_DIR="$LAYERS_DIR/$layer"
     cd "$LAYER_DIR"
 
+    # Temporarily disable override.tf if it exists (for AWS deployments)
+    # override.tf files are used for local development but conflict with S3 backend
+    OVERRIDE_FILE="$LAYER_DIR/override.tf"
+    OVERRIDE_BACKUP="$LAYER_DIR/override.tf.bak"
+    if [[ "$ENVIRONMENT" != "local" ]] && [[ -f "$OVERRIDE_FILE" ]]; then
+        echo "Temporarily disabling override.tf for AWS deployment..."
+        mv "$OVERRIDE_FILE" "$OVERRIDE_BACKUP"
+    fi
+
     # Initialize Terraform with backend config
     echo "Initializing Terraform..."
     if [[ "$ENVIRONMENT" == "local" ]]; then
@@ -122,9 +131,23 @@ for layer in "${LAYERS[@]}"; do
     else
         # S3 backend for AWS
         terraform init \
-            -backend-config="$INFRA_ROOT/backend/${ENVIRONMENT}.tfbackend" \
+            -backend-config="bucket=ecoscan-terraform-state-${ENVIRONMENT}" \
             -backend-config="key=layers/${layer}/terraform.tfstate" \
-            -reconfigure
+            -backend-config="region=eu-central-1" \
+            -backend-config="dynamodb_table=ecoscan-terraform-locks-${ENVIRONMENT}" \
+            -backend-config="encrypt=true" \
+            -reconfigure || {
+            # If init fails, restore override and exit
+            if [[ -f "$OVERRIDE_BACKUP" ]]; then
+                mv "$OVERRIDE_BACKUP" "$OVERRIDE_FILE"
+            fi
+            exit 1
+        }
+    fi
+
+    # Restore override.tf after successful init (for local dev)
+    if [[ "$ENVIRONMENT" == "local" ]] && [[ -f "$OVERRIDE_BACKUP" ]]; then
+        mv "$OVERRIDE_BACKUP" "$OVERRIDE_FILE"
     fi
 
     # Plan

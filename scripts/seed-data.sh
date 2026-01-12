@@ -76,9 +76,8 @@ echo ""
 echo "--- Seeding Admin User ---"
 
 # Pre-computed bcrypt hash for password "admin123" (cost 12)
-# You can generate this with: echo -n "admin123" | htpasswd -bnBC 12 "" | tr -d ':\n' | sed 's/$2y/$2b/'
-# Or use any bcrypt generator online
-ADMIN_PASSWORD_HASH='$2b$12$LQv3c1yqBWVHxkd0LHAkCOYz6TtxMQJqhN8/X4.AH.fO.8BaYKnmy'
+# Generated with: python3 -c "import bcrypt; print(bcrypt.hashpw(b'admin123', bcrypt.gensalt(12)).decode())"
+ADMIN_PASSWORD_HASH='$2b$12$pENkNjUH0JkUYN6RFEReIei1a2ybCXNE.Y4v97xk5XbWVsQxpA6OS'
 
 echo "Creating default admin user..."
 aws --endpoint-url="$ENDPOINT_URL" dynamodb put-item \

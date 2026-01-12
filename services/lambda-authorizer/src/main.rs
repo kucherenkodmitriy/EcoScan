@@ -153,11 +153,7 @@ async fn fetch_from_secrets_manager(secret_arn: &str) -> Result<String, String> 
 
 /// Extract Bearer token from Authorization header
 fn extract_token(auth_header: &str) -> Option<&str> {
-    if auth_header.starts_with("Bearer ") {
-        Some(&auth_header[7..])
-    } else {
-        None
-    }
+    auth_header.strip_prefix("Bearer ")
 }
 
 /// Validate JWT token and return claims
@@ -170,6 +166,7 @@ fn validate_token(token: &str, secret: &str) -> Result<Claims, jsonwebtoken::err
 }
 
 /// Create the handler with shared state
+#[allow(clippy::type_complexity)]
 fn create_handler(
     state: Arc<AuthorizerState>,
 ) -> impl Fn(

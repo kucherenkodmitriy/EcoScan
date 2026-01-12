@@ -73,6 +73,7 @@ fn get_path_param(event: &ApiGatewayProxyRequest, name: &str) -> Option<String> 
 ///
 /// This returns a closure that captures the AppState, allowing config
 /// to be loaded once at cold start and reused across invocations.
+#[allow(clippy::type_complexity)]
 pub fn create_handler(
     state: AppState,
 ) -> impl Fn(
@@ -115,7 +116,7 @@ async fn api_handler_inner(
     let response = match (method, path) {
         // Login endpoint (no auth required)
         ("POST", p) if p.ends_with("/auth/login") => {
-            handle_login_request(&request, &repo, &config).await
+            handle_login_request(&request, &repo, config).await
         }
 
         // Public bin info for QR report page (no auth required)

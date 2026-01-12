@@ -84,7 +84,7 @@ impl DynamoDbRepository {
             bin_type: item
                 .get("binType")
                 .and_then(|v| v.as_s().ok())
-                .map(|s| BinType::from_str(s))
+                .map(|s| BinType::parse(s))
                 .unwrap_or_default(),
             address: item.get("address").and_then(|v| v.as_s().ok()).cloned(),
             coordinates,

@@ -28,11 +28,12 @@ impl AdminUser {
 }
 
 /// User roles for authorization
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, Default)]
 #[serde(rename_all = "lowercase")]
 pub enum UserRole {
     Admin,
     Operator,
+    #[default]
     Viewer,
 }
 
@@ -43,12 +44,6 @@ impl std::fmt::Display for UserRole {
             UserRole::Operator => write!(f, "operator"),
             UserRole::Viewer => write!(f, "viewer"),
         }
-    }
-}
-
-impl Default for UserRole {
-    fn default() -> Self {
-        UserRole::Viewer
     }
 }
 

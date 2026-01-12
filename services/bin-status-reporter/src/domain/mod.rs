@@ -37,7 +37,7 @@ impl fmt::Display for ReportSource {
 }
 
 impl ReportSource {
-    pub fn from_str(s: &str) -> Self {
+    pub fn parse(s: &str) -> Self {
         match s.to_lowercase().as_str() {
             "iot" => ReportSource::Iot,
             "manual" => ReportSource::Manual,
@@ -311,10 +311,10 @@ mod tests {
             assert_eq!(ReportSource::Iot.to_string(), "iot");
             assert_eq!(ReportSource::Manual.to_string(), "manual");
 
-            assert_eq!(ReportSource::from_str("qr"), ReportSource::Qr);
-            assert_eq!(ReportSource::from_str("iot"), ReportSource::Iot);
-            assert_eq!(ReportSource::from_str("manual"), ReportSource::Manual);
-            assert_eq!(ReportSource::from_str("unknown"), ReportSource::Qr); // default
+            assert_eq!(ReportSource::parse("qr"), ReportSource::Qr);
+            assert_eq!(ReportSource::parse("iot"), ReportSource::Iot);
+            assert_eq!(ReportSource::parse("manual"), ReportSource::Manual);
+            assert_eq!(ReportSource::parse("unknown"), ReportSource::Qr); // default
         }
     }
 }

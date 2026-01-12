@@ -149,7 +149,7 @@ async fn process_sqs_record(
     let source = message
         .source
         .as_deref()
-        .map(ReportSource::from_str)
+        .map(ReportSource::parse)
         .unwrap_or_default();
 
     let request = StatusUpdateRequest {
@@ -230,7 +230,7 @@ fn parse_request(
     let source = update_body
         .source
         .as_deref()
-        .map(ReportSource::from_str)
+        .map(ReportSource::parse)
         .unwrap_or_default();
 
     Ok(StatusUpdateRequest {

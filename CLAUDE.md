@@ -2,42 +2,45 @@
 
 This file provides context for Claude Code sessions to quickly understand the project without expensive codebase scanning.
 
+**Last Updated:** 2026-01-13
+
 ## Project Overview
 
 **EcoScan** is a serverless trash bin monitoring system built with:
 - **Language:** Rust (for all Lambda functions)
 - **Cloud:** AWS (Lambda, DynamoDB, API Gateway, SQS) with LocalStack for local development
 - **Infrastructure:** Terraform with 4-layer architecture
-- **CI/CD:** GitHub Actions
+- **CI/CD:** GitHub Actions with OIDC authentication
 
 ## Architecture
 
 ```
-┌─────────────────────────────────────────────────────────────────┐
-│                        API Gateway                               │
-├─────────────────┬───────────────────────┬───────────────────────┤
-│ POST /bins/{id}/status │ POST /auth/login │ GET/POST /admin/*   │
-│ (No auth, IoT devices) │ (No auth)        │ (JWT required)       │
-└────────┬────────────────┴────────┬────────┴──────────┬──────────┘
-         │                         │                    │
-         ▼                         │                    │
-    ┌─────────┐                    │         ┌─────────▼─────────┐
-    │   SQS   │                    │         │ Lambda Authorizer │
-    └────┬────┘                    │         │ (JWT validation)  │
-         │                         │         └─────────┬─────────┘
-         ▼                         ▼                   │
-┌─────────────────┐     ┌──────────────────┐          │
-│ bin-status-     │     │ admin-dashboard- │◄─────────┘
-│ reporter Lambda │     │ api Lambda       │
-└────────┬────────┘     └────────┬─────────┘
-         │                       │
-         ▼                       ▼
-┌─────────────────────────────────────────────────────────────────┐
-│                         DynamoDB                                 │
-├─────────────────┬─────────────────────┬─────────────────────────┤
-│   trash-bins    │   status-reports    │     admin-users         │
-│ (current state) │ (history, time-series)│ (credentials)         │
-└─────────────────┴─────────────────────┴─────────────────────────┘
+┌─────────────────────────────────────────────────────────────────────────┐
+│                            API Gateway                                   │
+├──────────────┬──────────────┬─────────────────┬─────────────────────────┤
+│ POST /bins/  │ GET /report/ │ POST /auth/     │ GET/POST/PUT/DELETE     │
+│ {id}/status  │ {bin_id}     │ login           │ /admin/*                │
+│ (IoT/QR)     │ (Public)     │ (No auth)       │ (JWT required)          │
+└──────┬───────┴──────┬───────┴────────┬────────┴──────────┬──────────────┘
+       │              │                │                   │
+       ▼              │                │        ┌──────────▼──────────┐
+  ┌─────────┐         │                │        │ Lambda Authorizer   │
+  │   SQS   │         │                │        │ (JWT validation)    │
+  └────┬────┘         │                │        └──────────┬──────────┘
+       │              │                │                   │
+       ▼              ▼                ▼                   │
+┌─────────────────┐  ┌──────────────────────────────────────────────────┐
+│ bin-status-     │  │            admin-dashboard-api Lambda            │
+│ reporter Lambda │  │  (handles /report, /auth/login, /admin/*)       │
+└────────┬────────┘  └───────────────────────┬──────────────────────────┘
+         │                                   │
+         ▼                                   ▼
+┌─────────────────────────────────────────────────────────────────────────┐
+│                              DynamoDB                                    │
+├─────────────────┬───────────────────────┬───────────────────────────────┤
+│   trash-bins    │    status-reports     │         admin-users           │
+│ (current state) │ (history, time-series)│       (credentials)           │
+└─────────────────┴───────────────────────┴───────────────────────────────┘
 ```
 
 ## Directory Structure
@@ -46,22 +49,25 @@ This file provides context for Claude Code sessions to quickly understand the pr
 EcoScan/
 ├── services/                     # Rust Lambda services
 │   ├── Cargo.toml               # Workspace definition
-│   ├── bin-status-reporter/     # ✅ IMPLEMENTED - SQS-triggered status processor
-│   ├── lambda-authorizer/       # ✅ IMPLEMENTED - JWT token validator
-│   ├── admin-dashboard-api/     # ✅ IMPLEMENTED - Admin CRUD API
-│   ├── e2e-tests/              # ✅ IMPLEMENTED - End-to-end tests
-│   ├── notifier/               # ❌ STUB - Future notification service
-│   └── shared/                 # ❌ STUB - Shared domain models (not integrated)
+│   ├── bin-status-reporter/     # SQS-triggered status processor
+│   ├── lambda-authorizer/       # JWT token validator
+│   ├── admin-dashboard-api/     # Admin CRUD API + public endpoints
+│   ├── e2e-tests/              # End-to-end tests
+│   ├── notifier/               # STUB - Future notification service
+│   └── shared/                 # STUB - Shared domain models
 │
 ├── infrastructure/
 │   ├── layers/
 │   │   ├── 00-foundation/      # S3 buckets, GitHub Actions IAM
-│   │   ├── 01-data/            # DynamoDB tables, Secrets Manager, SQS queues
-│   │   ├── 02-compute/         # Lambda functions, IAM roles, SQS event mapping
-│   │   └── 03-api/             # API Gateway, Lambda authorizer config
+│   │   ├── 01-data/            # DynamoDB tables, Secrets Manager, SQS
+│   │   ├── 02-compute/         # Lambda functions, IAM roles
+│   │   └── 03-api/             # API Gateway, routes, integrations
 │   ├── environments/           # tfvars for local/dev/prod
 │   ├── backend/                # Terraform backend configs
 │   └── scripts/                # init-environment.sh
+│
+├── static/                      # Static web assets
+│   └── report.html             # QR code landing page (self-contained)
 │
 ├── scripts/
 │   ├── build-lambda.sh         # Build all Lambda services
@@ -70,146 +76,174 @@ EcoScan/
 │   ├── smoke-test.sh           # Quick deployment validation
 │   └── test-authorizer.sh      # Test JWT authorizer
 │
-├── docs/                       # All documentation
+├── docs/
 │   ├── openapi.yaml            # OpenAPI 3.0 specification
 │   ├── ARCHITECTURE.md         # System design
 │   ├── BUILD_GUIDE.md          # Build instructions
 │   ├── TESTING_GUIDE.md        # Manual testing procedures
-│   ├── TESTING_AUTOMATION.md   # CI/CD testing
-│   ├── DISTRIBUTED_TRACING_GUIDE.md # X-Ray & CloudWatch
-│   ├── GITHUB_ACTIONS_SETUP.md # CI/CD IAM setup
-│   ├── api-sqs-lambda-flow.md  # API flow documentation
-│   └── localstack-debugging-insights.md # LocalStack tips
+│   └── ...
 │
-├── .github/workflows/          # CI/CD pipelines
-│   ├── ci.yml                  # Main CI pipeline
-│   └── deploy-dev.yml          # Dev deployment
+├── .github/workflows/
+│   ├── ci.yml                  # Main CI/CD pipeline
+│   └── deploy-dev.yml          # Dev deployment (legacy)
 │
-├── README.md                   # Project overview
-└── CLAUDE.md                   # This file (AI context)
+├── README.md
+└── CLAUDE.md                   # This file
 ```
 
 ## Service Details
 
-### bin-status-reporter (✅ Complete)
-- **Purpose:** Process bin status updates from IoT devices
+### bin-status-reporter
+- **Purpose:** Process bin status updates from IoT devices and QR code reports
 - **Trigger:** SQS messages from API Gateway
 - **Features:**
   - Weighted average fullness calculation
   - Stores current status + historical reports
   - Batch processing with partial failure support
+  - **ReportSource tracking** (iot, qr, manual)
 - **Key files:**
+  - `src/domain/mod.rs` - StatusUpdate, ReportSource enum
   - `src/domain/fullness.rs` - Weighted average algorithm
   - `src/infrastructure/dynamodb.rs` - DynamoDB operations
 
-### lambda-authorizer (✅ Complete)
+### lambda-authorizer
 - **Purpose:** Validate JWT tokens for admin endpoints
 - **Returns:** IAM Allow/Deny policy with user context
-- **Key config:** `JWT_SECRET_ARN` (production) or `JWT_SECRET` (local dev)
+- **Key config:** `JWT_SECRET_ARN` (production) or `JWT_SECRET` (local)
 - **Key files:**
   - `src/main.rs` - Token validation, Secrets Manager integration
 
-### admin-dashboard-api (✅ Complete)
-- **Purpose:** Admin CRUD operations for bins and authentication
+### admin-dashboard-api
+- **Purpose:** Admin CRUD + public bin info for QR reports
 - **Endpoints:**
   - `POST /auth/login` - Returns JWT token
-  - `GET /admin/bins` - List all bins
-  - `GET/POST/PUT/DELETE /admin/bins/{id}` - Bin CRUD
-- **Authentication:** JWT via Lambda authorizer
+  - `GET /report/{bin_id}` - **Public** bin info (name, type, address)
+  - `GET/POST/PUT/DELETE /admin/bins/*` - Protected bin CRUD
 - **Key files:**
+  - `src/lib.rs` - Request routing
   - `src/application/auth.rs` - Login logic
   - `src/application/bins.rs` - Bin management
-  - `src/infrastructure/jwt.rs` - Token generation
-  - `src/infrastructure/secrets.rs` - Secrets Manager integration
+  - `src/domain/bin.rs` - BinInfo, PublicBinInfo, BinType
 
-## Patterns & Conventions
+## Domain Models
 
-### Rust Service Structure
-```
-service/
-├── src/
-│   ├── main.rs           # Entry point, logging init
-│   ├── lib.rs            # Handler exports, routing
-│   ├── config.rs         # Environment config
-│   ├── application/      # Business logic
-│   ├── domain/           # Models, traits, errors
-│   └── infrastructure/   # DynamoDB, external services
-└── Cargo.toml
+### ReportSource (bin-status-reporter)
+```rust
+pub enum ReportSource {
+    Iot,    // IoT device sensor readings
+    Qr,     // QR code scan from mobile (default)
+    Manual, // Manual entry from admin dashboard
+}
 ```
 
-### Naming Conventions
-- **Terraform resources:** `${environment}-${project_name}-{resource}`
-- **DynamoDB tables:** `${environment}-ecoscan-{table-name}`
-- **Lambda functions:** `${environment}-ecoscan-{function-name}`
-- **IAM roles:** `${environment}-ecoscan-{service}-role`
+### BinType (admin-dashboard-api)
+```rust
+pub enum BinType {
+    General,    // General waste (default)
+    Recycling,  // Recyclable materials
+    Organic,    // Organic/compost waste
+    Hazardous,  // Hazardous materials
+}
+```
 
-### Environment Variables
-Common across services:
-- `DYNAMODB_ENDPOINT_URL` - LocalStack endpoint (only for local)
-- `TRASH_BINS_TABLE_NAME` - Bins table name
-- `STATUS_REPORTS_TABLE_NAME` - Reports table name
+### PublicBinInfo (admin-dashboard-api)
+Limited bin info returned by public `/report/{bin_id}` endpoint:
+```rust
+pub struct PublicBinInfo {
+    pub bin_id: Uuid,
+    pub name: String,
+    pub bin_type: BinType,
+    pub address: Option<String>,
+}
+```
+
+## API Endpoints
+
+| Method | Path | Auth | Handler | Description |
+|--------|------|------|---------|-------------|
+| POST | /bins/{bin_id}/status | None | bin-status-reporter (SQS) | Submit bin status |
+| GET | /report/{bin_id} | None | admin-dashboard-api | Public bin info for QR page |
+| POST | /auth/login | None | admin-dashboard-api | Get JWT token |
+| GET | /admin/bins | JWT | admin-dashboard-api | List all bins |
+| GET | /admin/bins/{id} | JWT | admin-dashboard-api | Get bin details |
+| POST | /admin/bins | JWT | admin-dashboard-api | Create bin |
+| PUT | /admin/bins/{id} | JWT | admin-dashboard-api | Update bin |
+| DELETE | /admin/bins/{id} | JWT | admin-dashboard-api | Soft delete bin |
+
+## QR Code Flow
+
+```
+┌─────────────┐     ┌─────────────┐     ┌─────────────┐     ┌─────────────┐
+│  QR Code    │────▶│ report.html │────▶│ GET /report │────▶│ Display bin │
+│  on bin     │     │ (static)    │     │ /{bin_id}   │     │ info + form │
+└─────────────┘     └─────────────┘     └─────────────┘     └──────┬──────┘
+                                                                   │
+                    ┌─────────────┐     ┌─────────────┐            │
+                    │  DynamoDB   │◀────│ Lambda via  │◀───────────┘
+                    │  updated    │     │ SQS         │     User submits
+                    └─────────────┘     └─────────────┘     status (0-100)
+```
+
+**QR URL Format:** `https://{domain}/static/report.html?bin={bin_id}`
+
+## CI/CD Pipeline
+
+The GitHub Actions workflow (`.github/workflows/ci.yml`) includes:
+
+1. **Detect Changes** - Determines which components changed
+2. **Lint** - `cargo fmt --check` + `cargo clippy -- -D warnings`
+3. **Test** - `cargo test --lib`
+4. **Terraform Validate** - All 4 layers
+5. **Build Lambda** - Builds all 3 Lambda zips via Docker
+6. **Deploy Foundation** → **Deploy Data** → **Deploy API** → **Deploy Compute**
+7. **Upload Lambda to S3** - Stores artifacts for future deployments
+8. **Smoke Tests** - Basic endpoint validation
+9. **E2E Tests** - Full integration tests
+
+### Lambda Artifacts
+The build produces 3 separate zip files:
+- `lambda.zip` - bin-status-reporter
+- `authorizer.zip` - lambda-authorizer
+- `admin-dashboard.zip` - admin-dashboard-api
+
+## Infrastructure Layers
+
+Deploy order: 00 → 01 → 02 → 03
+
+| Layer | Purpose | Key Resources |
+|-------|---------|---------------|
+| 00-foundation | Base | S3 buckets, GitHub Actions IAM (incl. Secrets Manager perms) |
+| 01-data | Storage | DynamoDB (3 tables), Secrets Manager (JWT), SQS queues |
+| 02-compute | Processing | Lambda functions (3), IAM roles, SQS triggers |
+| 03-api | Gateway | API Gateway, routes, Lambda integrations, authorizer config |
+
+## DynamoDB Tables
+
+### trash-bins
+- **PK:** `binId` (String/UUID)
+- **Attributes:** Name, binType, status (0-100), reportsCount, lastUpdated, isActive, address, coordinates
+
+### status-reports
+- **PK:** `binId` (String), **SK:** `createdAt` (String/ISO8601)
+- **Attributes:** status (0-100), source (iot/qr/manual)
+
+### admin-users
+- **PK:** `email` (String)
+- **Attributes:** passwordHash (bcrypt), name, role (admin/operator/viewer), createdAt, lastLogin, isActive
+
+## Environment Variables
+
+**Common:**
+- `DYNAMODB_ENDPOINT_URL` - LocalStack only
+- `TRASH_BINS_TABLE_NAME`
+- `STATUS_REPORTS_TABLE_NAME`
 - `AWS_REGION` - Default: eu-central-1
 
-Admin-specific:
-- `ADMIN_USERS_TABLE_NAME` - Users table name
-- `JWT_SECRET_ARN` - Secrets Manager ARN (production only)
-- `JWT_SECRET` - Token signing secret (LocalStack only, fallback)
-- `JWT_EXPIRY_HOURS` - Token lifetime (default: 24)
-
-## JWT Secret Management
-
-The JWT signing secret is managed differently based on environment:
-
-### Production (AWS)
-- Secret stored in **AWS Secrets Manager**
-- Lambda receives `JWT_SECRET_ARN` environment variable
-- Secret fetched at Lambda cold start and cached
-- Terraform creates secret in `01-data` layer with auto-generated value
-- IAM policies grant `secretsmanager:GetSecretValue` permission
-
-### Local Development (LocalStack)
-- Secret passed directly via `JWT_SECRET` environment variable
-- Configured in `infrastructure/environments/local.tfvars` or `.env.local`
-- No Secrets Manager integration (simpler for local dev)
-
-### Configuration Files
-- `.env.local.example` - Template for local development overrides
-- `.env.local` - Your local overrides (gitignored)
-
-### Flow Diagram
-```
-┌─────────────────────────────────────────────────────────────────┐
-│                    JWT Secret Resolution                         │
-├─────────────────────────────────────────────────────────────────┤
-│                                                                  │
-│  Lambda Cold Start                                               │
-│       │                                                          │
-│       ▼                                                          │
-│  ┌─────────────────────┐                                        │
-│  │ JWT_SECRET_ARN set? │                                        │
-│  └──────────┬──────────┘                                        │
-│        Yes  │  No                                                │
-│       ┌─────┴─────┐                                             │
-│       ▼           ▼                                              │
-│  ┌─────────┐  ┌─────────────────┐                               │
-│  │ Fetch   │  │ JWT_SECRET set? │                               │
-│  │ from SM │  └────────┬────────┘                               │
-│  └────┬────┘      Yes  │  No                                    │
-│       │          ┌─────┴─────┐                                  │
-│       │          ▼           ▼                                   │
-│       │     ┌────────┐  ┌─────────┐                             │
-│       │     │ Use it │  │ ERROR   │                             │
-│       │     └────┬───┘  └─────────┘                             │
-│       │          │                                               │
-│       └────┬─────┘                                               │
-│            ▼                                                     │
-│       ┌────────────┐                                            │
-│       │ Cache &    │                                            │
-│       │ Use Secret │                                            │
-│       └────────────┘                                            │
-│                                                                  │
-└─────────────────────────────────────────────────────────────────┘
-```
+**Admin/Authorizer:**
+- `ADMIN_USERS_TABLE_NAME`
+- `JWT_SECRET_ARN` - Secrets Manager ARN (AWS)
+- `JWT_SECRET` - Direct secret (LocalStack fallback)
+- `JWT_EXPIRY_HOURS` - Default: 24
 
 ## Quick Commands
 
@@ -220,142 +254,113 @@ The JWT signing secret is managed differently based on environment:
 # Deploy to LocalStack
 ./infrastructure/scripts/init-environment.sh local
 
-# Seed test data (includes admin user)
+# Seed test data
 ./scripts/seed-data.sh
 
-# Run E2E tests
+# Run unit tests
+cd services && cargo test --lib
+
+# Run E2E tests (requires LocalStack or AWS)
 ./scripts/run-e2e-tests.sh
 
-# Run unit tests
-cd services && cargo test
+# Format code
+cd services && cargo fmt
 
-# Test login
-curl -X POST http://localhost:4566/.../auth/login \
-  -H "Content-Type: application/json" \
-  -d '{"email": "admin@ecoscan.local", "password": "admin123"}'
+# Lint check
+cd services && cargo clippy -- -D warnings
 ```
 
-## Current State (as of last update)
+## Test Credentials (Local)
 
-### ✅ Implemented
-- Bin status reporting (IoT → API → SQS → Lambda → DynamoDB)
-- Weighted average fullness calculation
-- Admin authentication (JWT)
-- Lambda authorizer for protected routes
-- Admin CRUD for bins
-- JWT secret management via AWS Secrets Manager (production)
-- Distributed tracing (X-Ray + CloudWatch)
-- CI/CD pipeline
-- LocalStack development environment
-
-### ❌ Not Yet Implemented
-- `notifier` service - Email/SMS/push notifications
-- `shared` library - Not integrated into workspace
-- Frontend UI - Backend API only
-- User management endpoints (create/delete users)
-- Bin location management
-
-## Infrastructure Layers
-
-Deploy order: 00 → 01 → 02 → 03 (unidirectional dependency flow)
-
-| Layer | Purpose | Key Resources |
-|-------|---------|---------------|
-| 00-foundation | Base resources | S3 buckets, GitHub Actions IAM |
-| 01-data | Data storage | DynamoDB tables (3), Secrets Manager (JWT secret), SQS queues |
-| 02-compute | Processing | Lambda functions (3), IAM roles, SQS event source mapping |
-| 03-api | API layer | API Gateway, Lambda authorizer config |
-
-## DynamoDB Tables
-
-### trash-bins
-- **PK:** `binId` (String/UUID)
-- **Attributes:** Name, status (0-100), reportsCount, lastUpdated, isActive
-
-### status-reports
-- **PK:** `binId` (String), **SK:** `createdAt` (String/ISO8601)
-- **Attributes:** status (0-100)
-
-### admin-users
-- **PK:** `email` (String)
-- **Attributes:** passwordHash (bcrypt), name, role, createdAt, lastLogin, isActive
-
-## API Endpoints
-
-| Method | Path | Auth | Handler |
-|--------|------|------|---------|
-| POST | /bins/{bin_id}/status | None | bin-status-reporter (via SQS) |
-| POST | /auth/login | None | admin-dashboard-api |
-| GET | /admin/bins | JWT | admin-dashboard-api |
-| GET | /admin/bins/{id} | JWT | admin-dashboard-api |
-| POST | /admin/bins | JWT | admin-dashboard-api |
-| PUT | /admin/bins/{id} | JWT | admin-dashboard-api |
-| DELETE | /admin/bins/{id} | JWT | admin-dashboard-api |
-
-## Test Credentials
-
-For local development:
 - **Email:** admin@ecoscan.local
 - **Password:** admin123
 
-## Key Dependencies (workspace)
+## Test Status
+
+- **Unit tests:** 50 passing
+  - 14 admin-dashboard-api
+  - 36 bin-status-reporter (includes ReportSource tests)
+  - lambda-authorizer tests
+- **E2E tests:** Require running environment
+
+## Key Dependencies
 
 ```toml
-tokio = "1.0"                  # Async runtime
-lambda_runtime = "0.8"         # AWS Lambda runtime
-aws-sdk-dynamodb = "1.0"       # DynamoDB client
-aws-sdk-secretsmanager = "1.0" # Secrets Manager client
-aws-config = "1.0"             # AWS config loader
-jsonwebtoken = "9.0"           # JWT handling (admin-dashboard-api, lambda-authorizer)
-bcrypt = "0.15"                # Password hashing (admin-dashboard-api)
-uuid = "1.0"                   # UUID generation
-chrono = "0.4"                 # Date/time handling
-tracing = "0.1"                # Logging
-```
-
-## Future Plans
-
-1. **Notifier Service** - Send alerts when bins reach thresholds
-2. **Frontend Dashboard** - React/Vue SPA for admin UI
-3. **Location Management** - Assign bins to locations
-4. **User Management** - Admin endpoints for user CRUD
-5. **Reporting** - Analytics and export functionality
-
-## Known Issues & Fixes
-
-### Test Status
-- **Unit tests:** 56 passing total
-  - 12 admin-dashboard-api
-  - 35 bin-status-reporter
-  - 9 lambda-authorizer
-- **E2E tests:** Require LocalStack running with `API_ENDPOINT` env var
-
-### aws_config deprecation
-Use `aws_config::defaults(BehaviorVersion::latest())` instead of `aws_config::from_env()`.
-
-### tracing-subscriber json feature
-The workspace Cargo.toml includes `json` feature for structured Lambda logging:
-```toml
+tokio = "1.0"
+lambda_runtime = "0.8"
+aws-sdk-dynamodb = "1.0"
+aws-sdk-secretsmanager = "1.0"
+aws-config = "1.0"
+jsonwebtoken = "9.0"
+bcrypt = "0.15"
+uuid = "1.0"
+chrono = "0.4"
+tracing = "0.1"
 tracing-subscriber = { version = "0.3", features = ["env-filter", "json"] }
 ```
 
----
+## Recent Changes (Jan 2026)
+
+1. **QR Code Reporting Flow**
+   - Added `ReportSource` enum (iot/qr/manual) to track report origin
+   - Added `GET /report/{bin_id}` public endpoint for QR landing page
+   - Added `PublicBinInfo` struct with limited bin data
+   - Created `static/report.html` self-contained landing page
+
+2. **CI/CD Fixes**
+   - Fixed to upload/download all 3 Lambda artifacts
+   - Added Secrets Manager permissions to GitHub Actions IAM role
+   - Added `**/override.tf` to .gitignore (local backend overrides)
+
+3. **Code Quality**
+   - Fixed clippy warnings (strip_prefix, type_complexity, derive Default)
+   - Renamed `from_str` methods to `parse` to avoid trait conflicts
+
+## Known Issues & Solutions
+
+### Terraform Backend
+- `override.tf` files in layer directories override S3 backend with local
+- These are gitignored; don't commit them
+- CI uses S3 backend via `-backend-config` flags
+
+### Clippy Strict Mode
+CI runs `clippy -- -D warnings`. Common fixes:
+- Use `strip_prefix()` instead of manual slicing
+- Add `#[allow(clippy::type_complexity)]` for complex handler types
+- Use `#[derive(Default)]` with `#[default]` attribute on enum variants
+
+### GitHub Actions IAM
+The role needs permissions for:
+- S3 (Terraform state)
+- DynamoDB, Lambda, API Gateway, SQS, IAM
+- **Secrets Manager** (create, read, update, delete secrets)
 
 ## Troubleshooting
 
-### LocalStack Issues
-- Check `docker-compose logs localstack`
-- Ensure all tables created: `awslocal dynamodb list-tables`
-- Check Lambda logs: `awslocal logs tail /aws/lambda/{function-name}`
+### LocalStack
+```bash
+docker-compose logs localstack
+awslocal dynamodb list-tables
+awslocal logs tail /aws/lambda/{function-name}
+```
 
 ### Build Issues
-- Clean build: `cd services && cargo clean`
-- Check Docker is running for Lambda builds
-- Verify architecture matches (arm64 for Apple Silicon LocalStack)
+```bash
+cd services && cargo clean
+docker ps  # Ensure Docker running
+```
 
 ### Auth Issues
-- **Production:** Verify both Lambdas have `secretsmanager:GetSecretValue` permission
-- **LocalStack:** Verify `JWT_SECRET` env var is set (check Terraform output)
-- Check token expiry (default 24h)
-- Test with: `curl -v` to see authorization header processing
-- Check Lambda logs for "JWT secret loaded successfully" message at cold start
+- Check `JWT_SECRET_ARN` or `JWT_SECRET` env var
+- Verify IAM policies include `secretsmanager:GetSecretValue`
+- Check Lambda logs for "JWT secret loaded" message
+
+---
+
+## Future Work
+
+1. **Notifier Service** - Alerts when bins reach thresholds
+2. **Frontend Dashboard** - React/Vue SPA
+3. **User Management** - Admin CRUD for users
+4. **Analytics** - Reporting and data export
+5. **Multi-tenant** - Organization support

@@ -127,9 +127,6 @@ resource "aws_cloudfront_distribution" "frontend" {
     }
   }
 
-  # Wait for S3 bucket policy to be in place
-  depends_on = [aws_s3_bucket_policy.frontend]
-
   tags = merge(local.common_tags, {
     Name = "${var.project_name}-frontend-cdn"
   })

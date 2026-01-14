@@ -27,6 +27,7 @@ samconfig.toml
 # AWS CDK
 cdk.out/
 *.d.ts
+!frontend/src/vite-env.d.ts
 
 # Node.js / Frontend
 node_modules/

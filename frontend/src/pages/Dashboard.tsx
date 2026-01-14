@@ -28,7 +28,7 @@ export default function Dashboard() {
     try {
       const data = await getBins()
       // Sort by fullness descending
-      data.sort((a, b) => (b.current_fullness || 0) - (a.current_fullness || 0))
+      data.sort((a, b) => (b.status || 0) - (a.status || 0))
       setBins(data)
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to load bins')
@@ -42,12 +42,12 @@ export default function Dashboard() {
   }, [])
 
   const activeBins = bins.filter((b) => b.is_active)
-  const fullBins = activeBins.filter((b) => (b.current_fullness || 0) >= 80).length
+  const fullBins = activeBins.filter((b) => (b.status || 0) >= 80).length
   const fillingBins = activeBins.filter((b) => {
-    const f = b.current_fullness || 0
+    const f = b.status || 0
     return f >= 50 && f < 80
   }).length
-  const availableBins = activeBins.filter((b) => (b.current_fullness || 0) < 50).length
+  const availableBins = activeBins.filter((b) => (b.status || 0) < 50).length
 
   return (
     <div className={styles.page}>
@@ -92,6 +92,9 @@ export default function Dashboard() {
             <button className="btn btn-secondary" onClick={loadBins} disabled={loading} style={{ background: '#666', border: 'none' }}>
               {loading ? 'Loading...' : 'Refresh'}
             </button>
+            <Link to="/print" className="btn btn-secondary" style={{ background: '#1565c0', border: 'none' }}>
+              Print QR
+            </Link>
             <Link to="/bins/new" className="btn btn-primary">
               + New Bin
             </Link>
@@ -144,14 +147,14 @@ export default function Dashboard() {
                     </td>
                     <td>{bin.address || '-'}</td>
                     <td>
-                      <div className={`${styles.statusBar} ${getStatusClass(bin.current_fullness || 0)}`}>
+                      <div className={`${styles.statusBar} ${getStatusClass(bin.status || 0)}`}>
                         <div className={styles.bar}>
                           <div
                             className={styles.barFill}
-                            style={{ width: `${bin.current_fullness || 0}%` }}
+                            style={{ width: `${bin.status || 0}%` }}
                           ></div>
                         </div>
-                        <span className={styles.percent}>{bin.current_fullness || 0}%</span>
+                        <span className={styles.percent}>{bin.status || 0}%</span>
                       </div>
                     </td>
                     <td>{bin.reports_count || 0}</td>

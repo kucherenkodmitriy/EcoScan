@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { useParams, useNavigate, Link } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 import { getBin, deleteBin, Bin } from '../api/client'
+import QRLabel from '../components/QRLabel'
 import styles from './BinDetail.module.css'
 
 function getStatusClass(status: number): string {
@@ -26,6 +27,8 @@ export default function BinDetail() {
   const [error, setError] = useState('')
   const [deleting, setDeleting] = useState(false)
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
+  const [showQRPreview, setShowQRPreview] = useState(false)
+  const [isPrinting, setIsPrinting] = useState(false)
 
   useEffect(() => {
     if (!id) {
@@ -60,6 +63,15 @@ export default function BinDetail() {
       setDeleting(false)
       setShowDeleteConfirm(false)
     }
+  }
+
+  const handlePrintQR = () => {
+    setIsPrinting(true)
+    setTimeout(() => {
+      window.print()
+      setIsPrinting(false)
+      setShowQRPreview(false)
+    }, 100)
   }
 
   return (
@@ -122,18 +134,18 @@ export default function BinDetail() {
             <div className={styles.grid}>
               <div className={styles.card}>
                 <h3>Current Status</h3>
-                <div className={`${styles.statusDisplay} ${getStatusClass(bin.current_fullness || 0)}`}>
-                  <div className={styles.statusValue}>{bin.current_fullness || 0}%</div>
+                <div className={`${styles.statusDisplay} ${getStatusClass(bin.status || 0)}`}>
+                  <div className={styles.statusValue}>{bin.status || 0}%</div>
                   <div className={styles.statusBar}>
                     <div
                       className={styles.statusFill}
-                      style={{ width: `${bin.current_fullness || 0}%` }}
+                      style={{ width: `${bin.status || 0}%` }}
                     ></div>
                   </div>
                   <div className={styles.statusLabel}>
-                    {(bin.current_fullness || 0) >= 80
+                    {(bin.status || 0) >= 80
                       ? 'Full - Needs Collection'
-                      : (bin.current_fullness || 0) >= 50
+                      : (bin.status || 0) >= 50
                       ? 'Getting Full'
                       : 'Available'}
                   </div>
@@ -155,21 +167,30 @@ export default function BinDetail() {
               </div>
 
               <div className={styles.card}>
-                <h3>QR Code Link</h3>
+                <h3>QR Code</h3>
                 <p className={styles.qrInfo}>
-                  Scan QR code or share this link for public reporting:
+                  Print QR code label or share link for public reporting:
                 </p>
-                <div className={styles.qrLink}>
-                  <code>/report?bin={bin.bin_id}</code>
+                <div className={styles.qrActions}>
                   <button
                     className="btn btn-primary"
+                    onClick={() => setShowQRPreview(true)}
+                  >
+                    Preview & Print QR
+                  </button>
+                  <button
+                    className="btn btn-secondary"
                     onClick={() => {
                       const url = `${window.location.origin}/report?bin=${bin.bin_id}`
                       navigator.clipboard.writeText(url)
                     }}
+                    style={{ background: '#666', border: 'none' }}
                   >
                     Copy Link
                   </button>
+                </div>
+                <div className={styles.qrLink}>
+                  <code>/report?bin={bin.bin_id}</code>
                 </div>
               </div>
             </div>
@@ -196,6 +217,40 @@ export default function BinDetail() {
                       {deleting ? 'Deleting...' : 'Delete'}
                     </button>
                   </div>
+                </div>
+              </div>
+            )}
+
+            {showQRPreview && (
+              <div className={styles.modal}>
+                <div className={styles.modalContent}>
+                  <h3>QR Code Preview</h3>
+                  <div className={styles.qrPreview}>
+                    <QRLabel bin={bin} size="large" />
+                  </div>
+                  <div className={styles.modalActions}>
+                    <button
+                      className="btn btn-secondary"
+                      onClick={() => setShowQRPreview(false)}
+                      style={{ background: '#666', border: 'none' }}
+                    >
+                      Close
+                    </button>
+                    <button
+                      className="btn btn-primary"
+                      onClick={handlePrintQR}
+                    >
+                      Print
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {isPrinting && (
+              <div className={styles.printContainer}>
+                <div className={styles.printLabel}>
+                  <QRLabel bin={bin} size="large" />
                 </div>
               </div>
             )}

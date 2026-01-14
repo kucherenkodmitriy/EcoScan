@@ -5,6 +5,7 @@ import Dashboard from './pages/Dashboard'
 import Report from './pages/Report'
 import BinDetail from './pages/BinDetail'
 import BinForm from './pages/BinForm'
+import QRPrint from './pages/QRPrint'
 
 function PrivateRoute({ children }: { children: React.ReactNode }) {
   const { isAuthenticated } = useAuth()
@@ -45,6 +46,14 @@ function App() {
         element={
           <PrivateRoute>
             <BinForm />
+          </PrivateRoute>
+        }
+      />
+      <Route
+        path="/print"
+        element={
+          <PrivateRoute>
+            <QRPrint />
           </PrivateRoute>
         }
       />

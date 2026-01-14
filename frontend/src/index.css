@@ -109,9 +109,11 @@ body {
   font-weight: 500;
 }
 
-.badge-general { background: #e0e0e0; color: #424242; }
-.badge-recycling { background: #e3f2fd; color: #1565c0; }
-.badge-organic { background: #e8f5e9; color: #2e7d32; }
-.badge-hazardous { background: #fff3e0; color: #e65100; }
+/* Bin type badges (match backend BinType enum) */
+.badge-mixed { background: #e0e0e0; color: #424242; }
+.badge-plastic { background: #e3f2fd; color: #1565c0; }
+.badge-paper { background: #fff3e0; color: #e65100; }
+.badge-glass { background: #e8f5e9; color: #2e7d32; }
+/* Status badges */
 .badge-active { background: #e8f5e9; color: #2e7d32; }
 .badge-inactive { background: #ffebee; color: #c62828; }

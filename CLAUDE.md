@@ -186,11 +186,12 @@ pub enum ReportSource {
 
 ### BinType (admin-dashboard-api)
 ```rust
+#[serde(rename_all = "lowercase")]
 pub enum BinType {
-    General,    // General waste (default)
-    Recycling,  // Recyclable materials
-    Organic,    // Organic/compost waste
-    Hazardous,  // Hazardous materials
+    Mixed,    // Mixed waste (default)
+    Plastic,  // Plastic recyclables
+    Paper,    // Paper recyclables
+    Glass,    // Glass recyclables
 }
 ```
 

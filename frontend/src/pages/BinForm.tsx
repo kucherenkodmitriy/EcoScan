@@ -1,10 +1,16 @@
 import { useState, useEffect } from 'react'
 import { useParams, useNavigate, Link } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
-import { getBin, createBin, updateBin, Bin, CreateBinRequest, UpdateBinRequest } from '../api/client'
+import { getBin, createBin, updateBin, Bin, CreateBinInput, UpdateBinInput } from '../api/client'
 import styles from './BinForm.module.css'
 
-const BIN_TYPES = ['General', 'Recycling', 'Organic', 'Hazardous']
+// Must match backend BinType enum (lowercase)
+const BIN_TYPES = [
+  { value: 'mixed', label: 'Mixed' },
+  { value: 'plastic', label: 'Plastic' },
+  { value: 'paper', label: 'Paper' },
+  { value: 'glass', label: 'Glass' },
+]
 
 export default function BinForm() {
   const { id } = useParams<{ id: string }>()
@@ -17,7 +23,7 @@ export default function BinForm() {
   const [error, setError] = useState('')
 
   const [name, setName] = useState('')
-  const [binType, setBinType] = useState('General')
+  const [binType, setBinType] = useState('mixed')
   const [address, setAddress] = useState('')
   const [latitude, setLatitude] = useState('')
   const [longitude, setLongitude] = useState('')
@@ -30,7 +36,7 @@ export default function BinForm() {
       try {
         const bin: Bin = await getBin(id)
         setName(bin.name || '')
-        setBinType(bin.bin_type || 'General')
+        setBinType(bin.bin_type || 'mixed')
         setAddress(bin.address || '')
         setIsActive(bin.is_active)
       } catch (err) {
@@ -56,7 +62,7 @@ export default function BinForm() {
 
     try {
       if (isEdit && id) {
-        const data: UpdateBinRequest = {
+        const data: UpdateBinInput = {
           name: name.trim(),
           bin_type: binType,
           address: address.trim() || undefined,
@@ -67,7 +73,7 @@ export default function BinForm() {
         await updateBin(id, data)
         navigate(`/bins/${id}`)
       } else {
-        const data: CreateBinRequest = {
+        const data: CreateBinInput = {
           name: name.trim(),
           bin_type: binType,
           address: address.trim() || undefined,
@@ -137,8 +143,8 @@ export default function BinForm() {
                   className={styles.select}
                 >
                   {BIN_TYPES.map((type) => (
-                    <option key={type} value={type}>
-                      {type}
+                    <option key={type.value} value={type.value}>
+                      {type.label}
                     </option>
                   ))}
                 </select>

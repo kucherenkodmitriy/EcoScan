@@ -27,7 +27,7 @@ export interface Bin {
   name: string
   bin_type: string
   address: string | null
-  current_fullness: number
+  status: number  // Fullness percentage (0-100)
   reports_count: number
   last_updated: string | null
   is_active: boolean
@@ -74,7 +74,19 @@ export async function getBin(binId: string): Promise<Bin> {
   return response.json()
 }
 
+export interface Coordinates {
+  latitude: number
+  longitude: number
+}
+
 export interface CreateBinRequest {
+  name: string
+  bin_type?: string
+  address?: string
+  coordinates?: Coordinates
+}
+
+export interface CreateBinInput {
   name: string
   bin_type: string
   address?: string
@@ -82,14 +94,32 @@ export interface CreateBinRequest {
   longitude?: number
 }
 
-export async function createBin(data: CreateBinRequest): Promise<Bin> {
+export async function createBin(input: CreateBinInput): Promise<Bin> {
+  // Transform to backend format
+  const data: CreateBinRequest = {
+    name: input.name,
+    bin_type: input.bin_type,
+    address: input.address,
+    coordinates: input.latitude && input.longitude
+      ? { latitude: input.latitude, longitude: input.longitude }
+      : undefined,
+  }
+
   const response = await fetchWithAuth('/admin/bins', {
     method: 'POST',
     body: JSON.stringify(data),
   })
+
   if (!response.ok) {
-    const error = await response.json()
-    throw new Error(error.error || 'Failed to create bin')
+    const errorText = await response.text()
+    let errorMessage = 'Failed to create bin'
+    try {
+      const errorJson = JSON.parse(errorText)
+      errorMessage = errorJson.error || errorJson.message || errorMessage
+    } catch {
+      if (errorText) errorMessage = errorText
+    }
+    throw new Error(errorMessage)
   }
   return response.json()
 }
@@ -98,19 +128,46 @@ export interface UpdateBinRequest {
   name?: string
   bin_type?: string
   address?: string
+  coordinates?: Coordinates
+  is_active?: boolean
+}
+
+export interface UpdateBinInput {
+  name?: string
+  bin_type?: string
+  address?: string
   latitude?: number
   longitude?: number
   is_active?: boolean
 }
 
-export async function updateBin(binId: string, data: UpdateBinRequest): Promise<Bin> {
+export async function updateBin(binId: string, input: UpdateBinInput): Promise<Bin> {
+  // Transform to backend format
+  const data: UpdateBinRequest = {
+    name: input.name,
+    bin_type: input.bin_type,
+    address: input.address,
+    coordinates: input.latitude && input.longitude
+      ? { latitude: input.latitude, longitude: input.longitude }
+      : undefined,
+    is_active: input.is_active,
+  }
+
   const response = await fetchWithAuth(`/admin/bins/${binId}`, {
     method: 'PUT',
     body: JSON.stringify(data),
   })
+
   if (!response.ok) {
-    const error = await response.json()
-    throw new Error(error.error || 'Failed to update bin')
+    const errorText = await response.text()
+    let errorMessage = 'Failed to update bin'
+    try {
+      const errorJson = JSON.parse(errorText)
+      errorMessage = errorJson.error || errorJson.message || errorMessage
+    } catch {
+      if (errorText) errorMessage = errorText
+    }
+    throw new Error(errorMessage)
   }
   return response.json()
 }
@@ -120,7 +177,14 @@ export async function deleteBin(binId: string): Promise<void> {
     method: 'DELETE',
   })
   if (!response.ok) {
-    const error = await response.json()
-    throw new Error(error.error || 'Failed to delete bin')
+    const errorText = await response.text()
+    let errorMessage = 'Failed to delete bin'
+    try {
+      const errorJson = JSON.parse(errorText)
+      errorMessage = errorJson.error || errorJson.message || errorMessage
+    } catch {
+      if (errorText) errorMessage = errorText
+    }
+    throw new Error(errorMessage)
   }
 }

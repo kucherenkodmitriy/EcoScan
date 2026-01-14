@@ -1,0 +1,399 @@
+.page {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+/* Header - same pattern as other pages */
+.header {
+  background: linear-gradient(135deg, #1a5d1a 0%, #2e7d32 100%);
+  color: white;
+  padding: 16px 24px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.headerLeft {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+}
+
+.headerLeft h1 {
+  font-size: 24px;
+  font-weight: 700;
+}
+
+.backLink {
+  color: rgba(255, 255, 255, 0.9);
+  text-decoration: none;
+  font-size: 14px;
+}
+
+.backLink:hover {
+  color: white;
+}
+
+.headerRight {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.userInfo {
+  text-align: right;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.userInfo strong {
+  font-size: 14px;
+}
+
+.userInfo span {
+  font-size: 12px;
+  opacity: 0.8;
+  text-transform: capitalize;
+}
+
+/* Main content */
+.main {
+  flex: 1;
+  padding: 24px;
+  max-width: 1200px;
+  margin: 0 auto;
+  width: 100%;
+}
+
+.titleBar {
+  margin-bottom: 24px;
+}
+
+.titleBar h2 {
+  font-size: 28px;
+  color: #333;
+  margin: 0 0 8px 0;
+}
+
+.subtitle {
+  color: #666;
+  margin: 0;
+}
+
+/* Filter bar */
+.filterBar {
+  background: white;
+  padding: 20px;
+  border-radius: 12px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+  margin-bottom: 16px;
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+  gap: 20px;
+  flex-wrap: wrap;
+}
+
+.filters {
+  display: flex;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+.filterGroup {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.filterGroup label {
+  font-size: 12px;
+  font-weight: 500;
+  color: #666;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.select {
+  padding: 10px 14px;
+  border: 2px solid #e0e0e0;
+  border-radius: 8px;
+  font-size: 14px;
+  min-width: 150px;
+  background: white;
+  cursor: pointer;
+}
+
+.select:focus {
+  outline: none;
+  border-color: #2e7d32;
+}
+
+.selectionActions {
+  display: flex;
+  gap: 8px;
+}
+
+.selectBtn {
+  padding: 8px 14px;
+  background: #f5f5f5;
+  border: 1px solid #e0e0e0;
+  border-radius: 6px;
+  font-size: 13px;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+
+.selectBtn:hover {
+  background: #e8e8e8;
+}
+
+/* Action bar */
+.actionBar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 16px;
+  padding: 12px 16px;
+  background: #f0f7f0;
+  border-radius: 8px;
+}
+
+.counter {
+  font-size: 14px;
+  color: #333;
+  font-weight: 500;
+}
+
+/* Bin list */
+.binList {
+  background: white;
+  border-radius: 12px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+  overflow: hidden;
+}
+
+.binItem {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 16px 20px;
+  border-bottom: 1px solid #f0f0f0;
+  transition: background 0.2s;
+}
+
+.binItem:last-child {
+  border-bottom: none;
+}
+
+.binItem:hover {
+  background: #fafafa;
+}
+
+.binItem.selected {
+  background: #e8f5e9;
+}
+
+.checkboxLabel {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  cursor: pointer;
+  flex: 1;
+}
+
+.checkboxLabel input[type="checkbox"] {
+  width: 20px;
+  height: 20px;
+  cursor: pointer;
+  accent-color: #2e7d32;
+}
+
+.binInfo {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.binInfo strong {
+  color: #333;
+}
+
+.address {
+  color: #666;
+  font-size: 13px;
+}
+
+.previewBtn {
+  padding: 8px 16px;
+  background: white;
+  border: 1px solid #2e7d32;
+  color: #2e7d32;
+  border-radius: 6px;
+  font-size: 13px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.previewBtn:hover {
+  background: #2e7d32;
+  color: white;
+}
+
+/* States */
+.loadingState,
+.errorState,
+.emptyState {
+  padding: 60px 20px;
+  text-align: center;
+  color: #666;
+}
+
+/* Modal */
+.modal {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+}
+
+.modalContent {
+  background: white;
+  border-radius: 16px;
+  padding: 32px;
+  max-width: 400px;
+  width: 90%;
+  max-height: 90vh;
+  overflow-y: auto;
+}
+
+.modalContent h3 {
+  margin: 0 0 24px 0;
+  font-size: 20px;
+  color: #333;
+  text-align: center;
+}
+
+.previewLabel {
+  display: flex;
+  justify-content: center;
+  margin-bottom: 24px;
+}
+
+.modalActions {
+  display: flex;
+  gap: 12px;
+  justify-content: flex-end;
+}
+
+/* Print container */
+.printContainer {
+  padding: 20px;
+}
+
+.printGrid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 20px;
+}
+
+.printLabel {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: calc(50vh - 30px);
+}
+
+/* Print styles */
+@media print {
+  .page {
+    display: none !important;
+  }
+
+  .printContainer {
+    display: block !important;
+    padding: 0;
+  }
+
+  .printGrid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    grid-auto-rows: calc(50vh - 10px);
+    gap: 10px;
+    padding: 10px;
+  }
+
+  .printLabel {
+    page-break-inside: avoid;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    min-height: auto;
+  }
+
+  /* Force page break after every 4 labels */
+  .printLabel:nth-child(4n) {
+    page-break-after: always;
+  }
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  .header {
+    flex-direction: column;
+    gap: 16px;
+    text-align: center;
+  }
+
+  .headerLeft {
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .headerRight {
+    width: 100%;
+    justify-content: center;
+  }
+
+  .filterBar {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .filters {
+    flex-direction: column;
+  }
+
+  .select {
+    width: 100%;
+  }
+
+  .selectionActions {
+    justify-content: center;
+  }
+
+  .actionBar {
+    flex-direction: column;
+    gap: 12px;
+    text-align: center;
+  }
+
+  .binItem {
+    flex-direction: column;
+    gap: 12px;
+    align-items: flex-start;
+  }
+
+  .previewBtn {
+    align-self: flex-end;
+  }
+}

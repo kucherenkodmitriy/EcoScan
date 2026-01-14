@@ -191,7 +191,14 @@
 .qrInfo {
   font-size: 14px;
   color: #666;
-  margin-bottom: 12px;
+  margin-bottom: 16px;
+}
+
+.qrActions {
+  display: flex;
+  gap: 12px;
+  margin-bottom: 16px;
+  flex-wrap: wrap;
 }
 
 .qrLink {
@@ -209,6 +216,53 @@
   flex: 1;
   min-width: 200px;
   word-break: break-all;
+}
+
+.qrPreview {
+  display: flex;
+  justify-content: center;
+  margin: 20px 0;
+}
+
+/* Print container */
+.printContainer {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: white;
+  z-index: 2000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+}
+
+.printLabel {
+  max-width: 500px;
+  width: 100%;
+}
+
+@media print {
+  .page {
+    display: none !important;
+  }
+
+  .printContainer {
+    display: flex !important;
+    position: static;
+    padding: 0;
+  }
+
+  .printLabel {
+    width: 100%;
+    max-width: none;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    min-height: 100vh;
+  }
 }
 
 /* Modal */

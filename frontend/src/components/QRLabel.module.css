@@ -1,0 +1,90 @@
+.label {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  background: white;
+  border: 2px solid #e0e0e0;
+  border-radius: 12px;
+  text-align: center;
+}
+
+.qrCode {
+  padding: 16px;
+  background: white;
+  border-radius: 8px;
+}
+
+.info {
+  margin-top: 16px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+}
+
+.name {
+  font-size: 18px;
+  font-weight: 600;
+  color: #333;
+  margin: 0;
+  word-break: break-word;
+  max-width: 100%;
+}
+
+.address {
+  font-size: 13px;
+  color: #666;
+  margin: 0;
+  word-break: break-word;
+  max-width: 100%;
+}
+
+/* Size variants */
+.small {
+  padding: 12px;
+}
+
+.small .name {
+  font-size: 14px;
+}
+
+.small .address {
+  font-size: 11px;
+}
+
+.small .info {
+  margin-top: 8px;
+  gap: 4px;
+}
+
+.medium {
+  padding: 20px;
+}
+
+.large {
+  padding: 32px;
+}
+
+.large .name {
+  font-size: 24px;
+}
+
+.large .address {
+  font-size: 16px;
+}
+
+.large .info {
+  margin-top: 24px;
+  gap: 12px;
+}
+
+/* Print-specific styles */
+@media print {
+  .label {
+    border: 1px solid #ccc;
+    page-break-inside: avoid;
+    box-shadow: none;
+  }
+}

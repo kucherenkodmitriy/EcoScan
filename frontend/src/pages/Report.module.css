@@ -1,0 +1,203 @@
+.container {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  background: linear-gradient(135deg, #1a5d1a 0%, #2e7d32 100%);
+}
+
+.card {
+  background: white;
+  border-radius: 16px;
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
+  width: 100%;
+  max-width: 400px;
+  padding: 30px;
+}
+
+.header {
+  text-align: center;
+  margin-bottom: 24px;
+}
+
+.header h1 {
+  color: #2e7d32;
+  font-size: 24px;
+  font-weight: 700;
+}
+
+.header p {
+  color: #666;
+  font-size: 14px;
+  margin-top: 4px;
+}
+
+.binInfo {
+  text-align: center;
+  padding: 20px;
+  background: #f9f9f9;
+  border-radius: 12px;
+  margin-bottom: 24px;
+}
+
+.binInfo h2 {
+  font-size: 20px;
+  color: #333;
+  margin-bottom: 8px;
+}
+
+.address {
+  color: #666;
+  font-size: 14px;
+  margin-top: 10px;
+}
+
+.sliderSection {
+  margin-bottom: 24px;
+}
+
+.sliderSection label {
+  display: block;
+  font-weight: 600;
+  color: #333;
+  margin-bottom: 16px;
+  text-align: center;
+}
+
+.statusDisplay {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 12px;
+}
+
+.statusText {
+  font-size: 18px;
+  font-weight: 600;
+}
+
+.statusPercent {
+  font-size: 24px;
+  font-weight: 700;
+  color: #333;
+}
+
+.slider {
+  width: 100%;
+  height: 12px;
+  border-radius: 6px;
+  appearance: none;
+  cursor: pointer;
+  outline: none;
+}
+
+.slider::-webkit-slider-thumb {
+  appearance: none;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: white;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+  cursor: pointer;
+  border: 3px solid #2e7d32;
+}
+
+.slider::-moz-range-thumb {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: white;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+  cursor: pointer;
+  border: 3px solid #2e7d32;
+}
+
+.sliderLabels {
+  display: flex;
+  justify-content: space-between;
+  margin-top: 8px;
+  color: #999;
+  font-size: 12px;
+}
+
+.submitBtn {
+  width: 100%;
+  padding: 16px;
+  background: #2e7d32;
+  color: white;
+  border: none;
+  border-radius: 8px;
+  font-size: 16px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.2s, transform 0.1s;
+}
+
+.submitBtn:hover:not(:disabled) {
+  background: #1b5e20;
+}
+
+.submitBtn:active:not(:disabled) {
+  transform: scale(0.98);
+}
+
+.submitBtn:disabled {
+  background: #a5d6a7;
+  cursor: not-allowed;
+}
+
+/* Success state */
+.successIcon {
+  width: 80px;
+  height: 80px;
+  background: #e8f5e9;
+  color: #2e7d32;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 40px;
+  margin: 0 auto 20px;
+}
+
+.successTitle {
+  text-align: center;
+  color: #2e7d32;
+  font-size: 24px;
+  margin-bottom: 10px;
+}
+
+.successText {
+  text-align: center;
+  color: #666;
+  font-size: 16px;
+}
+
+/* Error state */
+.errorIcon {
+  width: 80px;
+  height: 80px;
+  background: #ffebee;
+  color: #c62828;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 40px;
+  font-weight: bold;
+  margin: 0 auto 20px;
+}
+
+.errorTitle {
+  text-align: center;
+  color: #c62828;
+  font-size: 24px;
+  margin-bottom: 10px;
+}
+
+.errorText {
+  text-align: center;
+  color: #666;
+  font-size: 16px;
+}

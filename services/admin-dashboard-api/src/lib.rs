@@ -64,6 +64,30 @@ fn error_to_status_code(error: &AppError) -> i64 {
     }
 }
 
+/// Build an HTML response
+fn html_response(html: &str) -> ApiGatewayProxyResponse {
+    let mut headers = HeaderMap::new();
+    headers.insert("Content-Type", "text/html; charset=utf-8".parse().unwrap());
+    headers.insert("Cache-Control", "public, max-age=3600".parse().unwrap());
+
+    ApiGatewayProxyResponse {
+        status_code: 200,
+        headers,
+        multi_value_headers: HeaderMap::new(),
+        body: Some(Body::Text(html.to_string())),
+        is_base64_encoded: false,
+    }
+}
+
+/// Embedded static HTML for bin reporting page
+const REPORT_HTML: &str = include_str!("../static/report.html");
+
+/// Embedded static HTML for admin login page
+const LOGIN_HTML: &str = include_str!("../static/login.html");
+
+/// Embedded static HTML for admin dashboard page
+const DASHBOARD_HTML: &str = include_str!("../static/dashboard.html");
+
 /// Extract path parameter from API Gateway event
 fn get_path_param(event: &ApiGatewayProxyRequest, name: &str) -> Option<String> {
     event.path_parameters.get(name).map(|v| v.to_string())
@@ -114,6 +138,11 @@ async fn api_handler_inner(
 
     // Route the request
     let response = match (method, path) {
+        // Static pages (no auth required - auth handled client-side with JWT)
+        ("GET", "/static/report.html") => html_response(REPORT_HTML),
+        ("GET", "/static/login.html") => html_response(LOGIN_HTML),
+        ("GET", "/static/dashboard.html") => html_response(DASHBOARD_HTML),
+
         // Login endpoint (no auth required)
         ("POST", p) if p.ends_with("/auth/login") => {
             handle_login_request(&request, &repo, config).await

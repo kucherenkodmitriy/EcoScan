@@ -2,20 +2,27 @@
 
 This file provides context for Claude Code sessions to quickly understand the project without expensive codebase scanning.
 
-**Last Updated:** 2026-01-13
+**Last Updated:** 2026-01-14
 
 ## Project Overview
 
 **EcoScan** is a serverless trash bin monitoring system built with:
-- **Language:** Rust (for all Lambda functions)
-- **Cloud:** AWS (Lambda, DynamoDB, API Gateway, SQS) with LocalStack for local development
-- **Infrastructure:** Terraform with 4-layer architecture
+- **Language:** Rust (Lambda functions), TypeScript/React (Frontend)
+- **Cloud:** AWS (Lambda, DynamoDB, API Gateway, SQS, CloudFront, S3) with LocalStack for local development
+- **Infrastructure:** Terraform with 5-layer architecture
 - **CI/CD:** GitHub Actions with OIDC authentication
 
 ## Architecture
 
 ```
 ┌─────────────────────────────────────────────────────────────────────────┐
+│                     CloudFront (CDN + Custom Domain)                     │
+├─────────────────────────────────┬───────────────────────────────────────┤
+│  /* (Static files)              │  /api/* (API requests)                │
+│  → S3 Bucket (React SPA)        │  → API Gateway                        │
+└─────────────────────────────────┴──────────────────┬────────────────────┘
+                                                     │
+┌────────────────────────────────────────────────────▼────────────────────┐
 │                            API Gateway                                   │
 ├──────────────┬──────────────┬─────────────────┬─────────────────────────┤
 │ POST /bins/  │ GET /report/ │ POST /auth/     │ GET/POST/PUT/DELETE     │
@@ -56,18 +63,30 @@ EcoScan/
 │   ├── notifier/               # STUB - Future notification service
 │   └── shared/                 # STUB - Shared domain models
 │
+├── frontend/                     # React SPA (Admin Dashboard)
+│   ├── src/
+│   │   ├── api/client.ts       # API client with auth
+│   │   ├── context/AuthContext.tsx
+│   │   ├── pages/
+│   │   │   ├── Login.tsx       # Admin login
+│   │   │   ├── Dashboard.tsx   # Bin list with stats
+│   │   │   ├── BinDetail.tsx   # Single bin view
+│   │   │   ├── BinForm.tsx     # Create/edit bin
+│   │   │   └── Report.tsx      # Public QR reporting page
+│   │   └── App.tsx             # Routes
+│   ├── package.json
+│   └── vite.config.ts          # Dev proxy to LocalStack
+│
 ├── infrastructure/
 │   ├── layers/
 │   │   ├── 00-foundation/      # S3 buckets, GitHub Actions IAM
 │   │   ├── 01-data/            # DynamoDB tables, Secrets Manager, SQS
 │   │   ├── 02-compute/         # Lambda functions, IAM roles
-│   │   └── 03-api/             # API Gateway, routes, integrations
+│   │   ├── 03-api/             # API Gateway, routes, integrations
+│   │   └── 04-frontend/        # CloudFront CDN, S3 static hosting
 │   ├── environments/           # tfvars for local/dev/prod
 │   ├── backend/                # Terraform backend configs
 │   └── scripts/                # init-environment.sh
-│
-├── static/                      # Static web assets
-│   └── report.html             # QR code landing page (self-contained)
 │
 ├── scripts/
 │   ├── build-lambda.sh         # Build all Lambda services
@@ -124,6 +143,35 @@ EcoScan/
   - `src/application/auth.rs` - Login logic
   - `src/application/bins.rs` - Bin management
   - `src/domain/bin.rs` - BinInfo, PublicBinInfo, BinType
+
+## Frontend (React SPA)
+
+The admin dashboard is a React SPA hosted on CloudFront + S3.
+
+### Pages & Routes
+
+| Route | Component | Auth | Description |
+|-------|-----------|------|-------------|
+| `/login` | Login | No | Admin login form |
+| `/dashboard` | Dashboard | Yes | Bin list with stats, create/refresh |
+| `/bins/new` | BinForm | Yes | Create new bin |
+| `/bins/:id` | BinDetail | Yes | View bin details, QR link, delete |
+| `/bins/:id/edit` | BinForm | Yes | Edit existing bin |
+| `/report?bin={id}` | Report | No | Public QR code reporting page |
+
+### Key Files
+- `src/api/client.ts` - API functions with JWT auth
+- `src/context/AuthContext.tsx` - Auth state management
+- `src/App.tsx` - Route definitions with PrivateRoute wrapper
+
+### Local Development
+```bash
+cd frontend
+npm install
+npm run dev  # Runs on http://localhost:3000
+```
+
+The Vite dev server proxies `/api/*` to LocalStack API Gateway.
 
 ## Domain Models
 
@@ -190,15 +238,17 @@ pub struct PublicBinInfo {
 
 The GitHub Actions workflow (`.github/workflows/ci.yml`) includes:
 
-1. **Detect Changes** - Determines which components changed
+1. **Detect Changes** - Determines which components changed (rust, frontend, infra layers)
 2. **Lint** - `cargo fmt --check` + `cargo clippy -- -D warnings`
 3. **Test** - `cargo test --lib`
-4. **Terraform Validate** - All 4 layers
+4. **Terraform Validate** - All 5 layers
 5. **Build Lambda** - Builds all 3 Lambda zips via Docker
-6. **Deploy Foundation** → **Deploy Data** → **Deploy API** → **Deploy Compute**
-7. **Upload Lambda to S3** - Stores artifacts for future deployments
-8. **Smoke Tests** - Basic endpoint validation
-9. **E2E Tests** - Full integration tests
+6. **Build Frontend** - `npm ci && npm run build` (React SPA)
+7. **Deploy Foundation** → **Deploy Data** → **Deploy API** → **Deploy Compute**
+8. **Deploy Frontend** - Terraform (CloudFront/S3) + S3 sync + cache invalidation
+9. **Upload Lambda to S3** - Stores artifacts for future deployments
+10. **Smoke Tests** - Basic endpoint validation
+11. **E2E Tests** - Full integration tests
 
 ### Lambda Artifacts
 The build produces 3 separate zip files:
@@ -206,9 +256,14 @@ The build produces 3 separate zip files:
 - `authorizer.zip` - lambda-authorizer
 - `admin-dashboard.zip` - admin-dashboard-api
 
+### Frontend Deployment
+- Builds React app with Vite
+- Uploads to S3 with cache headers (immutable for assets, no-cache for index.html)
+- Invalidates CloudFront cache after deployment
+
 ## Infrastructure Layers
 
-Deploy order: 00 → 01 → 02 → 03
+Deploy order: 00 → 01 → 03 → 02 → 04
 
 | Layer | Purpose | Key Resources |
 |-------|---------|---------------|
@@ -216,6 +271,7 @@ Deploy order: 00 → 01 → 02 → 03
 | 01-data | Storage | DynamoDB (3 tables), Secrets Manager (JWT), SQS queues |
 | 02-compute | Processing | Lambda functions (3), IAM roles, SQS triggers |
 | 03-api | Gateway | API Gateway, routes, Lambda integrations, authorizer config |
+| 04-frontend | CDN | CloudFront distribution, S3 bucket for React SPA |
 
 ## DynamoDB Tables
 
@@ -301,18 +357,31 @@ tracing-subscriber = { version = "0.3", features = ["env-filter", "json"] }
 
 ## Recent Changes (Jan 2026)
 
-1. **QR Code Reporting Flow**
+1. **React Frontend Dashboard** (2026-01-14)
+   - Created React SPA with Vite + TypeScript
+   - Pages: Login, Dashboard, BinDetail, BinForm, Report
+   - API client with JWT auth and automatic token refresh
+   - Full CRUD operations for bins
+
+2. **CloudFront + S3 Hosting** (2026-01-14)
+   - Added `04-frontend` infrastructure layer
+   - CloudFront CDN with S3 origin for static files
+   - API Gateway origin for `/api/*` requests
+   - Automatic cache invalidation on deploy
+   - Custom domain support (optional, for future use)
+
+3. **QR Code Reporting Flow**
    - Added `ReportSource` enum (iot/qr/manual) to track report origin
    - Added `GET /report/{bin_id}` public endpoint for QR landing page
    - Added `PublicBinInfo` struct with limited bin data
-   - Created `static/report.html` self-contained landing page
 
-2. **CI/CD Fixes**
-   - Fixed to upload/download all 3 Lambda artifacts
-   - Added Secrets Manager permissions to GitHub Actions IAM role
-   - Added `**/override.tf` to .gitignore (local backend overrides)
+4. **CI/CD Updates**
+   - Added frontend build and deploy jobs
+   - Change detection for frontend code
+   - S3 sync with proper cache headers
+   - CloudFront invalidation after deploy
 
-3. **Code Quality**
+5. **Code Quality**
    - Fixed clippy warnings (strip_prefix, type_complexity, derive Default)
    - Renamed `from_str` methods to `parse` to avoid trait conflicts
 
@@ -360,7 +429,7 @@ docker ps  # Ensure Docker running
 ## Future Work
 
 1. **Notifier Service** - Alerts when bins reach thresholds
-2. **Frontend Dashboard** - React/Vue SPA
-3. **User Management** - Admin CRUD for users
-4. **Analytics** - Reporting and data export
-5. **Multi-tenant** - Organization support
+2. **User Management** - Admin CRUD for users
+3. **Analytics** - Reporting and data export
+4. **Multi-tenant** - Organization support
+5. **Custom Domain** - Route53 + ACM certificate setup

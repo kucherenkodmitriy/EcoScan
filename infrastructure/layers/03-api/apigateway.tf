@@ -176,6 +176,17 @@ resource "aws_api_gateway_deployment" "api_deployment" {
       aws_api_gateway_resource.report_bin_id.id,
       aws_api_gateway_method.get_report_bin.id,
       aws_api_gateway_integration.get_report_bin_integration.id,
+      # Static resources
+      aws_api_gateway_resource.static.id,
+      aws_api_gateway_resource.static_report.id,
+      aws_api_gateway_method.get_static_report.id,
+      aws_api_gateway_integration.get_static_report_integration.id,
+      aws_api_gateway_resource.static_login.id,
+      aws_api_gateway_method.get_static_login.id,
+      aws_api_gateway_integration.get_static_login_integration.id,
+      aws_api_gateway_resource.static_dashboard.id,
+      aws_api_gateway_method.get_static_dashboard.id,
+      aws_api_gateway_integration.get_static_dashboard_integration.id,
     ]))
   }
 
@@ -563,6 +574,88 @@ resource "aws_api_gateway_integration" "get_report_bin_integration" {
   rest_api_id             = aws_api_gateway_rest_api.api.id
   resource_id             = aws_api_gateway_resource.report_bin_id.id
   http_method             = aws_api_gateway_method.get_report_bin.http_method
+  integration_http_method = "POST"
+  type                    = "AWS_PROXY"
+  uri                     = "arn:aws:apigateway:${var.aws_region}:lambda:path/2015-03-31/functions/${local.admin_dashboard_arn}/invocations"
+  credentials             = aws_iam_role.apigateway_lambda_role.arn
+}
+
+# =============================================================================
+# Static Resources (/static/report.html) - Bin reporting UI
+# =============================================================================
+
+resource "aws_api_gateway_resource" "static" {
+  rest_api_id = aws_api_gateway_rest_api.api.id
+  parent_id   = aws_api_gateway_rest_api.api.root_resource_id
+  path_part   = "static"
+}
+
+resource "aws_api_gateway_resource" "static_report" {
+  rest_api_id = aws_api_gateway_rest_api.api.id
+  parent_id   = aws_api_gateway_resource.static.id
+  path_part   = "report.html"
+}
+
+# GET /static/report.html - Serve static reporting page (no auth required)
+resource "aws_api_gateway_method" "get_static_report" {
+  rest_api_id   = aws_api_gateway_rest_api.api.id
+  resource_id   = aws_api_gateway_resource.static_report.id
+  http_method   = "GET"
+  authorization = "NONE"
+}
+
+resource "aws_api_gateway_integration" "get_static_report_integration" {
+  rest_api_id             = aws_api_gateway_rest_api.api.id
+  resource_id             = aws_api_gateway_resource.static_report.id
+  http_method             = aws_api_gateway_method.get_static_report.http_method
+  integration_http_method = "POST"
+  type                    = "AWS_PROXY"
+  uri                     = "arn:aws:apigateway:${var.aws_region}:lambda:path/2015-03-31/functions/${local.admin_dashboard_arn}/invocations"
+  credentials             = aws_iam_role.apigateway_lambda_role.arn
+}
+
+# GET /static/login.html - Admin login page
+resource "aws_api_gateway_resource" "static_login" {
+  rest_api_id = aws_api_gateway_rest_api.api.id
+  parent_id   = aws_api_gateway_resource.static.id
+  path_part   = "login.html"
+}
+
+resource "aws_api_gateway_method" "get_static_login" {
+  rest_api_id   = aws_api_gateway_rest_api.api.id
+  resource_id   = aws_api_gateway_resource.static_login.id
+  http_method   = "GET"
+  authorization = "NONE"
+}
+
+resource "aws_api_gateway_integration" "get_static_login_integration" {
+  rest_api_id             = aws_api_gateway_rest_api.api.id
+  resource_id             = aws_api_gateway_resource.static_login.id
+  http_method             = aws_api_gateway_method.get_static_login.http_method
+  integration_http_method = "POST"
+  type                    = "AWS_PROXY"
+  uri                     = "arn:aws:apigateway:${var.aws_region}:lambda:path/2015-03-31/functions/${local.admin_dashboard_arn}/invocations"
+  credentials             = aws_iam_role.apigateway_lambda_role.arn
+}
+
+# GET /static/dashboard.html - Admin dashboard page
+resource "aws_api_gateway_resource" "static_dashboard" {
+  rest_api_id = aws_api_gateway_rest_api.api.id
+  parent_id   = aws_api_gateway_resource.static.id
+  path_part   = "dashboard.html"
+}
+
+resource "aws_api_gateway_method" "get_static_dashboard" {
+  rest_api_id   = aws_api_gateway_rest_api.api.id
+  resource_id   = aws_api_gateway_resource.static_dashboard.id
+  http_method   = "GET"
+  authorization = "NONE"
+}
+
+resource "aws_api_gateway_integration" "get_static_dashboard_integration" {
+  rest_api_id             = aws_api_gateway_rest_api.api.id
+  resource_id             = aws_api_gateway_resource.static_dashboard.id
+  http_method             = aws_api_gateway_method.get_static_dashboard.http_method
   integration_http_method = "POST"
   type                    = "AWS_PROXY"
   uri                     = "arn:aws:apigateway:${var.aws_region}:lambda:path/2015-03-31/functions/${local.admin_dashboard_arn}/invocations"

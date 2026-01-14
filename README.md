@@ -1,13 +1,19 @@
 # EcoScan
 
-A serverless application for monitoring trash bin status using AWS Lambda, DynamoDB, API Gateway, and SQS with Terraform infrastructure as code.
+A serverless trash bin monitoring system with React admin dashboard, built on AWS Lambda, DynamoDB, API Gateway, CloudFront, and SQS with Terraform infrastructure as code.
 
 ## Architecture
 
-EcoScan uses an event-driven, asynchronous architecture:
+EcoScan uses an event-driven architecture with a React SPA frontend:
 
 ```
 ┌─────────────────────────────────────────────────────────────────┐
+│                CloudFront (CDN + HTTPS)                          │
+├─────────────────────────────┬───────────────────────────────────┤
+│  /* → S3 (React SPA)        │  /api/* → API Gateway             │
+└─────────────────────────────┴──────────────────┬────────────────┘
+                                                 │
+┌────────────────────────────────────────────────▼────────────────┐
 │                        API Gateway                               │
 ├─────────────────┬───────────────────────┬───────────────────────┤
 │ POST /bins/{id}/status │ POST /auth/login │ GET/POST /admin/*   │
@@ -32,10 +38,12 @@ EcoScan uses an event-driven, asynchronous architecture:
 ```
 
 **Key Features:**
+- 🖥️ React admin dashboard with bin management
 - 🚀 Async processing with SQS for resilience and scalability
 - 📦 Rust Lambda functions for high performance
 - 🔐 JWT authentication for admin endpoints
-- 🏗️ Multi-layer Terraform infrastructure (no circular dependencies)
+- 🌐 CloudFront CDN for global static file delivery
+- 🏗️ Multi-layer Terraform infrastructure (5 layers)
 - 🧪 LocalStack for local development
 - ✅ Comprehensive E2E testing
 
@@ -88,10 +96,35 @@ docker-compose up -d
 ./scripts/run-e2e-tests.sh
 ```
 
+### Frontend Development
+
+```bash
+# Install dependencies
+cd frontend
+npm install
+
+# Start dev server (proxies /api to LocalStack)
+npm run dev
+# Open http://localhost:3000
+
+# Build for production
+npm run build
+# Output in frontend/dist/
+```
+
+**Login credentials (LocalStack):** `admin@ecoscan.local` / `admin123`
+
 ## Project Structure
 
 ```
 EcoScan/
+├── frontend/                      # React SPA (Admin Dashboard)
+│   ├── src/
+│   │   ├── api/                  # API client with JWT auth
+│   │   ├── context/              # Auth context
+│   │   └── pages/                # Login, Dashboard, BinDetail, BinForm, Report
+│   ├── package.json
+│   └── vite.config.ts            # Dev proxy to LocalStack
 ├── services/                      # Rust microservices
 │   ├── bin-status-reporter/      # SQS-triggered status processor
 │   ├── lambda-authorizer/        # JWT token validator
@@ -103,7 +136,8 @@ EcoScan/
 │   │   ├── 00-foundation/       # S3 buckets, GitHub Actions IAM
 │   │   ├── 01-data/             # DynamoDB, Secrets Manager, SQS
 │   │   ├── 02-compute/          # Lambda functions, SQS event mapping
-│   │   └── 03-api/              # API Gateway, Lambda authorizer config
+│   │   ├── 03-api/              # API Gateway, Lambda authorizer config
+│   │   └── 04-frontend/         # CloudFront CDN, S3 static hosting
 │   ├── environments/            # Environment configs (local/dev/prod)
 │   └── scripts/                 # Deployment scripts
 ├── scripts/                      # Build and utility scripts

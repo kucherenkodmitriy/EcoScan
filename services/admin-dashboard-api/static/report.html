@@ -1,0 +1,392 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>EcoScan - Report Bin Status</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #f5f5f5;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 20px;
+        }
+
+        .container {
+            width: 100%;
+            max-width: 400px;
+            background: #fff;
+            border-radius: 12px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+            overflow: hidden;
+        }
+
+        .header {
+            background: #2e7d32;
+            color: #fff;
+            padding: 20px;
+            text-align: center;
+        }
+
+        .header h1 {
+            font-size: 1.5rem;
+            font-weight: 600;
+        }
+
+        .content {
+            padding: 24px;
+        }
+
+        .bin-info {
+            margin-bottom: 24px;
+            padding-bottom: 20px;
+            border-bottom: 1px solid #e0e0e0;
+        }
+
+        .bin-name {
+            font-size: 1.25rem;
+            font-weight: 600;
+            color: #333;
+            margin-bottom: 8px;
+        }
+
+        .bin-detail {
+            font-size: 0.9rem;
+            color: #666;
+            margin-bottom: 4px;
+        }
+
+        .bin-type {
+            display: inline-block;
+            padding: 4px 10px;
+            background: #e8f5e9;
+            color: #2e7d32;
+            border-radius: 4px;
+            font-size: 0.8rem;
+            font-weight: 500;
+            text-transform: uppercase;
+            margin-top: 8px;
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        .form-group label {
+            display: block;
+            font-weight: 500;
+            color: #333;
+            margin-bottom: 8px;
+        }
+
+        .slider-container {
+            position: relative;
+        }
+
+        .slider {
+            width: 100%;
+            height: 40px;
+            -webkit-appearance: none;
+            background: linear-gradient(to right, #4caf50 0%, #ffeb3b 50%, #f44336 100%);
+            border-radius: 8px;
+            outline: none;
+            cursor: pointer;
+        }
+
+        .slider::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            width: 24px;
+            height: 48px;
+            background: #fff;
+            border: 2px solid #333;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+
+        .slider::-moz-range-thumb {
+            width: 24px;
+            height: 48px;
+            background: #fff;
+            border: 2px solid #333;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+
+        .slider-labels {
+            display: flex;
+            justify-content: space-between;
+            margin-top: 8px;
+            font-size: 0.8rem;
+            color: #666;
+        }
+
+        .status-value {
+            text-align: center;
+            font-size: 2rem;
+            font-weight: 700;
+            color: #333;
+            margin: 16px 0;
+        }
+
+        .status-text {
+            text-align: center;
+            font-size: 1rem;
+            color: #666;
+            margin-bottom: 20px;
+        }
+
+        .btn {
+            width: 100%;
+            padding: 14px;
+            border: none;
+            border-radius: 8px;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+
+        .btn-primary {
+            background: #2e7d32;
+            color: #fff;
+        }
+
+        .btn-primary:hover {
+            background: #1b5e20;
+        }
+
+        .btn-primary:disabled {
+            background: #a5d6a7;
+            cursor: not-allowed;
+        }
+
+        .message {
+            padding: 12px;
+            border-radius: 8px;
+            margin-bottom: 16px;
+            text-align: center;
+            font-size: 0.9rem;
+        }
+
+        .message.success {
+            background: #e8f5e9;
+            color: #2e7d32;
+        }
+
+        .message.error {
+            background: #ffebee;
+            color: #c62828;
+        }
+
+        .loading {
+            text-align: center;
+            padding: 40px;
+            color: #666;
+        }
+
+        .spinner {
+            width: 40px;
+            height: 40px;
+            border: 3px solid #e0e0e0;
+            border-top-color: #2e7d32;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 16px;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        .error-container {
+            text-align: center;
+            padding: 40px 20px;
+        }
+
+        .error-container h2 {
+            color: #c62828;
+            margin-bottom: 12px;
+        }
+
+        .error-container p {
+            color: #666;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>EcoScan</h1>
+        </div>
+
+        <div id="loading" class="loading">
+            <div class="spinner"></div>
+            <p>Loading bin information...</p>
+        </div>
+
+        <div id="error" class="error-container" style="display: none;">
+            <h2>Bin Not Found</h2>
+            <p id="error-message">Unable to load bin information.</p>
+        </div>
+
+        <div id="main" class="content" style="display: none;">
+            <div class="bin-info">
+                <div id="bin-name" class="bin-name"></div>
+                <div id="bin-address" class="bin-detail"></div>
+                <div id="bin-type" class="bin-type"></div>
+            </div>
+
+            <div id="message" class="message" style="display: none;"></div>
+
+            <form id="report-form">
+                <div class="form-group">
+                    <label>How full is this bin?</label>
+                    <div class="slider-container">
+                        <input type="range" id="status" class="slider" min="0" max="100" value="50">
+                        <div class="slider-labels">
+                            <span>Empty</span>
+                            <span>Half</span>
+                            <span>Full</span>
+                        </div>
+                    </div>
+                    <div id="status-value" class="status-value">50%</div>
+                    <div id="status-text" class="status-text">About half full</div>
+                </div>
+
+                <button type="submit" id="submit-btn" class="btn btn-primary">
+                    Submit Report
+                </button>
+            </form>
+        </div>
+    </div>
+
+    <script>
+        // Handle both direct API Gateway and LocalStack URL structures
+        const API_BASE = window.location.href.replace(/\/static\/report\.html.*$/, '');
+        let binId = null;
+
+        function getStatusText(value) {
+            if (value <= 20) return 'Nearly empty';
+            if (value <= 40) return 'Less than half';
+            if (value <= 60) return 'About half full';
+            if (value <= 80) return 'More than half';
+            return 'Almost full';
+        }
+
+        function showError(message) {
+            document.getElementById('loading').style.display = 'none';
+            document.getElementById('main').style.display = 'none';
+            document.getElementById('error').style.display = 'block';
+            document.getElementById('error-message').textContent = message;
+        }
+
+        function showMessage(text, isError) {
+            const msg = document.getElementById('message');
+            msg.textContent = text;
+            msg.className = 'message ' + (isError ? 'error' : 'success');
+            msg.style.display = 'block';
+        }
+
+        async function loadBinInfo() {
+            const params = new URLSearchParams(window.location.search);
+            binId = params.get('bin');
+
+            if (!binId) {
+                showError('No bin ID provided. Please scan a valid QR code.');
+                return;
+            }
+
+            try {
+                const response = await fetch(`${API_BASE}/report/${binId}`);
+
+                if (!response.ok) {
+                    if (response.status === 404) {
+                        showError('This bin was not found in our system.');
+                    } else {
+                        showError('Unable to load bin information. Please try again.');
+                    }
+                    return;
+                }
+
+                const bin = await response.json();
+
+                document.getElementById('bin-name').textContent = bin.name;
+                document.getElementById('bin-type').textContent = bin.bin_type || 'General';
+
+                const addressEl = document.getElementById('bin-address');
+                if (bin.address) {
+                    addressEl.textContent = bin.address;
+                    addressEl.style.display = 'block';
+                } else {
+                    addressEl.style.display = 'none';
+                }
+
+                document.getElementById('loading').style.display = 'none';
+                document.getElementById('main').style.display = 'block';
+
+            } catch (err) {
+                console.error('Error loading bin:', err);
+                showError('Network error. Please check your connection.');
+            }
+        }
+
+        async function submitReport(event) {
+            event.preventDefault();
+
+            const submitBtn = document.getElementById('submit-btn');
+            const status = parseInt(document.getElementById('status').value);
+
+            submitBtn.disabled = true;
+            submitBtn.textContent = 'Submitting...';
+
+            try {
+                const response = await fetch(`${API_BASE}/bins/${binId}/status`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        status: status,
+                        source: 'qr'
+                    })
+                });
+
+                if (response.ok) {
+                    showMessage('Thank you! Your report has been submitted.', false);
+                    submitBtn.textContent = 'Report Submitted';
+                } else {
+                    showMessage('Failed to submit report. Please try again.', true);
+                    submitBtn.disabled = false;
+                    submitBtn.textContent = 'Submit Report';
+                }
+
+            } catch (err) {
+                console.error('Error submitting:', err);
+                showMessage('Network error. Please try again.', true);
+                submitBtn.disabled = false;
+                submitBtn.textContent = 'Submit Report';
+            }
+        }
+
+        // Initialize
+        document.getElementById('status').addEventListener('input', function() {
+            const value = this.value;
+            document.getElementById('status-value').textContent = value + '%';
+            document.getElementById('status-text').textContent = getStatusText(value);
+        });
+
+        document.getElementById('report-form').addEventListener('submit', submitReport);
+
+        loadBinInfo();
+    </script>
+</body>
+</html>

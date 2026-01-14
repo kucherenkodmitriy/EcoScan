@@ -1,11 +1,26 @@
 # EcoScan Architecture
 
 ## Overview
-EcoScan is a serverless trash bin monitoring system built with Rust Lambda functions, API Gateway, SQS, and DynamoDB. The entire infrastructure is managed as code using **Terraform** with a multi-layer approach, ensuring a consistent and reproducible environment for both local development and cloud deployment.
+EcoScan is a serverless trash bin monitoring system with a React admin dashboard, built with Rust Lambda functions, API Gateway, SQS, DynamoDB, CloudFront, and S3. The entire infrastructure is managed as code using **Terraform** with a multi-layer approach, ensuring a consistent and reproducible environment for both local development and cloud deployment.
 
 ## System Architecture
 
-### Event-Driven Async Architecture
+### Full Architecture with Frontend
+```
+┌─────────────────────────────────────────────────────────────────────────┐
+│                     CloudFront (CDN + HTTPS)                             │
+├─────────────────────────────────┬───────────────────────────────────────┤
+│  /* (default)                   │  /api/* (API requests)                │
+│  Origin: S3 Bucket              │  Origin: API Gateway                  │
+│  (React SPA static files)       │  (Lambda backend)                     │
+└─────────────────────────────────┴──────────────────┬────────────────────┘
+                                                     │
+┌────────────────────────────────────────────────────▼────────────────────┐
+│                            API Gateway                                   │
+└─────────────────────────────────────────────────────────────────────────┘
+```
+
+### Event-Driven Async Architecture (Backend)
 ```
 ┌──────────┐    ┌─────────────┐    ┌───────────┐    ┌────────┐    ┌──────────┐
 │  Client  │───▶│ API Gateway │───▶│ SQS Queue │───▶│ Lambda │───▶│ DynamoDB │
@@ -29,13 +44,15 @@ EcoScan is a serverless trash bin monitoring system built with Rust Lambda funct
 EcoScan uses a **multi-layer Terraform architecture**:
 
 ```
-00-foundation (S3 buckets)
+00-foundation (S3 buckets, IAM)
     ↓
-01-data (DynamoDB tables)
+01-data (DynamoDB tables, SQS)
     ↓
-03-api (API Gateway + SQS queues)
+03-api (API Gateway + routes)
     ↓
 02-compute (Lambda + IAM roles)
+    ↓
+04-frontend (CloudFront + S3)
 ```
 
 **Key Features:**
@@ -43,6 +60,7 @@ EcoScan uses a **multi-layer Terraform architecture**:
 - **Layer Isolation**: Each layer has its own state and can be deployed independently
 - **Environment Parity**: Same configuration for LocalStack and AWS
 - **Automated Deployment**: Scripts handle layer dependencies automatically
+- **CDN Hosting**: CloudFront serves React SPA with API Gateway integration
 
 ### Full Architecture Diagram
 ```
@@ -133,9 +151,60 @@ src/
 ```
 
 #### Future Services (Skeletons)
-- **admin-dashboard-api**: Admin management of bins and locations
 - **notifier**: Push/email notifications when bins are full
 - **shared**: Domain models, DTOs, and utilities
+
+### Frontend (React SPA)
+
+The admin dashboard is a React single-page application hosted on CloudFront + S3.
+
+**Technology Stack:**
+- React 18 with TypeScript
+- Vite for development and building
+- React Router for client-side routing
+- CSS Modules for styling
+
+**Pages:**
+| Route | Component | Description |
+|-------|-----------|-------------|
+| `/login` | Login | Admin authentication |
+| `/dashboard` | Dashboard | Bin list with stats and actions |
+| `/bins/new` | BinForm | Create new bin |
+| `/bins/:id` | BinDetail | View bin details, QR link |
+| `/bins/:id/edit` | BinForm | Edit existing bin |
+| `/report` | Report | Public QR code reporting |
+
+**Architecture:**
+```
+src/
+├── api/
+│   └── client.ts        # API functions with JWT auth
+├── context/
+│   └── AuthContext.tsx  # Auth state management
+├── pages/
+│   ├── Login.tsx
+│   ├── Dashboard.tsx
+│   ├── BinDetail.tsx
+│   ├── BinForm.tsx
+│   └── Report.tsx
+├── App.tsx              # Routes with PrivateRoute wrapper
+└── main.tsx            # Entry point
+```
+
+### CloudFront Distribution
+
+CloudFront serves as the unified entry point for both static files and API requests.
+
+**Origins:**
+1. **S3 Bucket** (default): Serves React SPA static files
+2. **API Gateway** (`/api/*`): Proxies API requests to Lambda
+
+**Cache Behaviors:**
+- `/*` (default): S3 origin, cached for 24h (assets for 1 year)
+- `/api/*`: API Gateway origin, no caching
+
+**SPA Routing:**
+Custom error responses redirect 403/404 to `/index.html` for client-side routing.
 
 ### Data Model
 

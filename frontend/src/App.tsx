@@ -1,0 +1,56 @@
+import { Routes, Route, Navigate } from 'react-router-dom'
+import { useAuth } from './context/AuthContext'
+import Login from './pages/Login'
+import Dashboard from './pages/Dashboard'
+import Report from './pages/Report'
+import BinDetail from './pages/BinDetail'
+import BinForm from './pages/BinForm'
+
+function PrivateRoute({ children }: { children: React.ReactNode }) {
+  const { isAuthenticated } = useAuth()
+  return isAuthenticated ? <>{children}</> : <Navigate to="/login" />
+}
+
+function App() {
+  return (
+    <Routes>
+      <Route path="/login" element={<Login />} />
+      <Route path="/report" element={<Report />} />
+      <Route
+        path="/dashboard"
+        element={
+          <PrivateRoute>
+            <Dashboard />
+          </PrivateRoute>
+        }
+      />
+      <Route
+        path="/bins/new"
+        element={
+          <PrivateRoute>
+            <BinForm />
+          </PrivateRoute>
+        }
+      />
+      <Route
+        path="/bins/:id"
+        element={
+          <PrivateRoute>
+            <BinDetail />
+          </PrivateRoute>
+        }
+      />
+      <Route
+        path="/bins/:id/edit"
+        element={
+          <PrivateRoute>
+            <BinForm />
+          </PrivateRoute>
+        }
+      />
+      <Route path="/" element={<Navigate to="/dashboard" />} />
+    </Routes>
+  )
+}
+
+export default App

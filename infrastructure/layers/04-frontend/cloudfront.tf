@@ -9,6 +9,32 @@ locals {
   api_gateway_path = "/${join("/", slice(split("/", local.api_url_no_protocol), 1, length(split("/", local.api_url_no_protocol))))}"
 }
 
+# CloudFront Function to strip /api prefix from requests
+# This allows frontend to use /api/* paths while API Gateway uses /* paths
+resource "aws_cloudfront_function" "api_rewrite" {
+  count = var.use_localstack ? 0 : 1
+
+  name    = "${var.environment}-${var.project_name}-api-rewrite"
+  runtime = "cloudfront-js-2.0"
+  comment = "Strips /api prefix from requests before forwarding to API Gateway"
+  publish = true
+
+  code = <<-EOF
+    function handler(event) {
+      var request = event.request;
+      // Strip /api prefix from URI
+      if (request.uri.startsWith('/api')) {
+        request.uri = request.uri.substring(4);
+        // Handle /api -> / case
+        if (request.uri === '' || request.uri === null) {
+          request.uri = '/';
+        }
+      }
+      return request;
+    }
+  EOF
+}
+
 # CloudFront Origin Access Control for S3
 resource "aws_cloudfront_origin_access_control" "frontend" {
   count = var.use_localstack ? 0 : 1
@@ -94,6 +120,12 @@ resource "aws_cloudfront_distribution" "frontend" {
     default_ttl            = 0
     max_ttl                = 0
     compress               = true
+
+    # CloudFront Function to strip /api prefix before forwarding to API Gateway
+    function_association {
+      event_type   = "viewer-request"
+      function_arn = aws_cloudfront_function.api_rewrite[0].arn
+    }
   }
 
   # SPA routing - custom error responses redirect to index.html

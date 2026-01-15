@@ -502,6 +502,13 @@ resource "aws_iam_policy" "github_actions_extra_policy" {
           "cloudfront:CreateInvalidation",
           "cloudfront:GetInvalidation",
           "cloudfront:ListInvalidations",
+          "cloudfront:CreateFunction",
+          "cloudfront:DeleteFunction",
+          "cloudfront:DescribeFunction",
+          "cloudfront:GetFunction",
+          "cloudfront:ListFunctions",
+          "cloudfront:PublishFunction",
+          "cloudfront:UpdateFunction",
         ]
         Resource = "*"
       },

@@ -542,11 +542,20 @@ jobs:
           name: frontend-build
           path: frontend/dist
 
+      - name: Verify S3 state bucket exists
+        run: |
+          aws s3api head-bucket --bucket ecoscan-terraform-state-dev && echo "Bucket exists" || echo "Bucket not found"
+        continue-on-error: true
+
       - name: Terraform Init
         working-directory: infrastructure/layers/04-frontend
         run: |
           terraform init \
-            -backend-config="../../../infrastructure/backend/dev.tfbackend" \
+            -reconfigure \
+            -backend-config="bucket=ecoscan-terraform-state-dev" \
+            -backend-config="region=eu-central-1" \
+            -backend-config="dynamodb_table=ecoscan-terraform-locks-dev" \
+            -backend-config="encrypt=true" \
             -backend-config="key=layers/04-frontend/terraform.tfstate"
 
       - name: Terraform Plan

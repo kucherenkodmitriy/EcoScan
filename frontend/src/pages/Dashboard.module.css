@@ -1,5 +1,7 @@
 .page {
   min-height: 100vh;
+  display: flex;
+  flex-direction: column;
 }
 
 .header {
@@ -36,7 +38,11 @@
 }
 
 .main {
-  max-width: 1200px;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  max-width: 1400px;
+  width: 100%;
   margin: 0 auto;
   padding: 24px;
 }
@@ -44,9 +50,9 @@
 /* Stats bar */
 .statsBar {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
   gap: 16px;
-  margin-bottom: 24px;
+  margin-bottom: 20px;
 }
 
 .statCard {
@@ -82,19 +88,51 @@
   color: #2e7d32;
 }
 
-/* Section header */
-.sectionHeader {
+/* Controls Bar */
+.controlsBar {
   display: flex;
   justify-content: space-between;
   align-items: center;
+  flex-wrap: wrap;
+  gap: 16px;
   margin-bottom: 16px;
+  padding: 16px 20px;
+  background: white;
+  border-radius: 12px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
 }
 
-.sectionHeader h2 {
-  font-size: 20px;
+/* View Toggle */
+.viewToggle {
+  display: flex;
+  background: #f5f5f5;
+  border-radius: 8px;
+  padding: 4px;
+}
+
+.toggleBtn {
+  padding: 10px 20px;
+  border: none;
+  background: transparent;
+  font-size: 14px;
+  font-weight: 500;
+  color: #666;
+  cursor: pointer;
+  border-radius: 6px;
+  transition: all 0.2s;
+}
+
+.toggleBtn:hover {
   color: #333;
 }
 
+.toggleBtn.active {
+  background: white;
+  color: #2e7d32;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+/* Header Actions */
 .headerActions {
   display: flex;
   gap: 12px;
@@ -102,6 +140,55 @@
 
 .headerActions a {
   text-decoration: none;
+}
+
+/* Coordinates Warning */
+.coordsWarning {
+  background: #fff3e0;
+  color: #e65100;
+  padding: 10px 16px;
+  border-radius: 8px;
+  font-size: 14px;
+  margin-bottom: 16px;
+}
+
+/* Map Wrapper */
+.mapWrapper {
+  position: relative;
+  flex: 1;
+  min-height: 500px;
+  background: white;
+  border-radius: 12px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+  overflow: hidden;
+}
+
+/* Floating Add Button (FAB) */
+.fabAdd {
+  position: absolute;
+  bottom: 24px;
+  right: 24px;
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  background: #2e7d32;
+  color: white;
+  border: none;
+  font-size: 32px;
+  font-weight: 300;
+  cursor: pointer;
+  box-shadow: 0 4px 12px rgba(46, 125, 50, 0.3);
+  transition: transform 0.2s, box-shadow 0.2s;
+  z-index: 10;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  line-height: 1;
+}
+
+.fabAdd:hover {
+  transform: scale(1.05);
+  box-shadow: 0 6px 16px rgba(46, 125, 50, 0.4);
 }
 
 /* Table */
@@ -265,16 +352,38 @@
     padding: 16px;
   }
 
+  .controlsBar {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .viewToggle {
+    width: 100%;
+    justify-content: center;
+  }
+
+  .headerActions {
+    flex-wrap: wrap;
+    justify-content: center;
+  }
+
+  .mapWrapper {
+    min-height: 400px;
+  }
+
+  .fabAdd {
+    bottom: 16px;
+    right: 16px;
+    width: 48px;
+    height: 48px;
+    font-size: 28px;
+  }
+
   .tableContainer {
     overflow-x: auto;
   }
 
   .table {
     min-width: 700px;
-  }
-
-  .headerActions {
-    flex-wrap: wrap;
-    justify-content: center;
   }
 }

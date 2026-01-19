@@ -27,6 +27,7 @@ export interface Bin {
   name: string
   bin_type: string
   address: string | null
+  coordinates: Coordinates | null
   status: number  // Fullness percentage (0-100)
   reports_count: number
   last_updated: string | null

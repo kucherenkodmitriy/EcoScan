@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { useParams, useNavigate, Link } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 import { getBin, createBin, updateBin, Bin, CreateBinInput, UpdateBinInput } from '../api/client'
+import AddressAutocomplete from '../components/map/AddressAutocomplete'
 import styles from './BinForm.module.css'
 
 // Must match backend BinType enum (lowercase)
@@ -38,6 +39,10 @@ export default function BinForm() {
         setName(bin.name || '')
         setBinType(bin.bin_type || 'mixed')
         setAddress(bin.address || '')
+        if (bin.coordinates) {
+          setLatitude(bin.coordinates.latitude.toFixed(6))
+          setLongitude(bin.coordinates.longitude.toFixed(6))
+        }
         setIsActive(bin.is_active)
       } catch (err) {
         setError(err instanceof Error ? err.message : 'Failed to load bin')
@@ -152,11 +157,15 @@ export default function BinForm() {
 
               <div className="form-group">
                 <label htmlFor="address">Address</label>
-                <input
-                  type="text"
+                <AddressAutocomplete
                   id="address"
                   value={address}
-                  onChange={(e) => setAddress(e.target.value)}
+                  onChange={setAddress}
+                  onPlaceSelect={(place) => {
+                    setAddress(place.address)
+                    setLatitude(place.lat.toFixed(6))
+                    setLongitude(place.lng.toFixed(6))
+                  }}
                   placeholder="Enter address (optional)"
                 />
               </div>

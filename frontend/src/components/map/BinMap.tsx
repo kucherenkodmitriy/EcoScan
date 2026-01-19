@@ -1,8 +1,9 @@
-import { useCallback, useMemo } from 'react'
-import { GoogleMap, Marker, InfoWindow } from '@react-google-maps/api'
+import { useCallback, useMemo, useState } from 'react'
+import { GoogleMap, InfoWindow, Marker } from '@react-google-maps/api'
 import { Bin } from '../../api/client'
 import { useGoogleMaps, useGoogleMapsApiKey } from './GoogleMapsProvider'
 import BinInfoWindow from './BinInfoWindow'
+import BinAdvancedMarker from './BinAdvancedMarker'
 import styles from './BinMap.module.css'
 
 interface BinMapProps {
@@ -35,12 +36,20 @@ export default function BinMap({
   const apiKey = useGoogleMapsApiKey()
   const { isLoaded, loadError } = useGoogleMaps()
 
-  const onLoad = useCallback((_map: google.maps.Map) => {
-    // Map instance available if needed for future features
+  const mapId = (import.meta.env.VITE_GOOGLE_MAPS_MAP_ID || '').trim()
+
+  // A real Map ID is an opaque string from Google Cloud Console (not just "1").
+  // If it's missing/placeholder, we fall back to legacy markers.
+  const useAdvancedMarkers = mapId.length >= 10
+
+  const [map, setMap] = useState<google.maps.Map | null>(null)
+
+  const onLoad = useCallback((loadedMap: google.maps.Map) => {
+    setMap(loadedMap)
   }, [])
 
   const onUnmount = useCallback(() => {
-    // Cleanup if needed
+    setMap(null)
   }, [])
 
   const handleMapClick = useCallback((e: google.maps.MapMouseEvent) => {
@@ -58,9 +67,9 @@ export default function BinMap({
     [bins, selectedBinId]
   )
 
-  // Only show bins that have coordinates
+  // Only show bins that have coordinates; treat missing is_active as active (older API responses).
   const binsWithCoords = useMemo(
-    () => bins.filter(b => b.coordinates && b.is_active),
+    () => bins.filter(b => b.coordinates && b.is_active !== false),
     [bins]
   )
 
@@ -90,6 +99,7 @@ export default function BinMap({
       <div className={styles.errorState}>
         <h3>Failed to load Google Maps</h3>
         <p>Please check your API key configuration.</p>
+        <p className={styles.hint}>{String(loadError.message || loadError)}</p>
       </div>
     )
   }
@@ -104,51 +114,89 @@ export default function BinMap({
   }
 
   return (
-    <GoogleMap
-      mapContainerClassName={styles.mapContainer}
-      center={mapCenter}
-      zoom={zoom}
-      onLoad={onLoad}
-      onUnmount={onUnmount}
-      onClick={handleMapClick}
-      options={{
-        streetViewControl: false,
-        mapTypeControl: false,
-        fullscreenControl: true,
-        zoomControl: true,
-      }}
-    >
-      {binsWithCoords.map((bin) => (
-        <Marker
-          key={bin.bin_id}
-          position={{
-            lat: bin.coordinates!.latitude,
-            lng: bin.coordinates!.longitude,
-          }}
-          icon={{
-            path: google.maps.SymbolPath.CIRCLE,
-            fillColor: getMarkerColor(bin.status || 0),
-            fillOpacity: 1,
-            strokeColor: '#ffffff',
-            strokeWeight: 2,
-            scale: 12,
-          }}
-          onClick={() => onBinSelect?.(bin.bin_id)}
-          title={bin.name}
-        />
-      ))}
+    <div style={{ width: '100%', height: '100%' }}>
+      <GoogleMap
+        mapContainerClassName={styles.mapContainer}
+        center={mapCenter}
+        zoom={zoom}
+        onLoad={onLoad}
+        onUnmount={onUnmount}
+        onClick={handleMapClick}
+        options={{
+          ...(useAdvancedMarkers ? { mapId } : {}),
+          streetViewControl: false,
+          mapTypeControl: false,
+          fullscreenControl: true,
+          zoomControl: true,
+        }}
+      >
+        {binsWithCoords.length === 0 && (
+          <div
+            style={{
+              position: 'absolute',
+              top: 12,
+              left: 12,
+              zIndex: 1,
+              background: 'rgba(255,255,255,0.9)',
+              padding: '8px 10px',
+              borderRadius: 8,
+              border: '1px solid rgba(0,0,0,0.08)',
+              fontSize: 13,
+              color: '#555',
+            }}
+          >
+            No bins with coordinates to display.
+          </div>
+        )}
 
-      {selectedBin && selectedBin.coordinates && (
-        <InfoWindow
-          position={{
-            lat: selectedBin.coordinates.latitude,
-            lng: selectedBin.coordinates.longitude,
-          }}
-          onCloseClick={() => onBinSelect?.(null)}
-        >
-          <BinInfoWindow bin={selectedBin} />
-        </InfoWindow>
-      )}
-    </GoogleMap>
+        {useAdvancedMarkers && map &&
+          binsWithCoords.map((bin) => (
+            <BinAdvancedMarker
+              key={bin.bin_id}
+              map={map}
+              position={{
+                lat: bin.coordinates!.latitude,
+                lng: bin.coordinates!.longitude,
+              }}
+              color={getMarkerColor(bin.status || 0)}
+              title={bin.name}
+              onClick={() => onBinSelect?.(bin.bin_id)}
+            />
+          ))}
+
+        {!useAdvancedMarkers &&
+          binsWithCoords.map((bin) => (
+            <Marker
+              key={bin.bin_id}
+              position={{
+                lat: bin.coordinates!.latitude,
+                lng: bin.coordinates!.longitude,
+              }}
+              icon={{
+                path: google.maps.SymbolPath.CIRCLE,
+                fillColor: getMarkerColor(bin.status || 0),
+                fillOpacity: 1,
+                strokeColor: '#ffffff',
+                strokeWeight: 2,
+                scale: 12,
+              }}
+              onClick={() => onBinSelect?.(bin.bin_id)}
+              title={bin.name}
+            />
+          ))}
+
+        {selectedBin && selectedBin.coordinates && (
+          <InfoWindow
+            position={{
+              lat: selectedBin.coordinates.latitude,
+              lng: selectedBin.coordinates.longitude,
+            }}
+            onCloseClick={() => onBinSelect?.(null)}
+          >
+            <BinInfoWindow bin={selectedBin} />
+          </InfoWindow>
+        )}
+      </GoogleMap>
+    </div>
   )
 }

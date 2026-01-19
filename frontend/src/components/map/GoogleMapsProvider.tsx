@@ -1,8 +1,8 @@
 import { createContext, useContext, ReactNode } from 'react'
 import { useJsApiLoader, Libraries } from '@react-google-maps/api'
 
-// Define libraries to load - include 'places' for autocomplete
-const libraries: Libraries = ['places']
+// Define libraries to load - include 'places' for autocomplete and 'marker' for AdvancedMarkerElement
+const libraries: Libraries = ['places', 'marker']
 
 interface GoogleMapsContextType {
   isLoaded: boolean
@@ -22,8 +22,10 @@ export function GoogleMapsProvider({ children }: GoogleMapsProviderProps) {
   const apiKey = import.meta.env.VITE_GOOGLE_MAPS_API_KEY || ''
 
   const { isLoaded, loadError } = useJsApiLoader({
+    id: 'google-maps-script',
     googleMapsApiKey: apiKey,
     libraries,
+    version: 'weekly',
   })
 
   return (

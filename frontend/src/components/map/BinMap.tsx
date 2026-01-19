@@ -1,9 +1,9 @@
-import { useCallback, useMemo, useState } from 'react'
-import { GoogleMap, InfoWindow, Marker } from '@react-google-maps/api'
+import { useCallback, useMemo, useState, useEffect, useRef } from 'react'
+import { GoogleMap, InfoWindow, DirectionsRenderer } from '@react-google-maps/api'
+import { MarkerClusterer, SuperClusterAlgorithm } from '@googlemaps/markerclusterer'
 import { Bin } from '../../api/client'
 import { useGoogleMaps, useGoogleMapsApiKey } from './GoogleMapsProvider'
 import BinInfoWindow from './BinInfoWindow'
-import BinAdvancedMarker from './BinAdvancedMarker'
 import styles from './BinMap.module.css'
 
 interface BinMapProps {
@@ -13,6 +13,7 @@ interface BinMapProps {
   onBinSelect?: (binId: string | null) => void
   center?: { lat: number; lng: number }
   zoom?: number
+  directions?: google.maps.DirectionsResult | null
 }
 
 const defaultCenter = { lat: 50.4501, lng: 30.5234 } // Kyiv, Ukraine
@@ -25,6 +26,39 @@ const getMarkerColor = (status: number): string => {
   return '#2e7d32'                     // Green: 0-29%
 }
 
+// Create a colored SVG marker icon
+const createMarkerIcon = (color: string): string => {
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24">
+    <circle cx="12" cy="12" r="10" fill="${color}" stroke="#ffffff" stroke-width="2"/>
+  </svg>`
+  return `data:image/svg+xml;charset=UTF-8,${encodeURIComponent(svg)}`
+}
+
+// Custom cluster renderer
+const clusterRenderer = {
+  render: ({ count, position }: { count: number; position: google.maps.LatLng }) => {
+    // Color based on cluster size
+    let color = '#2e7d32' // Green for small clusters
+    if (count >= 10) color = '#c62828' // Red for large
+    else if (count >= 5) color = '#f57c00' // Orange for medium
+
+    const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 40 40">
+      <circle cx="20" cy="20" r="18" fill="${color}" stroke="#ffffff" stroke-width="2"/>
+      <text x="20" y="25" text-anchor="middle" fill="#ffffff" font-size="14" font-weight="bold">${count}</text>
+    </svg>`
+
+    return new google.maps.Marker({
+      position,
+      icon: {
+        url: `data:image/svg+xml;charset=UTF-8,${encodeURIComponent(svg)}`,
+        scaledSize: new google.maps.Size(40, 40),
+      },
+      label: undefined,
+      zIndex: Number(google.maps.Marker.MAX_ZINDEX) + count,
+    })
+  },
+}
+
 export default function BinMap({
   bins,
   onMapClick,
@@ -32,23 +66,26 @@ export default function BinMap({
   onBinSelect,
   center = defaultCenter,
   zoom = defaultZoom,
+  directions = null,
 }: BinMapProps) {
   const apiKey = useGoogleMapsApiKey()
   const { isLoaded, loadError } = useGoogleMaps()
 
-  const mapId = (import.meta.env.VITE_GOOGLE_MAPS_MAP_ID || '').trim()
-
-  // A real Map ID is an opaque string from Google Cloud Console (not just "1").
-  // If it's missing/placeholder, we fall back to legacy markers.
-  const useAdvancedMarkers = mapId.length >= 10
-
   const [map, setMap] = useState<google.maps.Map | null>(null)
+  const clustererRef = useRef<MarkerClusterer | null>(null)
+  const markersRef = useRef<Map<string, google.maps.Marker>>(new Map())
 
   const onLoad = useCallback((loadedMap: google.maps.Map) => {
     setMap(loadedMap)
   }, [])
 
   const onUnmount = useCallback(() => {
+    // Clean up clusterer and markers
+    if (clustererRef.current) {
+      clustererRef.current.clearMarkers()
+      clustererRef.current = null
+    }
+    markersRef.current.clear()
     setMap(null)
   }, [])
 
@@ -82,6 +119,74 @@ export default function BinMap({
     }
     return center
   }, [binsWithCoords, center])
+
+  // Create/update markers and clusterer when bins or map changes
+  useEffect(() => {
+    if (!map || !isLoaded) return
+
+    // Clean up previous clusterer completely
+    if (clustererRef.current) {
+      clustererRef.current.setMap(null)
+      clustererRef.current = null
+    }
+
+    // Clear old markers
+    markersRef.current.forEach((marker) => {
+      google.maps.event.clearInstanceListeners(marker)
+      marker.setMap(null)
+    })
+    markersRef.current.clear()
+
+    if (binsWithCoords.length === 0) {
+      return
+    }
+
+    // Create new markers
+    const newMarkers: google.maps.Marker[] = []
+
+    binsWithCoords.forEach((bin) => {
+      const marker = new google.maps.Marker({
+        position: {
+          lat: bin.coordinates!.latitude,
+          lng: bin.coordinates!.longitude,
+        },
+        icon: {
+          url: createMarkerIcon(getMarkerColor(bin.status || 0)),
+          scaledSize: new google.maps.Size(24, 24),
+        },
+        title: bin.name,
+      })
+
+      // Add click listener
+      marker.addListener('click', () => {
+        onBinSelect?.(bin.bin_id)
+      })
+
+      markersRef.current.set(bin.bin_id, marker)
+      newMarkers.push(marker)
+    })
+
+    // Create new clusterer
+    clustererRef.current = new MarkerClusterer({
+      map,
+      markers: newMarkers,
+      algorithm: new SuperClusterAlgorithm({ radius: 80 }),
+      renderer: clusterRenderer,
+    })
+
+    // Cleanup function
+    return () => {
+      if (clustererRef.current) {
+        clustererRef.current.setMap(null)
+        clustererRef.current = null
+      }
+      markersRef.current.forEach((marker) => {
+        google.maps.event.clearInstanceListeners(marker)
+        marker.setMap(null)
+      })
+      markersRef.current.clear()
+    }
+  }, [map, isLoaded, binsWithCoords, onBinSelect])
 
   // Show API key missing message
   if (!apiKey) {
@@ -123,7 +228,6 @@ export default function BinMap({
         onUnmount={onUnmount}
         onClick={handleMapClick}
         options={{
-          ...(useAdvancedMarkers ? { mapId } : {}),
           streetViewControl: false,
           mapTypeControl: false,
           fullscreenControl: true,
@@ -149,41 +253,22 @@ export default function BinMap({
           </div>
         )}
 
-        {useAdvancedMarkers && map &&
-          binsWithCoords.map((bin) => (
-            <BinAdvancedMarker
-              key={bin.bin_id}
-              map={map}
-              position={{
-                lat: bin.coordinates!.latitude,
-                lng: bin.coordinates!.longitude,
-              }}
-              color={getMarkerColor(bin.status || 0)}
-              title={bin.name}
-              onClick={() => onBinSelect?.(bin.bin_id)}
-            />
-          ))}
+        {/* Markers are managed by MarkerClusterer via useEffect */}
 
-        {!useAdvancedMarkers &&
-          binsWithCoords.map((bin) => (
-            <Marker
-              key={bin.bin_id}
-              position={{
-                lat: bin.coordinates!.latitude,
-                lng: bin.coordinates!.longitude,
-              }}
-              icon={{
-                path: google.maps.SymbolPath.CIRCLE,
-                fillColor: getMarkerColor(bin.status || 0),
-                fillOpacity: 1,
-                strokeColor: '#ffffff',
-                strokeWeight: 2,
-                scale: 12,
-              }}
-              onClick={() => onBinSelect?.(bin.bin_id)}
-              title={bin.name}
-            />
-          ))}
+        {/* Render route if directions are provided */}
+        {directions && (
+          <DirectionsRenderer
+            directions={directions}
+            options={{
+              suppressMarkers: false, // Show A, B, C markers for stops
+              polylineOptions: {
+                strokeColor: '#1976d2',
+                strokeWeight: 5,
+                strokeOpacity: 0.8,
+              },
+            }}
+          />
+        )}
 
         {selectedBin && selectedBin.coordinates && (
           <InfoWindow

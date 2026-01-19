@@ -1,10 +1,12 @@
-import { useState, useEffect, useMemo } from 'react'
+import { useState, useEffect, useMemo, useCallback } from 'react'
 import { Link } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 import { getBins, Bin } from '../api/client'
 import BinMap from '../components/map/BinMap'
 import FullnessSlider from '../components/map/FullnessSlider'
 import AddBinModal from '../components/map/AddBinModal'
+import RouteModal from '../components/map/RouteModal'
+import { useGoogleMaps } from '../components/map/GoogleMapsProvider'
 import styles from './Dashboard.module.css'
 
 type ViewMode = 'map' | 'list'
@@ -35,6 +37,13 @@ export default function Dashboard() {
   // Add bin modal state
   const [showAddModal, setShowAddModal] = useState(false)
   const [mapClickCoords, setMapClickCoords] = useState<{ lat: number; lng: number } | null>(null)
+
+  // Route modal state
+  const [showRouteModal, setShowRouteModal] = useState(false)
+  const [directions, setDirections] = useState<google.maps.DirectionsResult | null>(null)
+  const [routeLoading, setRouteLoading] = useState(false)
+
+  const { isLoaded } = useGoogleMaps()
 
   const loadBins = async () => {
     setLoading(true)
@@ -90,6 +99,65 @@ export default function Dashboard() {
   // Handle bin created
   const handleBinCreated = () => {
     loadBins()
+  }
+
+  // Get bins with coordinates for routing
+  const binsWithCoords = useMemo(() => {
+    return filteredBins.filter(b => b.coordinates && b.is_active !== false)
+  }, [filteredBins])
+
+  // Handle route creation
+  const handleCreateRoute = useCallback(
+    async (
+      start: { address: string; lat: number; lng: number },
+      end: { address: string; lat: number; lng: number }
+    ) => {
+      if (!isLoaded) return
+
+      setRouteLoading(true)
+      setShowRouteModal(false)
+
+      try {
+        const directionsService = new google.maps.DirectionsService()
+
+        // Create waypoints from bins with coordinates
+        const waypoints: google.maps.DirectionsWaypoint[] = binsWithCoords.map((bin) => ({
+          location: new google.maps.LatLng(
+            bin.coordinates!.latitude,
+            bin.coordinates!.longitude
+          ),
+          stopover: true,
+        }))
+
+        const result = await directionsService.route({
+          origin: new google.maps.LatLng(start.lat, start.lng),
+          destination: new google.maps.LatLng(end.lat, end.lng),
+          waypoints,
+          optimizeWaypoints: true, // Let Google find the best order
+          travelMode: google.maps.TravelMode.DRIVING,
+        })
+
+        setDirections(result)
+
+        // Log the optimized order
+        if (result.routes[0]?.waypoint_order) {
+          console.log('Optimized waypoint order:', result.routes[0].waypoint_order)
+          const orderedBins = result.routes[0].waypoint_order.map(i => binsWithCoords[i].name)
+          console.log('Bins in order:', orderedBins)
+        }
+      } catch (err) {
+        console.error('Failed to create route:', err)
+        alert('Failed to create route. Please try again.')
+      } finally {
+        setRouteLoading(false)
+      }
+    },
+    [isLoaded, binsWithCoords]
+  )
+
+  // Clear route
+  const handleClearRoute = () => {
+    setDirections(null)
   }
 
   return (
@@ -148,7 +216,29 @@ export default function Dashboard() {
           </div>
 
           {viewMode === 'map' && (
-            <FullnessSlider value={fullnessFilter} onChange={setFullnessFilter} />
+            <>
+              <FullnessSlider value={fullnessFilter} onChange={setFullnessFilter} />
+              <div className={styles.routeActions}>
+                {directions ? (
+                  <button
+                    className="btn btn-secondary"
+                    onClick={handleClearRoute}
+                    style={{ background: '#c62828', border: 'none' }}
+                  >
+                    Clear Route
+                  </button>
+                ) : (
+                  <button
+                    className="btn btn-primary"
+                    onClick={() => setShowRouteModal(true)}
+                    disabled={routeLoading || binsWithCoords.length === 0}
+                    style={{ background: '#1565c0', border: 'none' }}
+                  >
+                    {routeLoading ? 'Creating...' : 'Create Route'}
+                  </button>
+                )}
+              </div>
+            </>
           )}
 
           <div className={styles.headerActions}>
@@ -195,6 +285,7 @@ export default function Dashboard() {
                   onMapClick={handleMapClick}
                   selectedBinId={selectedBinId}
                   onBinSelect={setSelectedBinId}
+                  directions={directions}
                 />
                 <button
                   className={styles.fabAdd}
@@ -292,6 +383,14 @@ export default function Dashboard() {
         }}
         initialCoordinates={mapClickCoords}
         onBinCreated={handleBinCreated}
+      />
+
+      {/* Route Modal */}
+      <RouteModal
+        isOpen={showRouteModal}
+        onClose={() => setShowRouteModal(false)}
+        onCreateRoute={handleCreateRoute}
+        waypointCount={binsWithCoords.length}
       />
     </div>
   )

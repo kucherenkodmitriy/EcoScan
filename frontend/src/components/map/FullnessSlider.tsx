@@ -27,9 +27,55 @@ export default function FullnessSlider({ value, onChange }: FullnessSliderProps)
     onChange([minVal, newMax])
   }
 
-  // Calculate the position for the filled track
-  const minPercent = (minVal / 100) * 100
-  const maxPercent = (maxVal / 100) * 100
+  // Calculate the gradient for the track based on selected range
+  const getTrackGradient = (min: number, max: number): string => {
+    const stops: string[] = []
+
+    // Gray before selection
+    if (min > 0) {
+      stops.push(`#e0e0e0 0%`)
+      stops.push(`#e0e0e0 ${min}%`)
+    }
+
+    // Build colored section from min to max
+    // Colors: 0-30% green, 30-70% orange, 70-100% red
+    if (min < 30) {
+      stops.push(`#2e7d32 ${min}%`)
+      if (max <= 30) {
+        stops.push(`#2e7d32 ${max}%`)
+      } else {
+        stops.push(`#2e7d32 30%`)
+        stops.push(`#f57c00 30%`)
+        if (max <= 70) {
+          stops.push(`#f57c00 ${max}%`)
+        } else {
+          stops.push(`#f57c00 70%`)
+          stops.push(`#c62828 70%`)
+          stops.push(`#c62828 ${max}%`)
+        }
+      }
+    } else if (min < 70) {
+      stops.push(`#f57c00 ${min}%`)
+      if (max <= 70) {
+        stops.push(`#f57c00 ${max}%`)
+      } else {
+        stops.push(`#f57c00 70%`)
+        stops.push(`#c62828 70%`)
+        stops.push(`#c62828 ${max}%`)
+      }
+    } else {
+      stops.push(`#c62828 ${min}%`)
+      stops.push(`#c62828 ${max}%`)
+    }
+
+    // Gray after selection
+    if (max < 100) {
+      stops.push(`#e0e0e0 ${max}%`)
+      stops.push(`#e0e0e0 100%`)
+    }
+
+    return `linear-gradient(to right, ${stops.join(', ')})`
+  }
 
   return (
     <div className={styles.sliderContainer}>
@@ -37,15 +83,7 @@ export default function FullnessSlider({ value, onChange }: FullnessSliderProps)
       <div className={styles.sliderWrapper}>
         <div
           className={styles.track}
-          style={{
-            background: `linear-gradient(to right,
-              #e0e0e0 ${minPercent}%,
-              #2e7d32 ${minPercent}%,
-              #f57c00 ${Math.max(minPercent, 30)}%,
-              #c62828 ${Math.max(minPercent, 70)}%,
-              #c62828 ${maxPercent}%,
-              #e0e0e0 ${maxPercent}%)`
-          }}
+          style={{ background: getTrackGradient(minVal, maxVal) }}
         />
         <input
           type="range"

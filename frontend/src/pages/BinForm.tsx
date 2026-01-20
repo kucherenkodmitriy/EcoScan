@@ -1,23 +1,26 @@
 import { useState, useEffect } from 'react'
 import { useParams, useNavigate, Link } from 'react-router-dom'
+import { useTranslation } from 'react-i18next'
 import { useAuth } from '../context/AuthContext'
 import { getBin, createBin, updateBin, Bin, CreateBinInput, UpdateBinInput } from '../api/client'
 import AddressAutocomplete from '../components/map/AddressAutocomplete'
+import LanguageSwitcher from '../components/LanguageSwitcher'
 import styles from './BinForm.module.css'
 
-// Must match backend BinType enum (lowercase)
-const BIN_TYPES = [
-  { value: 'mixed', label: 'Mixed' },
-  { value: 'plastic', label: 'Plastic' },
-  { value: 'paper', label: 'Paper' },
-  { value: 'glass', label: 'Glass' },
-]
-
 export default function BinForm() {
+  const { t } = useTranslation()
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
   const { user, logout } = useAuth()
   const isEdit = Boolean(id)
+
+  // Bin types with translated labels
+  const BIN_TYPES = [
+    { value: 'mixed', label: t('binTypes.mixed') },
+    { value: 'plastic', label: t('binTypes.plastic') },
+    { value: 'paper', label: t('binTypes.paper') },
+    { value: 'glass', label: t('binTypes.glass') },
+  ]
 
   const [loading, setLoading] = useState(isEdit)
   const [saving, setSaving] = useState(false)
@@ -45,21 +48,21 @@ export default function BinForm() {
         }
         setIsActive(bin.is_active)
       } catch (err) {
-        setError(err instanceof Error ? err.message : 'Failed to load bin')
+        setError(err instanceof Error ? err.message : t('binDetail.failedToLoad'))
       } finally {
         setLoading(false)
       }
     }
 
     loadBin()
-  }, [id, isEdit])
+  }, [id, isEdit, t])
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setError('')
 
     if (!name.trim()) {
-      setError('Name is required')
+      setError(t('binForm.nameRequired'))
       return
     }
 
@@ -99,17 +102,18 @@ export default function BinForm() {
       <header className={styles.header}>
         <div className={styles.headerLeft}>
           <Link to={isEdit ? `/bins/${id}` : '/dashboard'} className={styles.backLink}>
-            &larr; Cancel
+            &larr; {t('common.cancel')}
           </Link>
-          <h1>EcoScan</h1>
+          <h1>{t('common.appName')}</h1>
         </div>
         <div className={styles.headerRight}>
+          <LanguageSwitcher />
           <div className={styles.userInfo}>
             <strong>{user?.name}</strong>
             <span>{user?.role}</span>
           </div>
           <button className="btn btn-secondary" onClick={logout}>
-            Logout
+            {t('common.logout')}
           </button>
         </div>
       </header>
@@ -118,29 +122,29 @@ export default function BinForm() {
         {loading ? (
           <div className={styles.loadingState}>
             <div className="spinner"></div>
-            <p>Loading bin...</p>
+            <p>{t('binDetail.loadingBin')}</p>
           </div>
         ) : (
           <div className={styles.formCard}>
-            <h2>{isEdit ? 'Edit Bin' : 'Create New Bin'}</h2>
+            <h2>{isEdit ? t('binForm.editTitle') : t('binForm.createTitle')}</h2>
 
             {error && <div className="error-message">{error}</div>}
 
             <form onSubmit={handleSubmit}>
               <div className="form-group">
-                <label htmlFor="name">Name *</label>
+                <label htmlFor="name">{t('binForm.name')} *</label>
                 <input
                   type="text"
                   id="name"
                   value={name}
                   onChange={(e) => setName(e.target.value)}
-                  placeholder="Enter bin name"
+                  placeholder={t('binForm.namePlaceholder')}
                   required
                 />
               </div>
 
               <div className="form-group">
-                <label htmlFor="binType">Type</label>
+                <label htmlFor="binType">{t('binForm.type')}</label>
                 <select
                   id="binType"
                   value={binType}
@@ -156,7 +160,7 @@ export default function BinForm() {
               </div>
 
               <div className="form-group">
-                <label htmlFor="address">Address</label>
+                <label htmlFor="address">{t('binForm.address')}</label>
                 <AddressAutocomplete
                   id="address"
                   value={address}
@@ -166,30 +170,30 @@ export default function BinForm() {
                     setLatitude(place.lat.toFixed(6))
                     setLongitude(place.lng.toFixed(6))
                   }}
-                  placeholder="Enter address (optional)"
+                  placeholder={t('binForm.addressPlaceholder')}
                 />
               </div>
 
               <div className={styles.coordRow}>
                 <div className="form-group">
-                  <label htmlFor="latitude">Latitude</label>
+                  <label htmlFor="latitude">{t('binForm.latitude')}</label>
                   <input
                     type="number"
                     id="latitude"
                     value={latitude}
                     onChange={(e) => setLatitude(e.target.value)}
-                    placeholder="e.g. 48.8566"
+                    placeholder={t('binForm.latitudePlaceholder')}
                     step="any"
                   />
                 </div>
                 <div className="form-group">
-                  <label htmlFor="longitude">Longitude</label>
+                  <label htmlFor="longitude">{t('binForm.longitude')}</label>
                   <input
                     type="number"
                     id="longitude"
                     value={longitude}
                     onChange={(e) => setLongitude(e.target.value)}
-                    placeholder="e.g. 2.3522"
+                    placeholder={t('binForm.longitudePlaceholder')}
                     step="any"
                   />
                 </div>
@@ -203,9 +207,9 @@ export default function BinForm() {
                       checked={isActive}
                       onChange={(e) => setIsActive(e.target.checked)}
                     />
-                    <span>Active</span>
+                    <span>{t('binForm.activeLabel')}</span>
                   </label>
-                  <p className={styles.hint}>Inactive bins won't appear in reports.</p>
+                  <p className={styles.hint}>{t('binForm.inactiveHint')}</p>
                 </div>
               )}
 
@@ -214,10 +218,10 @@ export default function BinForm() {
                   to={isEdit ? `/bins/${id}` : '/dashboard'}
                   className={`btn ${styles.btnCancel}`}
                 >
-                  Cancel
+                  {t('common.cancel')}
                 </Link>
                 <button type="submit" className="btn btn-primary" disabled={saving}>
-                  {saving ? 'Saving...' : isEdit ? 'Save Changes' : 'Create Bin'}
+                  {saving ? t('binForm.saving') : isEdit ? t('binForm.saveChanges') : t('binForm.createBin')}
                 </button>
               </div>
             </form>

@@ -1,15 +1,9 @@
 import { useState, useEffect } from 'react'
 import { useSearchParams } from 'react-router-dom'
+import { useTranslation } from 'react-i18next'
 import { getPublicBinInfo, submitBinStatus, PublicBinInfo } from '../api/client'
+import LanguageSwitcher from '../components/LanguageSwitcher'
 import styles from './Report.module.css'
-
-function getStatusText(value: number): string {
-  if (value <= 20) return 'Nearly empty'
-  if (value <= 40) return 'Less than half'
-  if (value <= 60) return 'About half full'
-  if (value <= 80) return 'Getting full'
-  return 'Almost full'
-}
 
 function getStatusColor(value: number): string {
   if (value <= 50) return '#4caf50'
@@ -18,6 +12,7 @@ function getStatusColor(value: number): string {
 }
 
 export default function Report() {
+  const { t } = useTranslation()
   const [searchParams] = useSearchParams()
   const binId = searchParams.get('bin')
 
@@ -28,9 +23,17 @@ export default function Report() {
   const [error, setError] = useState('')
   const [success, setSuccess] = useState(false)
 
+  const getStatusText = (value: number): string => {
+    if (value <= 20) return t('report.statusNearlyEmpty')
+    if (value <= 40) return t('report.statusLessThanHalf')
+    if (value <= 60) return t('report.statusAboutHalf')
+    if (value <= 80) return t('report.statusGettingFull')
+    return t('report.statusAlmostFull')
+  }
+
   useEffect(() => {
     if (!binId) {
-      setError('No bin ID provided')
+      setError(t('report.noBinId'))
       setLoading(false)
       return
     }
@@ -40,14 +43,14 @@ export default function Report() {
         const data = await getPublicBinInfo(binId)
         setBin(data)
       } catch (err) {
-        setError(err instanceof Error ? err.message : 'Bin not found')
+        setError(err instanceof Error ? err.message : t('report.binNotFound'))
       } finally {
         setLoading(false)
       }
     }
 
     loadBin()
-  }, [binId])
+  }, [binId, t])
 
   const handleSubmit = async () => {
     if (!binId) return
@@ -59,7 +62,7 @@ export default function Report() {
       await submitBinStatus(binId, status)
       setSuccess(true)
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to submit')
+      setError(err instanceof Error ? err.message : t('report.failedToSubmit'))
     } finally {
       setSubmitting(false)
     }
@@ -68,9 +71,14 @@ export default function Report() {
   if (loading) {
     return (
       <div className={styles.container}>
+        <div className={styles.languageSwitcher}>
+          <div className="language-switcher-light">
+            <LanguageSwitcher />
+          </div>
+        </div>
         <div className={styles.card}>
           <div className="spinner"></div>
-          <p style={{ textAlign: 'center', marginTop: 16, color: '#666' }}>Loading...</p>
+          <p style={{ textAlign: 'center', marginTop: 16, color: '#666' }}>{t('common.loading')}</p>
         </div>
       </div>
     )
@@ -79,9 +87,14 @@ export default function Report() {
   if (error && !bin) {
     return (
       <div className={styles.container}>
+        <div className={styles.languageSwitcher}>
+          <div className="language-switcher-light">
+            <LanguageSwitcher />
+          </div>
+        </div>
         <div className={styles.card}>
           <div className={styles.errorIcon}>!</div>
-          <h2 className={styles.errorTitle}>Error</h2>
+          <h2 className={styles.errorTitle}>{t('common.error')}</h2>
           <p className={styles.errorText}>{error}</p>
         </div>
       </div>
@@ -91,10 +104,15 @@ export default function Report() {
   if (success) {
     return (
       <div className={styles.container}>
+        <div className={styles.languageSwitcher}>
+          <div className="language-switcher-light">
+            <LanguageSwitcher />
+          </div>
+        </div>
         <div className={styles.card}>
           <div className={styles.successIcon}>&#10003;</div>
-          <h2 className={styles.successTitle}>Thank You!</h2>
-          <p className={styles.successText}>Your report has been submitted successfully.</p>
+          <h2 className={styles.successTitle}>{t('report.thankYou')}</h2>
+          <p className={styles.successText}>{t('report.successMessage')}</p>
         </div>
       </div>
     )
@@ -102,17 +120,22 @@ export default function Report() {
 
   return (
     <div className={styles.container}>
+      <div className={styles.languageSwitcher}>
+        <div className="language-switcher-light">
+          <LanguageSwitcher />
+        </div>
+      </div>
       <div className={styles.card}>
         <div className={styles.header}>
-          <h1>EcoScan</h1>
-          <p>Report Bin Status</p>
+          <h1>{t('common.appName')}</h1>
+          <p>{t('report.title')}</p>
         </div>
 
         {bin && (
           <div className={styles.binInfo}>
             <h2>{bin.name}</h2>
             <span className={`badge badge-${bin.bin_type?.toLowerCase() || 'general'}`}>
-              {bin.bin_type || 'General'}
+              {t(`binTypes.${bin.bin_type?.toLowerCase() || 'general'}`)}
             </span>
             {bin.address && <p className={styles.address}>{bin.address}</p>}
           </div>
@@ -121,7 +144,7 @@ export default function Report() {
         {error && <div className="error-message">{error}</div>}
 
         <div className={styles.sliderSection}>
-          <label>How full is this bin?</label>
+          <label>{t('report.howFull')}</label>
           <div className={styles.statusDisplay}>
             <span className={styles.statusText} style={{ color: getStatusColor(status) }}>
               {getStatusText(status)}
@@ -140,8 +163,8 @@ export default function Report() {
             }}
           />
           <div className={styles.sliderLabels}>
-            <span>Empty</span>
-            <span>Full</span>
+            <span>{t('report.empty')}</span>
+            <span>{t('report.full')}</span>
           </div>
         </div>
 
@@ -150,7 +173,7 @@ export default function Report() {
           onClick={handleSubmit}
           disabled={submitting}
         >
-          {submitting ? 'Submitting...' : 'Submit Report'}
+          {submitting ? t('report.submitting') : t('report.submitReport')}
         </button>
       </div>
     </div>

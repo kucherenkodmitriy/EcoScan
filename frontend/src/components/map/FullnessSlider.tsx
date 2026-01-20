@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import { useTranslation } from 'react-i18next'
 import styles from './FullnessSlider.module.css'
 
 interface FullnessSliderProps {
@@ -7,6 +8,7 @@ interface FullnessSliderProps {
 }
 
 export default function FullnessSlider({ value, onChange }: FullnessSliderProps) {
+  const { t } = useTranslation()
   const [minVal, setMinVal] = useState(value[0])
   const [maxVal, setMaxVal] = useState(value[1])
 
@@ -79,7 +81,7 @@ export default function FullnessSlider({ value, onChange }: FullnessSliderProps)
 
   return (
     <div className={styles.sliderContainer}>
-      <label className={styles.label}>Filter by Fullness</label>
+      <label className={styles.label}>{t('fullnessSlider.filterByFullness')}</label>
       <div className={styles.sliderWrapper}>
         <div
           className={styles.track}

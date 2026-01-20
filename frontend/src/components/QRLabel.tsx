@@ -1,4 +1,5 @@
 import { QRCodeSVG } from 'qrcode.react'
+import { useTranslation } from 'react-i18next'
 import { Bin } from '../api/client'
 import styles from './QRLabel.module.css'
 
@@ -9,6 +10,7 @@ interface QRLabelProps {
 }
 
 export default function QRLabel({ bin, baseUrl, size = 'medium' }: QRLabelProps) {
+  const { t } = useTranslation()
   const url = `${baseUrl || window.location.origin}/report?bin=${bin.bin_id}`
 
   const qrSize = size === 'large' ? 200 : size === 'medium' ? 150 : 100
@@ -19,11 +21,12 @@ export default function QRLabel({ bin, baseUrl, size = 'medium' }: QRLabelProps)
         <QRCodeSVG value={url} size={qrSize} level="M" />
       </div>
       <div className={styles.info}>
-        <h3 className={styles.name}>{bin.name || 'Unnamed Bin'}</h3>
+        <h3 className={styles.name}>{bin.name || t('binDetail.unnamed')}</h3>
         <span className={`badge badge-${bin.bin_type?.toLowerCase() || 'mixed'}`}>
-          {bin.bin_type || 'mixed'}
+          {t(`binTypes.${bin.bin_type?.toLowerCase() || 'mixed'}`)}
         </span>
         {bin.address && <p className={styles.address}>{bin.address}</p>}
+        <p className={styles.scanText}>{t('qrLabel.scanToReport')}</p>
       </div>
     </div>
   )

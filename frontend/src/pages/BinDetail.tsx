@@ -1,8 +1,10 @@
 import { useState, useEffect } from 'react'
 import { useParams, useNavigate, Link } from 'react-router-dom'
+import { useTranslation } from 'react-i18next'
 import { useAuth } from '../context/AuthContext'
 import { getBin, deleteBin, Bin } from '../api/client'
 import QRLabel from '../components/QRLabel'
+import LanguageSwitcher from '../components/LanguageSwitcher'
 import styles from './BinDetail.module.css'
 
 function getStatusClass(status: number): string {
@@ -11,13 +13,14 @@ function getStatusClass(status: number): string {
   return styles.low
 }
 
-function formatDate(dateStr: string | null): string {
-  if (!dateStr) return 'Never'
+function formatDate(dateStr: string | null, neverText: string): string {
+  if (!dateStr) return neverText
   const date = new Date(dateStr)
   return date.toLocaleDateString() + ' ' + date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
 }
 
 export default function BinDetail() {
+  const { t } = useTranslation()
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
   const { user, logout } = useAuth()
@@ -32,7 +35,7 @@ export default function BinDetail() {
 
   useEffect(() => {
     if (!id) {
-      setError('No bin ID provided')
+      setError(t('report.noBinId'))
       setLoading(false)
       return
     }
@@ -42,14 +45,14 @@ export default function BinDetail() {
         const data = await getBin(id)
         setBin(data)
       } catch (err) {
-        setError(err instanceof Error ? err.message : 'Failed to load bin')
+        setError(err instanceof Error ? err.message : t('binDetail.failedToLoad'))
       } finally {
         setLoading(false)
       }
     }
 
     loadBin()
-  }, [id])
+  }, [id, t])
 
   const handleDelete = async () => {
     if (!id) return
@@ -59,7 +62,7 @@ export default function BinDetail() {
       await deleteBin(id)
       navigate('/dashboard')
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to delete bin')
+      setError(err instanceof Error ? err.message : t('binDetail.failedToDelete'))
       setDeleting(false)
       setShowDeleteConfirm(false)
     }
@@ -74,20 +77,27 @@ export default function BinDetail() {
     }, 100)
   }
 
+  const getStatusLabel = (status: number): string => {
+    if (status >= 80) return t('binDetail.statusFull')
+    if (status >= 50) return t('binDetail.statusGettingFull')
+    return t('binDetail.statusAvailable')
+  }
+
   return (
     <div className={styles.page}>
       <header className={styles.header}>
         <div className={styles.headerLeft}>
-          <Link to="/dashboard" className={styles.backLink}>&larr; Back</Link>
-          <h1>EcoScan</h1>
+          <Link to="/dashboard" className={styles.backLink}>&larr; {t('common.back')}</Link>
+          <h1>{t('common.appName')}</h1>
         </div>
         <div className={styles.headerRight}>
+          <LanguageSwitcher />
           <div className={styles.userInfo}>
             <strong>{user?.name}</strong>
             <span>{user?.role}</span>
           </div>
           <button className="btn btn-secondary" onClick={logout}>
-            Logout
+            {t('common.logout')}
           </button>
         </div>
       </header>
@@ -96,35 +106,35 @@ export default function BinDetail() {
         {loading ? (
           <div className={styles.loadingState}>
             <div className="spinner"></div>
-            <p>Loading bin...</p>
+            <p>{t('binDetail.loadingBin')}</p>
           </div>
         ) : error && !bin ? (
           <div className={styles.errorState}>
             <p>{error}</p>
-            <Link to="/dashboard" className="btn btn-primary">Back to Dashboard</Link>
+            <Link to="/dashboard" className="btn btn-primary">{t('binDetail.backToDashboard')}</Link>
           </div>
         ) : bin ? (
           <>
             <div className={styles.titleBar}>
               <div>
-                <h2>{bin.name || 'Unnamed Bin'}</h2>
+                <h2>{bin.name || t('binDetail.unnamed')}</h2>
                 <span className={`badge badge-${bin.bin_type?.toLowerCase() || 'general'}`}>
-                  {bin.bin_type || 'General'}
+                  {t(`binTypes.${bin.bin_type?.toLowerCase() || 'general'}`)}
                 </span>
                 <span className={`badge ${bin.is_active ? 'badge-active' : 'badge-inactive'}`} style={{ marginLeft: 8 }}>
-                  {bin.is_active ? 'Active' : 'Inactive'}
+                  {bin.is_active ? t('common.active') : t('common.inactive')}
                 </span>
               </div>
               <div className={styles.actions}>
                 <Link to={`/bins/${id}/edit`} className="btn btn-primary">
-                  Edit Bin
+                  {t('binDetail.editBin')}
                 </Link>
                 <button
                   className={`btn ${styles.btnDanger}`}
                   onClick={() => setShowDeleteConfirm(true)}
                   disabled={deleting}
                 >
-                  Delete
+                  {t('common.delete')}
                 </button>
               </div>
             </div>
@@ -133,7 +143,7 @@ export default function BinDetail() {
 
             <div className={styles.grid}>
               <div className={styles.card}>
-                <h3>Current Status</h3>
+                <h3>{t('binDetail.currentStatus')}</h3>
                 <div className={`${styles.statusDisplay} ${getStatusClass(bin.status || 0)}`}>
                   <div className={styles.statusValue}>{bin.status || 0}%</div>
                   <div className={styles.statusBar}>
@@ -143,40 +153,36 @@ export default function BinDetail() {
                     ></div>
                   </div>
                   <div className={styles.statusLabel}>
-                    {(bin.status || 0) >= 80
-                      ? 'Full - Needs Collection'
-                      : (bin.status || 0) >= 50
-                      ? 'Getting Full'
-                      : 'Available'}
+                    {getStatusLabel(bin.status || 0)}
                   </div>
                 </div>
               </div>
 
               <div className={styles.card}>
-                <h3>Details</h3>
+                <h3>{t('binDetail.details')}</h3>
                 <dl className={styles.details}>
-                  <dt>Bin ID</dt>
+                  <dt>{t('binDetail.binId')}</dt>
                   <dd><code>{bin.bin_id}</code></dd>
-                  <dt>Address</dt>
+                  <dt>{t('binDetail.address')}</dt>
                   <dd>{bin.address || '-'}</dd>
-                  <dt>Total Reports</dt>
+                  <dt>{t('binDetail.totalReports')}</dt>
                   <dd>{bin.reports_count || 0}</dd>
-                  <dt>Last Updated</dt>
-                  <dd>{formatDate(bin.last_updated)}</dd>
+                  <dt>{t('binDetail.lastUpdated')}</dt>
+                  <dd>{formatDate(bin.last_updated, t('common.never'))}</dd>
                 </dl>
               </div>
 
               <div className={styles.card}>
-                <h3>QR Code</h3>
+                <h3>{t('binDetail.qrCode')}</h3>
                 <p className={styles.qrInfo}>
-                  Print QR code label or share link for public reporting:
+                  {t('binDetail.qrInfo')}
                 </p>
                 <div className={styles.qrActions}>
                   <button
                     className="btn btn-primary"
                     onClick={() => setShowQRPreview(true)}
                   >
-                    Preview & Print QR
+                    {t('binDetail.previewPrintQR')}
                   </button>
                   <button
                     className="btn btn-secondary"
@@ -186,7 +192,7 @@ export default function BinDetail() {
                     }}
                     style={{ background: '#666', border: 'none' }}
                   >
-                    Copy Link
+                    {t('binDetail.copyLink')}
                   </button>
                 </div>
                 <div className={styles.qrLink}>
@@ -198,8 +204,8 @@ export default function BinDetail() {
             {showDeleteConfirm && (
               <div className={styles.modal}>
                 <div className={styles.modalContent}>
-                  <h3>Delete Bin?</h3>
-                  <p>Are you sure you want to delete "{bin.name}"? This action will soft-delete the bin.</p>
+                  <h3>{t('binDetail.deleteBin')}</h3>
+                  <p>{t('binDetail.deleteConfirm', { name: bin.name })}</p>
                   <div className={styles.modalActions}>
                     <button
                       className="btn btn-secondary"
@@ -207,14 +213,14 @@ export default function BinDetail() {
                       disabled={deleting}
                       style={{ background: '#666', border: 'none' }}
                     >
-                      Cancel
+                      {t('common.cancel')}
                     </button>
                     <button
                       className={`btn ${styles.btnDanger}`}
                       onClick={handleDelete}
                       disabled={deleting}
                     >
-                      {deleting ? 'Deleting...' : 'Delete'}
+                      {deleting ? t('binDetail.deleting') : t('common.delete')}
                     </button>
                   </div>
                 </div>
@@ -224,7 +230,7 @@ export default function BinDetail() {
             {showQRPreview && (
               <div className={styles.modal}>
                 <div className={styles.modalContent}>
-                  <h3>QR Code Preview</h3>
+                  <h3>{t('binDetail.qrPreview')}</h3>
                   <div className={styles.qrPreview}>
                     <QRLabel bin={bin} size="large" />
                   </div>
@@ -234,13 +240,13 @@ export default function BinDetail() {
                       onClick={() => setShowQRPreview(false)}
                       style={{ background: '#666', border: 'none' }}
                     >
-                      Close
+                      {t('common.close')}
                     </button>
                     <button
                       className="btn btn-primary"
                       onClick={handlePrintQR}
                     >
-                      Print
+                      {t('common.print')}
                     </button>
                   </div>
                 </div>

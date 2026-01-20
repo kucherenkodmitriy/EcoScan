@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { useTranslation, Trans } from 'react-i18next'
 import AddressAutocomplete from './AddressAutocomplete'
 import styles from './RouteModal.module.css'
 
@@ -21,6 +22,7 @@ export default function RouteModal({
   onCreateRoute,
   waypointCount,
 }: RouteModalProps) {
+  const { t } = useTranslation()
   const [startAddress, setStartAddress] = useState('')
   const [startCoords, setStartCoords] = useState<{ lat: number; lng: number } | null>(null)
   const [endAddress, setEndAddress] = useState('')
@@ -32,22 +34,22 @@ export default function RouteModal({
     setError('')
 
     if (!startCoords) {
-      setError('Please select a valid start point from the suggestions')
+      setError(t('routeModal.errorSelectStart'))
       return
     }
 
     if (!endCoords) {
-      setError('Please select a valid end point from the suggestions')
+      setError(t('routeModal.errorSelectEnd'))
       return
     }
 
     if (waypointCount === 0) {
-      setError('No bins to route through. Adjust your filters to include some bins.')
+      setError(t('routeModal.errorNoBins'))
       return
     }
 
     if (waypointCount > 23) {
-      setError(`Too many waypoints (${waypointCount}). Google Maps supports max 23 intermediate stops. Please filter to fewer bins.`)
+      setError(t('routeModal.errorTooManyWaypoints', { count: waypointCount }))
       return
     }
 
@@ -72,20 +74,23 @@ export default function RouteModal({
     <div className={styles.overlay} onClick={handleClose}>
       <div className={styles.modal} onClick={(e) => e.stopPropagation()}>
         <div className={styles.header}>
-          <h3>Create Collection Route</h3>
+          <h3>{t('routeModal.title')}</h3>
           <button className={styles.closeBtn} onClick={handleClose}>&times;</button>
         </div>
 
         <p className={styles.description}>
-          Build an optimized route through <strong>{waypointCount}</strong> bin{waypointCount !== 1 ? 's' : ''} currently shown on the map.
-          Google Maps will automatically find the most efficient order.
+          <Trans
+            i18nKey="routeModal.description"
+            values={{ count: waypointCount, plural: waypointCount !== 1 ? 's' : '' }}
+            components={{ strong: <strong /> }}
+          />
         </p>
 
         {error && <div className={styles.error}>{error}</div>}
 
         <form onSubmit={handleSubmit} className={styles.form}>
           <div className="form-group">
-            <label htmlFor="startPoint">Start Point *</label>
+            <label htmlFor="startPoint">{t('routeModal.startPoint')} *</label>
             <AddressAutocomplete
               id="startPoint"
               value={startAddress}
@@ -97,13 +102,13 @@ export default function RouteModal({
                 setStartAddress(place.address)
                 setStartCoords({ lat: place.lat, lng: place.lng })
               }}
-              placeholder="Enter starting address..."
+              placeholder={t('routeModal.startPlaceholder')}
               required
             />
           </div>
 
           <div className="form-group">
-            <label htmlFor="endPoint">End Point *</label>
+            <label htmlFor="endPoint">{t('routeModal.endPoint')} *</label>
             <AddressAutocomplete
               id="endPoint"
               value={endAddress}
@@ -115,7 +120,7 @@ export default function RouteModal({
                 setEndAddress(place.address)
                 setEndCoords({ lat: place.lat, lng: place.lng })
               }}
-              placeholder="Enter destination address..."
+              placeholder={t('routeModal.endPlaceholder')}
               required
             />
           </div>
@@ -126,7 +131,7 @@ export default function RouteModal({
               <line x1="12" y1="16" x2="12" y2="12"/>
               <line x1="12" y1="8" x2="12" y2="8"/>
             </svg>
-            <span>The route will visit bins in the most efficient order</span>
+            <span>{t('routeModal.efficientOrderInfo')}</span>
           </div>
 
           <div className={styles.actions}>
@@ -136,14 +141,14 @@ export default function RouteModal({
               onClick={handleClose}
               style={{ background: '#666', border: 'none' }}
             >
-              Cancel
+              {t('common.cancel')}
             </button>
             <button
               type="submit"
               className="btn btn-primary"
               disabled={waypointCount === 0}
             >
-              Create Route
+              {t('routeModal.createRoute')}
             </button>
           </div>
         </form>

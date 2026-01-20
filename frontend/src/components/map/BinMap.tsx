@@ -1,6 +1,7 @@
 import { useCallback, useMemo, useState, useEffect, useRef } from 'react'
 import { GoogleMap, InfoWindow, DirectionsRenderer } from '@react-google-maps/api'
 import { MarkerClusterer, SuperClusterAlgorithm } from '@googlemaps/markerclusterer'
+import { useTranslation } from 'react-i18next'
 import { Bin } from '../../api/client'
 import { useGoogleMaps, useGoogleMapsApiKey } from './GoogleMapsProvider'
 import BinInfoWindow from './BinInfoWindow'
@@ -68,6 +69,7 @@ export default function BinMap({
   zoom = defaultZoom,
   directions = null,
 }: BinMapProps) {
+  const { t } = useTranslation()
   const apiKey = useGoogleMapsApiKey()
   const { isLoaded, loadError } = useGoogleMaps()
 
@@ -192,9 +194,9 @@ export default function BinMap({
   if (!apiKey) {
     return (
       <div className={styles.errorState}>
-        <h3>Google Maps API Key Required</h3>
-        <p>Please configure VITE_GOOGLE_MAPS_API_KEY in your environment.</p>
-        <p className={styles.hint}>Add it to frontend/.env.local</p>
+        <h3>{t('map.apiKeyRequired')}</h3>
+        <p>{t('map.configureApiKey')}</p>
+        <p className={styles.hint}>{t('map.addToEnvHint')}</p>
       </div>
     )
   }
@@ -202,8 +204,8 @@ export default function BinMap({
   if (loadError) {
     return (
       <div className={styles.errorState}>
-        <h3>Failed to load Google Maps</h3>
-        <p>Please check your API key configuration.</p>
+        <h3>{t('map.failedToLoad')}</h3>
+        <p>{t('map.checkApiKeyConfig')}</p>
         <p className={styles.hint}>{String(loadError.message || loadError)}</p>
       </div>
     )
@@ -213,7 +215,7 @@ export default function BinMap({
     return (
       <div className={styles.loadingState}>
         <div className="spinner"></div>
-        <p>Loading map...</p>
+        <p>{t('map.loadingMap')}</p>
       </div>
     )
   }
@@ -249,7 +251,7 @@ export default function BinMap({
               color: '#555',
             }}
           >
-            No bins with coordinates to display.
+            {t('map.noBinsToDisplay')}
           </div>
         )}
 

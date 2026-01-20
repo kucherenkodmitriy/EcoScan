@@ -1,9 +1,12 @@
 import { useState, FormEvent, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { useTranslation } from 'react-i18next'
 import { useAuth } from '../context/AuthContext'
+import LanguageSwitcher from '../components/LanguageSwitcher'
 import styles from './Login.module.css'
 
 export default function Login() {
+  const { t } = useTranslation()
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [error, setError] = useState('')
@@ -22,7 +25,7 @@ export default function Login() {
     setError('')
 
     if (!email || !password) {
-      setError('Please enter both email and password')
+      setError(t('login.errorBothRequired'))
       return
     }
 
@@ -31,7 +34,7 @@ export default function Login() {
       await login(email, password)
       navigate('/dashboard')
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Login failed')
+      setError(err instanceof Error ? err.message : t('login.errorFailed'))
     } finally {
       setLoading(false)
     }
@@ -39,35 +42,40 @@ export default function Login() {
 
   return (
     <div className={styles.container}>
+      <div className={styles.languageSwitcher}>
+        <div className="language-switcher-light">
+          <LanguageSwitcher />
+        </div>
+      </div>
       <div className={styles.card}>
         <div className={styles.logo}>
-          <h1>EcoScan</h1>
-          <p>Admin Dashboard</p>
+          <h1>{t('common.appName')}</h1>
+          <p>{t('login.title')}</p>
         </div>
 
         {error && <div className="error-message">{error}</div>}
 
         <form onSubmit={handleSubmit}>
           <div className="form-group">
-            <label htmlFor="email">Email</label>
+            <label htmlFor="email">{t('login.email')}</label>
             <input
               type="email"
               id="email"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              placeholder="admin@example.com"
+              placeholder={t('login.emailPlaceholder')}
               autoComplete="email"
             />
           </div>
 
           <div className="form-group">
-            <label htmlFor="password">Password</label>
+            <label htmlFor="password">{t('login.password')}</label>
             <input
               type="password"
               id="password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
-              placeholder="Enter your password"
+              placeholder={t('login.passwordPlaceholder')}
               autoComplete="current-password"
             />
           </div>
@@ -76,10 +84,10 @@ export default function Login() {
             {loading ? (
               <>
                 <span className={styles.btnSpinner}></span>
-                Signing in...
+                {t('login.signingIn')}
               </>
             ) : (
-              'Sign In'
+              t('login.signIn')
             )}
           </button>
         </form>

@@ -1,15 +1,9 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { useTranslation } from 'react-i18next'
 import { createBin, CreateBinInput } from '../../api/client'
 import AddressAutocomplete from './AddressAutocomplete'
 import styles from './AddBinModal.module.css'
-
-const BIN_TYPES = [
-  { value: 'mixed', label: 'Mixed' },
-  { value: 'plastic', label: 'Plastic' },
-  { value: 'paper', label: 'Paper' },
-  { value: 'glass', label: 'Glass' },
-]
 
 interface AddBinModalProps {
   isOpen: boolean
@@ -26,8 +20,17 @@ export default function AddBinModal({
   initialCoordinates,
   onBinCreated,
 }: AddBinModalProps) {
+  const { t } = useTranslation()
   const navigate = useNavigate()
   const [mode, setMode] = useState<InputMode>(initialCoordinates ? 'map' : 'address')
+
+  // Bin types with translated labels
+  const BIN_TYPES = [
+    { value: 'mixed', label: t('binTypes.mixed') },
+    { value: 'plastic', label: t('binTypes.plastic') },
+    { value: 'paper', label: t('binTypes.paper') },
+    { value: 'glass', label: t('binTypes.glass') },
+  ]
 
   const [name, setName] = useState('')
   const [binType, setBinType] = useState('mixed')
@@ -93,7 +96,7 @@ export default function AddBinModal({
   const geocodeAddress = async (addr: string): Promise<{ lat: number; lng: number } | null> => {
     const apiKey = import.meta.env.VITE_GOOGLE_MAPS_API_KEY
     if (!apiKey) {
-      setError('Google Maps API key not configured')
+      setError(t('addBinModal.googleMapsKeyNotConfigured'))
       return null
     }
 
@@ -107,10 +110,10 @@ export default function AddBinModal({
         const location = data.results[0].geometry.location
         return { lat: location.lat, lng: location.lng }
       }
-      setError('Could not find location for this address')
+      setError(t('addBinModal.couldNotFindLocation'))
       return null
     } catch (err) {
-      setError('Geocoding failed. Please try again.')
+      setError(t('addBinModal.geocodingFailed'))
       return null
     } finally {
       setGeocoding(false)
@@ -122,7 +125,7 @@ export default function AddBinModal({
     setError('')
 
     if (!name.trim()) {
-      setError('Name is required')
+      setError(t('binForm.nameRequired'))
       return
     }
 
@@ -131,7 +134,7 @@ export default function AddBinModal({
 
     if (mode === 'address') {
       if (!address.trim()) {
-        setError('Address is required')
+        setError(t('addBinModal.addressRequired'))
         return
       }
       // Use pre-filled coordinates from autocomplete if available
@@ -151,11 +154,11 @@ export default function AddBinModal({
         finalLat = parseFloat(latitude)
         finalLng = parseFloat(longitude)
         if (isNaN(finalLat) || isNaN(finalLng)) {
-          setError('Invalid coordinates')
+          setError(t('addBinModal.invalidCoordinates'))
           return
         }
       } else if (mode === 'coordinates') {
-        setError('Coordinates are required')
+        setError(t('addBinModal.coordinatesRequired'))
         return
       }
     }
@@ -175,7 +178,7 @@ export default function AddBinModal({
       onClose()
       navigate(`/bins/${newBin.bin_id}`)
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to create bin')
+      setError(err instanceof Error ? err.message : t('addBinModal.failedToCreate'))
       setSaving(false)
     }
   }
@@ -190,7 +193,7 @@ export default function AddBinModal({
     <div className={styles.overlay} onClick={handleClose}>
       <div className={styles.modal} onClick={(e) => e.stopPropagation()}>
         <div className={styles.header}>
-          <h3>Add New Bin</h3>
+          <h3>{t('addBinModal.title')}</h3>
           <button className={styles.closeBtn} onClick={handleClose}>&times;</button>
         </div>
 
@@ -200,23 +203,23 @@ export default function AddBinModal({
             className={`${styles.modeBtn} ${mode === 'address' ? styles.active : ''}`}
             onClick={() => setMode('address')}
           >
-            Enter Address
+            {t('addBinModal.enterAddress')}
           </button>
           <button
             type="button"
             className={`${styles.modeBtn} ${mode === 'map' ? styles.active : ''}`}
             onClick={() => setMode('map')}
             disabled={!initialCoordinates}
-            title={!initialCoordinates ? 'Click on the map first' : ''}
+            title={!initialCoordinates ? t('addBinModal.clickMapFirst') : ''}
           >
-            From Map Click
+            {t('addBinModal.fromMapClick')}
           </button>
           <button
             type="button"
             className={`${styles.modeBtn} ${mode === 'coordinates' ? styles.active : ''}`}
             onClick={() => setMode('coordinates')}
           >
-            Enter Coordinates
+            {t('addBinModal.enterCoordinates')}
           </button>
         </div>
 
@@ -224,19 +227,19 @@ export default function AddBinModal({
 
         <form onSubmit={handleSubmit} className={styles.form}>
           <div className="form-group">
-            <label htmlFor="name">Name *</label>
+            <label htmlFor="name">{t('binForm.name')} *</label>
             <input
               type="text"
               id="name"
               value={name}
               onChange={(e) => setName(e.target.value)}
-              placeholder="Enter bin name"
+              placeholder={t('binForm.namePlaceholder')}
               required
             />
           </div>
 
           <div className="form-group">
-            <label htmlFor="binType">Type</label>
+            <label htmlFor="binType">{t('binForm.type')}</label>
             <select
               id="binType"
               value={binType}
@@ -253,7 +256,7 @@ export default function AddBinModal({
 
           {mode === 'address' && (
             <div className="form-group">
-              <label htmlFor="address">Address *</label>
+              <label htmlFor="address">{t('binForm.address')} *</label>
               <AddressAutocomplete
                 id="address"
                 value={address}
@@ -263,7 +266,7 @@ export default function AddBinModal({
                   setLatitude(place.lat.toFixed(6))
                   setLongitude(place.lng.toFixed(6))
                 }}
-                placeholder="Start typing an address..."
+                placeholder={t('binForm.addressPlaceholder')}
                 required
               />
             </div>
@@ -271,9 +274,9 @@ export default function AddBinModal({
 
           {mode === 'map' && (
             <div className={styles.coordDisplay}>
-              <p>Location selected from map:</p>
+              <p>{t('addBinModal.locationSelected')}</p>
               <code>{latitude}, {longitude}</code>
-              {geocoding && <span className={styles.geocoding}>Looking up address...</span>}
+              {geocoding && <span className={styles.geocoding}>{t('addBinModal.lookingUpAddress')}</span>}
               {address && !geocoding && <p className={styles.resolvedAddress}>{address}</p>}
             </div>
           )}
@@ -281,7 +284,7 @@ export default function AddBinModal({
           {mode === 'coordinates' && (
             <>
               <div className="form-group">
-                <label htmlFor="addressOptional">Address (optional)</label>
+                <label htmlFor="addressOptional">{t('addBinModal.addressOptional')}</label>
                 <AddressAutocomplete
                   id="addressOptional"
                   value={address}
@@ -290,30 +293,30 @@ export default function AddBinModal({
                     setAddress(place.address)
                     // Don't override coordinates in coordinates mode
                   }}
-                  placeholder="Enter address description"
+                  placeholder={t('binForm.addressPlaceholder')}
                 />
               </div>
               <div className={styles.coordRow}>
                 <div className="form-group">
-                  <label htmlFor="latitude">Latitude *</label>
+                  <label htmlFor="latitude">{t('binForm.latitude')} *</label>
                   <input
                     type="number"
                     id="latitude"
                     value={latitude}
                     onChange={(e) => setLatitude(e.target.value)}
-                    placeholder="e.g. 50.4501"
+                    placeholder={t('binForm.latitudePlaceholder')}
                     step="any"
                     required
                   />
                 </div>
                 <div className="form-group">
-                  <label htmlFor="longitude">Longitude *</label>
+                  <label htmlFor="longitude">{t('binForm.longitude')} *</label>
                   <input
                     type="number"
                     id="longitude"
                     value={longitude}
                     onChange={(e) => setLongitude(e.target.value)}
-                    placeholder="e.g. 30.5234"
+                    placeholder={t('binForm.longitudePlaceholder')}
                     step="any"
                     required
                   />
@@ -329,14 +332,14 @@ export default function AddBinModal({
               onClick={handleClose}
               style={{ background: '#666', border: 'none' }}
             >
-              Cancel
+              {t('common.cancel')}
             </button>
             <button
               type="submit"
               className="btn btn-primary"
               disabled={saving || geocoding}
             >
-              {saving ? 'Creating...' : 'Create Bin'}
+              {saving ? t('addBinModal.creating') : t('binForm.createBin')}
             </button>
           </div>
         </form>

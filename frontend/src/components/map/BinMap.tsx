@@ -1,10 +1,9 @@
 import { useCallback, useMemo, useState, useEffect, useRef } from 'react'
-import { GoogleMap, InfoWindow, DirectionsRenderer } from '@react-google-maps/api'
+import { GoogleMap, DirectionsRenderer } from '@react-google-maps/api'
 import { MarkerClusterer, SuperClusterAlgorithm } from '@googlemaps/markerclusterer'
 import { useTranslation } from 'react-i18next'
 import { Bin } from '../../api/client'
 import { useGoogleMaps, useGoogleMapsApiKey } from './GoogleMapsProvider'
-import BinInfoWindow from './BinInfoWindow'
 import styles from './BinMap.module.css'
 
 interface BinMapProps {
@@ -76,12 +75,18 @@ export default function BinMap({
   const [map, setMap] = useState<google.maps.Map | null>(null)
   const clustererRef = useRef<MarkerClusterer | null>(null)
   const markersRef = useRef<Map<string, google.maps.Marker>>(new Map())
+  const infoWindowRef = useRef<google.maps.InfoWindow | null>(null)
 
   const onLoad = useCallback((loadedMap: google.maps.Map) => {
     setMap(loadedMap)
   }, [])
 
   const onUnmount = useCallback(() => {
+    // Clean up InfoWindow
+    if (infoWindowRef.current) {
+      infoWindowRef.current.close()
+      infoWindowRef.current = null
+    }
     // Clean up clusterer and markers
     if (clustererRef.current) {
       clustererRef.current.clearMarkers()
@@ -99,12 +104,18 @@ export default function BinMap({
     if (onBinSelect) {
       onBinSelect(null)
     }
+    // Close the InfoWindow
+    if (infoWindowRef.current) {
+      infoWindowRef.current.close()
+    }
   }, [onMapClick, onBinSelect])
 
-  const selectedBin = useMemo(
-    () => bins.find(b => b.bin_id === selectedBinId),
-    [bins, selectedBinId]
-  )
+  // Close InfoWindow when selection is cleared externally
+  useEffect(() => {
+    if (!selectedBinId && infoWindowRef.current) {
+      infoWindowRef.current.close()
+    }
+  }, [selectedBinId])
 
   // Only show bins that have coordinates; treat missing is_active as active (older API responses).
   const binsWithCoords = useMemo(
@@ -156,12 +167,40 @@ export default function BinMap({
           url: createMarkerIcon(getMarkerColor(bin.status || 0)),
           scaledSize: new google.maps.Size(24, 24),
         },
-        title: bin.name,
+        // Don't use title - it creates a browser tooltip that interferes with InfoWindow
       })
 
       // Add click listener
       marker.addListener('click', () => {
         onBinSelect?.(bin.bin_id)
+
+        // Show InfoWindow using native Google Maps API with HTML content
+        if (!infoWindowRef.current) {
+          infoWindowRef.current = new google.maps.InfoWindow()
+          infoWindowRef.current.addListener('closeclick', () => {
+            onBinSelect?.(null)
+          })
+        }
+
+        // Determine status color
+        const statusColor = bin.status >= 70 ? '#c62828' : bin.status >= 30 ? '#f57c00' : '#2e7d32'
+        const binType = bin.bin_type?.toLowerCase() || 'mixed'
+
+        // Create HTML content for InfoWindow
+        const content = `
+          <div style="padding: 8px; max-width: 250px; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;">
+            <h4 style="font-size: 16px; font-weight: 600; color: #333; margin: 0 0 8px 0;">${bin.name}</h4>
+            <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 8px;">
+              <span class="badge badge-${binType}" style="padding: 2px 8px; border-radius: 4px; font-size: 12px;">${binType}</span>
+              <div style="font-size: 14px; color: ${statusColor};"><strong>${bin.status || 0}%</strong></div>
+            </div>
+            ${bin.address ? `<p style="font-size: 13px; color: #666; margin: 0 0 12px 0;">${bin.address}</p>` : ''}
+            <a href="/bins/${bin.bin_id}" style="display: inline-block; color: #2e7d32; font-size: 14px; font-weight: 500; text-decoration: none;">View Details →</a>
+          </div>
+        `
+
+        infoWindowRef.current.setContent(content)
+        infoWindowRef.current.open(map, marker)
       })
 
       markersRef.current.set(bin.bin_id, marker)
@@ -272,17 +311,7 @@ export default function BinMap({
           />
         )}
 
-        {selectedBin && selectedBin.coordinates && (
-          <InfoWindow
-            position={{
-              lat: selectedBin.coordinates.latitude,
-              lng: selectedBin.coordinates.longitude,
-            }}
-            onCloseClick={() => onBinSelect?.(null)}
-          >
-            <BinInfoWindow bin={selectedBin} />
-          </InfoWindow>
-        )}
+        {/* InfoWindow is managed natively via google.maps.InfoWindow in marker click handler */}
       </GoogleMap>
     </div>
   )

@@ -8,6 +8,7 @@ import BinForm from './pages/BinForm'
 import QRPrint from './pages/QRPrint'
 import PrivacyPolicy from './pages/PrivacyPolicy'
 import Terms from './pages/Terms'
+import Landing from './pages/Landing'
 
 function PrivateRoute({ children }: { children: React.ReactNode }) {
   const { isAuthenticated } = useAuth()
@@ -17,6 +18,7 @@ function PrivateRoute({ children }: { children: React.ReactNode }) {
 function App() {
   return (
     <Routes>
+      <Route path="/" element={<Landing />} />
       <Route path="/login" element={<Login />} />
       <Route path="/report" element={<Report />} />
       <Route path="/privacy" element={<PrivacyPolicy />} />
@@ -61,7 +63,7 @@ function App() {
           </PrivateRoute>
         }
       />
-      <Route path="/" element={<Navigate to="/dashboard" />} />
+      <Route path="*" element={<Navigate to="/" />} />
     </Routes>
   )
 }

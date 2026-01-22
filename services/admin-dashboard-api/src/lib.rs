@@ -25,12 +25,22 @@ pub struct AppState {
 }
 
 /// Build a successful JSON response with CORS headers
-fn success_response(status_code: i64, body: serde_json::Value, cors_origin: &str) -> ApiGatewayProxyResponse {
+fn success_response(
+    status_code: i64,
+    body: serde_json::Value,
+    cors_origin: &str,
+) -> ApiGatewayProxyResponse {
     let mut headers = HeaderMap::new();
     headers.insert("Content-Type", "application/json".parse().unwrap());
     headers.insert("Access-Control-Allow-Origin", cors_origin.parse().unwrap());
-    headers.insert("Access-Control-Allow-Headers", "Content-Type, Authorization".parse().unwrap());
-    headers.insert("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS".parse().unwrap());
+    headers.insert(
+        "Access-Control-Allow-Headers",
+        "Content-Type, Authorization".parse().unwrap(),
+    );
+    headers.insert(
+        "Access-Control-Allow-Methods",
+        "GET, POST, PUT, DELETE, OPTIONS".parse().unwrap(),
+    );
 
     ApiGatewayProxyResponse {
         status_code,
@@ -46,8 +56,14 @@ fn error_response(status_code: i64, message: &str, cors_origin: &str) -> ApiGate
     let mut headers = HeaderMap::new();
     headers.insert("Content-Type", "application/json".parse().unwrap());
     headers.insert("Access-Control-Allow-Origin", cors_origin.parse().unwrap());
-    headers.insert("Access-Control-Allow-Headers", "Content-Type, Authorization".parse().unwrap());
-    headers.insert("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS".parse().unwrap());
+    headers.insert(
+        "Access-Control-Allow-Headers",
+        "Content-Type, Authorization".parse().unwrap(),
+    );
+    headers.insert(
+        "Access-Control-Allow-Methods",
+        "GET, POST, PUT, DELETE, OPTIONS".parse().unwrap(),
+    );
 
     ApiGatewayProxyResponse {
         status_code,
@@ -169,7 +185,9 @@ async fn api_handler_inner(
         }
 
         // Create bin
-        ("POST", p) if p.ends_with("/admin/bins") => handle_create_bin(&request, &repo, cors_origin).await,
+        ("POST", p) if p.ends_with("/admin/bins") => {
+            handle_create_bin(&request, &repo, cors_origin).await
+        }
 
         // Update bin
         ("PUT", p) if p.contains("/admin/bins/") => {
@@ -329,7 +347,11 @@ async fn handle_delete_bin(
     };
 
     match delete_bin(repo, &bin_id).await {
-        Ok(()) => success_response(200, json!({ "message": "Bin deleted successfully" }), cors_origin),
+        Ok(()) => success_response(
+            200,
+            json!({ "message": "Bin deleted successfully" }),
+            cors_origin,
+        ),
         Err(e) => {
             let status = error_to_status_code(&e);
             error_response(status, &e.to_string(), cors_origin)

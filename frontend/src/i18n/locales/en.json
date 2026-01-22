@@ -175,5 +175,53 @@
   },
   "qrLabel": {
     "scanToReport": "Scan to report bin status"
+  },
+  "footer": {
+    "privacy": "Privacy Policy",
+    "terms": "Terms of Service",
+    "demoNotice": "Demo Version - No Warranties"
+  },
+  "privacy": {
+    "title": "Privacy Policy",
+    "lastUpdated": "Last Updated",
+    "introTitle": "Introduction",
+    "introText": "EcoScan is committed to protecting your privacy. This Privacy Policy explains what information we collect and how we use it.",
+    "dataCollectionTitle": "Information We Collect",
+    "dataCollectionText": "EcoScan collects minimal, non-personally identifiable information:",
+    "dataItem1": "Bin status reports (fullness level from 0-100%)",
+    "dataItem2": "Timestamp of when reports are submitted",
+    "dataItem3": "General bin location data (as configured by administrators)",
+    "noPersonalDataTitle": "No Personal Data Collection",
+    "noPersonalDataText": "We do NOT collect any personally identifiable information (PII). We do not collect your name, email address, phone number, IP address, device identifiers, or any other information that could be used to identify you personally. All bin status reports are submitted anonymously.",
+    "cookiesTitle": "Cookies and Local Storage",
+    "cookiesText": "EcoScan uses local storage only to save your language preference and administrator authentication tokens. We do not use tracking cookies or third-party analytics.",
+    "thirdPartyTitle": "Third-Party Services",
+    "thirdPartyText": "EcoScan uses Google Maps for map display and geocoding. Google's privacy policy applies to their services. We do not share any data with other third parties.",
+    "contactTitle": "Contact",
+    "contactText": "If you have questions about this Privacy Policy, please contact the system administrator."
+  },
+  "terms": {
+    "title": "Terms of Service & Disclaimer",
+    "lastUpdated": "Last Updated",
+    "demoWarning": "WARNING: This is a DEMO VERSION of EcoScan. It is provided for demonstration and evaluation purposes only.",
+    "acceptanceTitle": "Acceptance of Terms",
+    "acceptanceText": "By accessing or using EcoScan, you agree to be bound by these Terms of Service. If you do not agree to these terms, do not use the service.",
+    "demoTitle": "Demo Version Notice",
+    "demoText": "This software is a demonstration version with the following limitations:",
+    "demoItem1": "Data may be deleted or reset at any time without notice",
+    "demoItem2": "Features may change, be added, or removed without notice",
+    "demoItem3": "The service may be unavailable at any time",
+    "demoItem4": "No data backup or recovery is guaranteed",
+    "disclaimerTitle": "Disclaimer of Warranties",
+    "disclaimerHighlight": "THE SOFTWARE IS PROVIDED \"AS IS\", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED.",
+    "disclaimerText": "To the fullest extent permitted by applicable law, we disclaim all warranties, express or implied, including but not limited to implied warranties of merchantability, fitness for a particular purpose, and non-infringement. We do not warrant that the service will be uninterrupted, error-free, or secure.",
+    "limitationTitle": "Limitation of Liability",
+    "limitationText": "In no event shall the developers or operators of EcoScan be liable for any indirect, incidental, special, consequential, or punitive damages, including without limitation, loss of profits, data, use, goodwill, or other intangible losses, resulting from your access to or use of (or inability to access or use) the service.",
+    "noWarrantyTitle": "No Guarantees",
+    "noWarrantyText": "We make no guarantees regarding the accuracy, reliability, or completeness of any information provided through EcoScan. Bin status reports are user-submitted and may not reflect actual conditions. Do not rely on this software for critical waste management operations.",
+    "useAtOwnRiskTitle": "Use at Your Own Risk",
+    "useAtOwnRiskText": "You use EcoScan entirely at your own risk. You are solely responsible for any decisions or actions taken based on information provided by the service.",
+    "changesTitle": "Changes to Terms",
+    "changesText": "We reserve the right to modify these terms at any time. Continued use of the service after changes constitutes acceptance of the modified terms."
   }
 }

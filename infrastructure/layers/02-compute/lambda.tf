@@ -178,6 +178,7 @@ resource "aws_lambda_function" "admin_dashboard" {
         TRASH_BINS_TABLE_NAME     = local.trash_bins_table_name
         STATUS_REPORTS_TABLE_NAME = local.status_reports_table_name
         JWT_EXPIRY_HOURS          = var.jwt_expiry_hours
+        CORS_ALLOWED_ORIGINS      = var.cors_allowed_origins
         AWS_XRAY_TRACING_NAME     = "${var.environment}-${var.project_name}-admin-dashboard"
         AWS_XRAY_CONTEXT_MISSING  = "LOG_ERROR"
       },

@@ -3,6 +3,7 @@ import { useSearchParams } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { getPublicBinInfo, submitBinStatus, PublicBinInfo } from '../api/client'
 import LanguageSwitcher from '../components/LanguageSwitcher'
+import Footer from '../components/Footer'
 import styles from './Report.module.css'
 
 function getStatusColor(value: number): string {
@@ -80,6 +81,7 @@ export default function Report() {
           <div className="spinner"></div>
           <p style={{ textAlign: 'center', marginTop: 16, color: '#666' }}>{t('common.loading')}</p>
         </div>
+        <Footer variant="light" />
       </div>
     )
   }
@@ -97,6 +99,7 @@ export default function Report() {
           <h2 className={styles.errorTitle}>{t('common.error')}</h2>
           <p className={styles.errorText}>{error}</p>
         </div>
+        <Footer variant="light" />
       </div>
     )
   }
@@ -114,6 +117,7 @@ export default function Report() {
           <h2 className={styles.successTitle}>{t('report.thankYou')}</h2>
           <p className={styles.successText}>{t('report.successMessage')}</p>
         </div>
+        <Footer variant="light" />
       </div>
     )
   }
@@ -176,6 +180,7 @@ export default function Report() {
           {submitting ? t('report.submitting') : t('report.submitReport')}
         </button>
       </div>
+      <Footer variant="light" />
     </div>
   )
 }

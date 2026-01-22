@@ -175,5 +175,53 @@
   },
   "qrLabel": {
     "scanToReport": "Scannen um Behälterstatus zu melden"
+  },
+  "footer": {
+    "privacy": "Datenschutzrichtlinie",
+    "terms": "Nutzungsbedingungen",
+    "demoNotice": "Demo-Version - Ohne Gewähr"
+  },
+  "privacy": {
+    "title": "Datenschutzrichtlinie",
+    "lastUpdated": "Zuletzt aktualisiert",
+    "introTitle": "Einleitung",
+    "introText": "EcoScan ist dem Schutz Ihrer Privatsphäre verpflichtet. Diese Datenschutzrichtlinie erklärt, welche Informationen wir sammeln und wie wir sie verwenden.",
+    "dataCollectionTitle": "Gesammelte Informationen",
+    "dataCollectionText": "EcoScan sammelt minimale, nicht personenbezogene Informationen:",
+    "dataItem1": "Behälterstatus-Meldungen (Füllstand von 0-100%)",
+    "dataItem2": "Zeitstempel der Meldungsübermittlung",
+    "dataItem3": "Allgemeine Behälter-Standortdaten (wie von Administratoren konfiguriert)",
+    "noPersonalDataTitle": "Keine Erhebung personenbezogener Daten",
+    "noPersonalDataText": "Wir erheben KEINE personenbezogenen Daten (PBD). Wir sammeln weder Ihren Namen, Ihre E-Mail-Adresse, Telefonnummer, IP-Adresse, Gerätekennungen noch andere Informationen, die zu Ihrer persönlichen Identifikation verwendet werden könnten. Alle Behälterstatus-Meldungen werden anonym übermittelt.",
+    "cookiesTitle": "Cookies und lokaler Speicher",
+    "cookiesText": "EcoScan verwendet den lokalen Speicher nur zum Speichern Ihrer Spracheinstellung und Administrator-Authentifizierungs-Tokens. Wir verwenden keine Tracking-Cookies oder Analysedienste von Drittanbietern.",
+    "thirdPartyTitle": "Dienste von Drittanbietern",
+    "thirdPartyText": "EcoScan verwendet Google Maps für die Kartenanzeige und Geokodierung. Die Datenschutzrichtlinie von Google gilt für deren Dienste. Wir teilen keine Daten mit anderen Drittanbietern.",
+    "contactTitle": "Kontakt",
+    "contactText": "Bei Fragen zu dieser Datenschutzrichtlinie wenden Sie sich bitte an den Systemadministrator."
+  },
+  "terms": {
+    "title": "Nutzungsbedingungen & Haftungsausschluss",
+    "lastUpdated": "Zuletzt aktualisiert",
+    "demoWarning": "ACHTUNG: Dies ist eine DEMO-VERSION von EcoScan. Sie wird nur zu Demonstrations- und Evaluierungszwecken bereitgestellt.",
+    "acceptanceTitle": "Annahme der Bedingungen",
+    "acceptanceText": "Durch den Zugriff auf oder die Nutzung von EcoScan erklären Sie sich mit diesen Nutzungsbedingungen einverstanden. Wenn Sie diesen Bedingungen nicht zustimmen, nutzen Sie den Dienst nicht.",
+    "demoTitle": "Hinweis zur Demo-Version",
+    "demoText": "Diese Software ist eine Demonstrationsversion mit folgenden Einschränkungen:",
+    "demoItem1": "Daten können jederzeit ohne Vorankündigung gelöscht oder zurückgesetzt werden",
+    "demoItem2": "Funktionen können ohne Vorankündigung geändert, hinzugefügt oder entfernt werden",
+    "demoItem3": "Der Dienst kann jederzeit nicht verfügbar sein",
+    "demoItem4": "Datensicherung oder -wiederherstellung wird nicht garantiert",
+    "disclaimerTitle": "Gewährleistungsausschluss",
+    "disclaimerHighlight": "DIE SOFTWARE WIRD \"WIE BESEHEN\" OHNE JEGLICHE AUSDRÜCKLICHE ODER STILLSCHWEIGENDE GEWÄHRLEISTUNG BEREITGESTELLT.",
+    "disclaimerText": "Im größtmöglichen gesetzlich zulässigen Umfang lehnen wir alle ausdrücklichen oder stillschweigenden Gewährleistungen ab, einschließlich, aber nicht beschränkt auf stillschweigende Gewährleistungen der Marktgängigkeit, Eignung für einen bestimmten Zweck und Nichtverletzung von Rechten. Wir garantieren nicht, dass der Dienst unterbrechungsfrei, fehlerfrei oder sicher sein wird.",
+    "limitationTitle": "Haftungsbeschränkung",
+    "limitationText": "In keinem Fall haften die Entwickler oder Betreiber von EcoScan für indirekte, zufällige, besondere, Folge- oder Strafschäden, einschließlich, aber nicht beschränkt auf Gewinnverlust, Datenverlust, Nutzungsverlust, Geschäftswertverlust oder andere immaterielle Verluste, die aus Ihrem Zugriff auf oder Ihrer Nutzung des Dienstes (oder der Unfähigkeit des Zugriffs oder der Nutzung) resultieren.",
+    "noWarrantyTitle": "Keine Garantien",
+    "noWarrantyText": "Wir geben keine Garantien hinsichtlich der Genauigkeit, Zuverlässigkeit oder Vollständigkeit der über EcoScan bereitgestellten Informationen. Behälterstatus-Meldungen werden von Benutzern übermittelt und spiegeln möglicherweise nicht die tatsächlichen Bedingungen wider. Verlassen Sie sich nicht auf diese Software für kritische Abfallmanagement-Operationen.",
+    "useAtOwnRiskTitle": "Nutzung auf eigenes Risiko",
+    "useAtOwnRiskText": "Sie nutzen EcoScan vollständig auf eigenes Risiko. Sie sind allein verantwortlich für alle Entscheidungen oder Maßnahmen, die auf Grundlage der vom Dienst bereitgestellten Informationen getroffen werden.",
+    "changesTitle": "Änderungen der Bedingungen",
+    "changesText": "Wir behalten uns das Recht vor, diese Bedingungen jederzeit zu ändern. Die fortgesetzte Nutzung des Dienstes nach Änderungen gilt als Annahme der geänderten Bedingungen."
   }
 }

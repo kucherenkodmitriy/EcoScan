@@ -26,6 +26,11 @@ lambda_deployments_bucket_name = "ecoscan-dev-lambda-deployments"
 lambda_sqs_batch_size  = 10  # Process up to 10 messages per invocation
 lambda_max_concurrency = 100 # Allow higher concurrency in AWS
 
+# CORS configuration
+# Set this to your CloudFront domain after deployment, e.g., "https://d1234abcd.cloudfront.net"
+# Use "*" for development/testing (less secure)
+# cors_allowed_origins = "https://your-cloudfront-domain.cloudfront.net"
+
 # Tags
 tags = {
   Environment = "dev"

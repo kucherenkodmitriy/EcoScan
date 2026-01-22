@@ -24,11 +24,13 @@ pub struct AppState {
     pub config: Arc<Config>,
 }
 
-/// Build a successful JSON response
-fn success_response(status_code: i64, body: serde_json::Value) -> ApiGatewayProxyResponse {
+/// Build a successful JSON response with CORS headers
+fn success_response(status_code: i64, body: serde_json::Value, cors_origin: &str) -> ApiGatewayProxyResponse {
     let mut headers = HeaderMap::new();
     headers.insert("Content-Type", "application/json".parse().unwrap());
-    headers.insert("Access-Control-Allow-Origin", "*".parse().unwrap());
+    headers.insert("Access-Control-Allow-Origin", cors_origin.parse().unwrap());
+    headers.insert("Access-Control-Allow-Headers", "Content-Type, Authorization".parse().unwrap());
+    headers.insert("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS".parse().unwrap());
 
     ApiGatewayProxyResponse {
         status_code,
@@ -39,11 +41,13 @@ fn success_response(status_code: i64, body: serde_json::Value) -> ApiGatewayProx
     }
 }
 
-/// Build an error JSON response
-fn error_response(status_code: i64, message: &str) -> ApiGatewayProxyResponse {
+/// Build an error JSON response with CORS headers
+fn error_response(status_code: i64, message: &str, cors_origin: &str) -> ApiGatewayProxyResponse {
     let mut headers = HeaderMap::new();
     headers.insert("Content-Type", "application/json".parse().unwrap());
-    headers.insert("Access-Control-Allow-Origin", "*".parse().unwrap());
+    headers.insert("Access-Control-Allow-Origin", cors_origin.parse().unwrap());
+    headers.insert("Access-Control-Allow-Headers", "Content-Type, Authorization".parse().unwrap());
+    headers.insert("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS".parse().unwrap());
 
     ApiGatewayProxyResponse {
         status_code,
@@ -126,13 +130,14 @@ async fn api_handler_inner(
     info!(method = %method, path = %path, "Handling request");
 
     let config = &state.config;
+    let cors_origin = config.cors_allowed_origins.as_str();
 
     // Initialize repository
     let repo = match DynamoDbRepository::new(config).await {
         Ok(r) => r,
         Err(e) => {
             error!(error = %e, "Failed to initialize repository");
-            return Ok(error_response(500, "Internal server error"));
+            return Ok(error_response(500, "Internal server error", cors_origin));
         }
     };
 
@@ -145,43 +150,43 @@ async fn api_handler_inner(
 
         // Login endpoint (no auth required)
         ("POST", p) if p.ends_with("/auth/login") => {
-            handle_login_request(&request, &repo, config).await
+            handle_login_request(&request, &repo, config, cors_origin).await
         }
 
         // Public bin info for QR report page (no auth required)
         ("GET", p) if p.contains("/report/") => {
             let bin_id = get_path_param(&request, "bin_id");
-            handle_get_public_bin(&repo, bin_id).await
+            handle_get_public_bin(&repo, bin_id, cors_origin).await
         }
 
         // List bins
-        ("GET", p) if p.ends_with("/admin/bins") => handle_list_bins(&repo).await,
+        ("GET", p) if p.ends_with("/admin/bins") => handle_list_bins(&repo, cors_origin).await,
 
         // Get single bin
         ("GET", p) if p.contains("/admin/bins/") => {
             let bin_id = get_path_param(&request, "bin_id");
-            handle_get_bin(&repo, bin_id).await
+            handle_get_bin(&repo, bin_id, cors_origin).await
         }
 
         // Create bin
-        ("POST", p) if p.ends_with("/admin/bins") => handle_create_bin(&request, &repo).await,
+        ("POST", p) if p.ends_with("/admin/bins") => handle_create_bin(&request, &repo, cors_origin).await,
 
         // Update bin
         ("PUT", p) if p.contains("/admin/bins/") => {
             let bin_id = get_path_param(&request, "bin_id");
-            handle_update_bin(&request, &repo, bin_id).await
+            handle_update_bin(&request, &repo, bin_id, cors_origin).await
         }
 
         // Delete bin
         ("DELETE", p) if p.contains("/admin/bins/") => {
             let bin_id = get_path_param(&request, "bin_id");
-            handle_delete_bin(&repo, bin_id).await
+            handle_delete_bin(&repo, bin_id, cors_origin).await
         }
 
         // Not found
         _ => {
             warn!(method = %method, path = %path, "Route not found");
-            error_response(404, "Not found")
+            error_response(404, "Not found", cors_origin)
         }
     };
 
@@ -192,18 +197,19 @@ async fn handle_login_request(
     request: &ApiGatewayProxyRequest,
     repo: &DynamoDbRepository,
     config: &Config,
+    cors_origin: &str,
 ) -> ApiGatewayProxyResponse {
     // Parse request body
     let body = match &request.body {
         Some(b) => b,
-        None => return error_response(400, "Request body is required"),
+        None => return error_response(400, "Request body is required", cors_origin),
     };
 
     let login_request: LoginRequest = match serde_json::from_str(body) {
         Ok(r) => r,
         Err(e) => {
             warn!(error = %e, "Failed to parse login request");
-            return error_response(400, "Invalid request body");
+            return error_response(400, "Invalid request body", cors_origin);
         }
     };
 
@@ -215,20 +221,20 @@ async fn handle_login_request(
 
     // Handle login
     match handle_login(repo, login_request, &jwt_config).await {
-        Ok(response) => success_response(200, serde_json::to_value(response).unwrap()),
+        Ok(response) => success_response(200, serde_json::to_value(response).unwrap(), cors_origin),
         Err(e) => {
             let status = error_to_status_code(&e);
-            error_response(status, &e.to_string())
+            error_response(status, &e.to_string(), cors_origin)
         }
     }
 }
 
-async fn handle_list_bins(repo: &DynamoDbRepository) -> ApiGatewayProxyResponse {
+async fn handle_list_bins(repo: &DynamoDbRepository, cors_origin: &str) -> ApiGatewayProxyResponse {
     match list_bins(repo).await {
-        Ok(bins) => success_response(200, json!({ "bins": bins })),
+        Ok(bins) => success_response(200, json!({ "bins": bins }), cors_origin),
         Err(e) => {
             let status = error_to_status_code(&e);
-            error_response(status, &e.to_string())
+            error_response(status, &e.to_string(), cors_origin)
         }
     }
 }
@@ -236,17 +242,18 @@ async fn handle_list_bins(repo: &DynamoDbRepository) -> ApiGatewayProxyResponse 
 async fn handle_get_bin(
     repo: &DynamoDbRepository,
     bin_id: Option<String>,
+    cors_origin: &str,
 ) -> ApiGatewayProxyResponse {
     let bin_id = match bin_id.and_then(|s| Uuid::parse_str(&s).ok()) {
         Some(id) => id,
-        None => return error_response(400, "Invalid bin ID"),
+        None => return error_response(400, "Invalid bin ID", cors_origin),
     };
 
     match get_bin(repo, &bin_id).await {
-        Ok(bin) => success_response(200, serde_json::to_value(bin).unwrap()),
+        Ok(bin) => success_response(200, serde_json::to_value(bin).unwrap(), cors_origin),
         Err(e) => {
             let status = error_to_status_code(&e);
-            error_response(status, &e.to_string())
+            error_response(status, &e.to_string(), cors_origin)
         }
     }
 }
@@ -254,25 +261,26 @@ async fn handle_get_bin(
 async fn handle_create_bin(
     request: &ApiGatewayProxyRequest,
     repo: &DynamoDbRepository,
+    cors_origin: &str,
 ) -> ApiGatewayProxyResponse {
     let body = match &request.body {
         Some(b) => b,
-        None => return error_response(400, "Request body is required"),
+        None => return error_response(400, "Request body is required", cors_origin),
     };
 
     let create_request: CreateBinRequest = match serde_json::from_str(body) {
         Ok(r) => r,
         Err(e) => {
             warn!(error = %e, "Failed to parse create bin request");
-            return error_response(400, "Invalid request body");
+            return error_response(400, "Invalid request body", cors_origin);
         }
     };
 
     match create_bin(repo, create_request).await {
-        Ok(bin) => success_response(201, serde_json::to_value(bin).unwrap()),
+        Ok(bin) => success_response(201, serde_json::to_value(bin).unwrap(), cors_origin),
         Err(e) => {
             let status = error_to_status_code(&e);
-            error_response(status, &e.to_string())
+            error_response(status, &e.to_string(), cors_origin)
         }
     }
 }
@@ -281,30 +289,31 @@ async fn handle_update_bin(
     request: &ApiGatewayProxyRequest,
     repo: &DynamoDbRepository,
     bin_id: Option<String>,
+    cors_origin: &str,
 ) -> ApiGatewayProxyResponse {
     let bin_id = match bin_id.and_then(|s| Uuid::parse_str(&s).ok()) {
         Some(id) => id,
-        None => return error_response(400, "Invalid bin ID"),
+        None => return error_response(400, "Invalid bin ID", cors_origin),
     };
 
     let body = match &request.body {
         Some(b) => b,
-        None => return error_response(400, "Request body is required"),
+        None => return error_response(400, "Request body is required", cors_origin),
     };
 
     let update_request: UpdateBinRequest = match serde_json::from_str(body) {
         Ok(r) => r,
         Err(e) => {
             warn!(error = %e, "Failed to parse update bin request");
-            return error_response(400, "Invalid request body");
+            return error_response(400, "Invalid request body", cors_origin);
         }
     };
 
     match update_bin(repo, &bin_id, update_request).await {
-        Ok(bin) => success_response(200, serde_json::to_value(bin).unwrap()),
+        Ok(bin) => success_response(200, serde_json::to_value(bin).unwrap(), cors_origin),
         Err(e) => {
             let status = error_to_status_code(&e);
-            error_response(status, &e.to_string())
+            error_response(status, &e.to_string(), cors_origin)
         }
     }
 }
@@ -312,17 +321,18 @@ async fn handle_update_bin(
 async fn handle_delete_bin(
     repo: &DynamoDbRepository,
     bin_id: Option<String>,
+    cors_origin: &str,
 ) -> ApiGatewayProxyResponse {
     let bin_id = match bin_id.and_then(|s| Uuid::parse_str(&s).ok()) {
         Some(id) => id,
-        None => return error_response(400, "Invalid bin ID"),
+        None => return error_response(400, "Invalid bin ID", cors_origin),
     };
 
     match delete_bin(repo, &bin_id).await {
-        Ok(()) => success_response(200, json!({ "message": "Bin deleted successfully" })),
+        Ok(()) => success_response(200, json!({ "message": "Bin deleted successfully" }), cors_origin),
         Err(e) => {
             let status = error_to_status_code(&e);
-            error_response(status, &e.to_string())
+            error_response(status, &e.to_string(), cors_origin)
         }
     }
 }
@@ -331,25 +341,26 @@ async fn handle_delete_bin(
 async fn handle_get_public_bin(
     repo: &DynamoDbRepository,
     bin_id: Option<String>,
+    cors_origin: &str,
 ) -> ApiGatewayProxyResponse {
     let bin_id = match bin_id.and_then(|s| Uuid::parse_str(&s).ok()) {
         Some(id) => id,
-        None => return error_response(400, "Invalid bin ID"),
+        None => return error_response(400, "Invalid bin ID", cors_origin),
     };
 
     match get_bin(repo, &bin_id).await {
         Ok(bin) => {
             // Check if bin is active
             if !bin.is_active {
-                return error_response(404, "Bin not found");
+                return error_response(404, "Bin not found", cors_origin);
             }
             // Return only public info
             let public_info = PublicBinInfo::from(&bin);
-            success_response(200, serde_json::to_value(public_info).unwrap())
+            success_response(200, serde_json::to_value(public_info).unwrap(), cors_origin)
         }
         Err(e) => {
             let status = error_to_status_code(&e);
-            error_response(status, &e.to_string())
+            error_response(status, &e.to_string(), cors_origin)
         }
     }
 }

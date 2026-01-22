@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { useAuth } from '../context/AuthContext'
 import LanguageSwitcher from '../components/LanguageSwitcher'
+import Footer from '../components/Footer'
 import styles from './Login.module.css'
 
 export default function Login() {
@@ -92,6 +93,7 @@ export default function Login() {
           </button>
         </form>
       </div>
+      <Footer variant="light" />
     </div>
   )
 }

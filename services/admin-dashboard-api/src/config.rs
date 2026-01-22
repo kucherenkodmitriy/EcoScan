@@ -11,6 +11,8 @@ pub struct Config {
     pub jwt_secret: String,
     pub jwt_expiry_hours: i64,
     pub log_level: String,
+    /// Allowed CORS origins (comma-separated for multiple). Use "*" for any origin.
+    pub cors_allowed_origins: String,
 }
 
 impl Config {
@@ -35,6 +37,8 @@ impl Config {
                 .and_then(|v| v.parse().ok())
                 .unwrap_or(24),
             log_level: std::env::var("LOG_LEVEL").unwrap_or_else(|_| "INFO".to_string()),
+            cors_allowed_origins: std::env::var("CORS_ALLOWED_ORIGINS")
+                .unwrap_or_else(|_| "*".to_string()),
         }
     }
 
@@ -63,6 +67,8 @@ impl Config {
                 .and_then(|v| v.parse().ok())
                 .unwrap_or(24),
             log_level: std::env::var("LOG_LEVEL").unwrap_or_else(|_| "INFO".to_string()),
+            cors_allowed_origins: std::env::var("CORS_ALLOWED_ORIGINS")
+                .unwrap_or_else(|_| "*".to_string()),
         })
     }
 

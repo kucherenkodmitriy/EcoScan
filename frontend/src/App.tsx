@@ -6,6 +6,8 @@ import Report from './pages/Report'
 import BinDetail from './pages/BinDetail'
 import BinForm from './pages/BinForm'
 import QRPrint from './pages/QRPrint'
+import PrivacyPolicy from './pages/PrivacyPolicy'
+import Terms from './pages/Terms'
 
 function PrivateRoute({ children }: { children: React.ReactNode }) {
   const { isAuthenticated } = useAuth()
@@ -17,6 +19,8 @@ function App() {
     <Routes>
       <Route path="/login" element={<Login />} />
       <Route path="/report" element={<Report />} />
+      <Route path="/privacy" element={<PrivacyPolicy />} />
+      <Route path="/terms" element={<Terms />} />
       <Route
         path="/dashboard"
         element={

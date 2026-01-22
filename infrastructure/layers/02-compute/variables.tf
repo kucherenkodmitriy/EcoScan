@@ -74,6 +74,12 @@ variable "jwt_expiry_hours" {
   default     = 24
 }
 
+variable "cors_allowed_origins" {
+  description = "Allowed CORS origins (e.g., https://your-cloudfront-domain.cloudfront.net). Use * for development."
+  type        = string
+  default     = "*"
+}
+
 variable "lambda_sqs_batch_size" {
   description = "Maximum number of SQS messages to process in a single Lambda invocation"
   type        = number

@@ -8,6 +8,7 @@ import FullnessSlider from '../components/map/FullnessSlider'
 import AddBinModal from '../components/map/AddBinModal'
 import RouteModal from '../components/map/RouteModal'
 import LanguageSwitcher from '../components/LanguageSwitcher'
+import Footer from '../components/Footer'
 import { useGoogleMaps } from '../components/map/GoogleMapsProvider'
 import styles from './Dashboard.module.css'
 
@@ -396,6 +397,8 @@ export default function Dashboard() {
         onCreateRoute={handleCreateRoute}
         waypointCount={binsWithCoords.length}
       />
+
+      <Footer variant="dark" />
     </div>
   )
 }

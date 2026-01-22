@@ -175,5 +175,53 @@
   },
   "qrLabel": {
     "scanToReport": "Naskenujte pro nahlášení stavu koše"
+  },
+  "footer": {
+    "privacy": "Zásady ochrany soukromí",
+    "terms": "Podmínky služby",
+    "demoNotice": "Demo verze - bez záruk"
+  },
+  "privacy": {
+    "title": "Zásady ochrany soukromí",
+    "lastUpdated": "Poslední aktualizace",
+    "introTitle": "Úvod",
+    "introText": "EcoScan se zavazuje chránit vaše soukromí. Tyto zásady ochrany soukromí vysvětlují, jaké informace shromažďujeme a jak je používáme.",
+    "dataCollectionTitle": "Shromažďované informace",
+    "dataCollectionText": "EcoScan shromažďuje minimální, osobně neidentifikovatelné informace:",
+    "dataItem1": "Hlášení o stavu košů (úroveň naplnění 0-100%)",
+    "dataItem2": "Časové razítko odeslání hlášení",
+    "dataItem3": "Obecná data o poloze košů (podle konfigurace administrátorů)",
+    "noPersonalDataTitle": "Neshromažďujeme osobní údaje",
+    "noPersonalDataText": "NEshromažďujeme žádné osobně identifikovatelné údaje (OÚ). Neshromažďujeme vaše jméno, e-mailovou adresu, telefonní číslo, IP adresu, identifikátory zařízení ani jiné informace, které by mohly být použity k vaší osobní identifikaci. Všechna hlášení o stavu košů jsou odesílána anonymně.",
+    "cookiesTitle": "Cookies a lokální úložiště",
+    "cookiesText": "EcoScan používá lokální úložiště pouze pro uložení vaší jazykové preference a autentizačních tokenů administrátorů. Nepoužíváme sledovací cookies ani analytické nástroje třetích stran.",
+    "thirdPartyTitle": "Služby třetích stran",
+    "thirdPartyText": "EcoScan používá Google Maps pro zobrazení mapy a geokódování. Na jejich služby se vztahují zásady ochrany soukromí společnosti Google. S jinými třetími stranami nesdílíme žádná data.",
+    "contactTitle": "Kontakt",
+    "contactText": "Máte-li dotazy k těmto zásadám ochrany soukromí, kontaktujte prosím administrátora systému."
+  },
+  "terms": {
+    "title": "Podmínky služby a prohlášení",
+    "lastUpdated": "Poslední aktualizace",
+    "demoWarning": "UPOZORNĚNÍ: Toto je DEMO VERZE EcoScan. Je poskytována pouze pro demonstrační a hodnotící účely.",
+    "acceptanceTitle": "Přijetí podmínek",
+    "acceptanceText": "Přístupem nebo používáním EcoScan souhlasíte s těmito podmínkami služby. Pokud s těmito podmínkami nesouhlasíte, nepoužívejte službu.",
+    "demoTitle": "Upozornění na demo verzi",
+    "demoText": "Tento software je demonstrační verze s následujícími omezeními:",
+    "demoItem1": "Data mohou být kdykoli smazána nebo resetována bez upozornění",
+    "demoItem2": "Funkce se mohou měnit, přibývat nebo být odstraněny bez upozornění",
+    "demoItem3": "Služba může být kdykoli nedostupná",
+    "demoItem4": "Zálohování ani obnova dat není garantována",
+    "disclaimerTitle": "Zřeknutí se záruk",
+    "disclaimerHighlight": "SOFTWARE JE POSKYTOVÁN \"TAK JAK JE\", BEZ JAKÝCHKOLI ZÁRUK, VÝSLOVNÝCH NEBO PŘEDPOKLÁDANÝCH.",
+    "disclaimerText": "V maximální míře povolené platnými právními předpisy se zříkáme všech záruk, výslovných nebo předpokládaných, včetně mimo jiné předpokládaných záruk prodejnosti, vhodnosti pro určitý účel a neporušení práv. Nezaručujeme, že služba bude nepřerušovaná, bezchybná nebo bezpečná.",
+    "limitationTitle": "Omezení odpovědnosti",
+    "limitationText": "V žádném případě nebudou vývojáři ani provozovatelé EcoScan odpovědní za jakékoli nepřímé, náhodné, zvláštní, následné nebo trestní škody, včetně mimo jiné ztráty zisku, dat, užívání, dobré pověsti nebo jiných nehmotných ztrát vyplývajících z vašeho přístupu nebo používání (nebo nemožnosti přístupu nebo používání) služby.",
+    "noWarrantyTitle": "Žádné záruky",
+    "noWarrantyText": "Neposkytujeme žádné záruky ohledně přesnosti, spolehlivosti nebo úplnosti jakýchkoli informací poskytovaných prostřednictvím EcoScan. Hlášení o stavu košů jsou zasílána uživateli a nemusí odrážet skutečný stav. Nespoléhejte na tento software pro kritické operace nakládání s odpady.",
+    "useAtOwnRiskTitle": "Používání na vlastní riziko",
+    "useAtOwnRiskText": "EcoScan používáte výhradně na vlastní riziko. Jste výhradně odpovědní za jakákoli rozhodnutí nebo akce provedené na základě informací poskytovaných službou.",
+    "changesTitle": "Změny podmínek",
+    "changesText": "Vyhrazujeme si právo tyto podmínky kdykoli upravit. Pokračující používání služby po změnách představuje přijetí upravených podmínek."
   }
 }

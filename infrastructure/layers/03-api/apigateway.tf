@@ -83,6 +83,57 @@ resource "aws_api_gateway_method" "post_status" {
   }
 }
 
+# OPTIONS /bins/{bin_id}/status - CORS preflight (using MOCK integration for simple CORS)
+resource "aws_api_gateway_method" "options_status" {
+  rest_api_id   = aws_api_gateway_rest_api.api.id
+  resource_id   = aws_api_gateway_resource.status.id
+  http_method   = "OPTIONS"
+  authorization = "NONE"
+}
+
+resource "aws_api_gateway_integration" "options_status_integration" {
+  rest_api_id = aws_api_gateway_rest_api.api.id
+  resource_id = aws_api_gateway_resource.status.id
+  http_method = aws_api_gateway_method.options_status.http_method
+  type        = "MOCK"
+
+  request_templates = {
+    "application/json" = "{\"statusCode\": 200}"
+  }
+}
+
+resource "aws_api_gateway_method_response" "options_status_200" {
+  rest_api_id = aws_api_gateway_rest_api.api.id
+  resource_id = aws_api_gateway_resource.status.id
+  http_method = aws_api_gateway_method.options_status.http_method
+  status_code = "200"
+
+  response_parameters = {
+    "method.response.header.Access-Control-Allow-Headers" = true
+    "method.response.header.Access-Control-Allow-Methods" = true
+    "method.response.header.Access-Control-Allow-Origin"  = true
+  }
+
+  response_models = {
+    "application/json" = "Empty"
+  }
+}
+
+resource "aws_api_gateway_integration_response" "options_status_response" {
+  rest_api_id = aws_api_gateway_rest_api.api.id
+  resource_id = aws_api_gateway_resource.status.id
+  http_method = aws_api_gateway_method.options_status.http_method
+  status_code = aws_api_gateway_method_response.options_status_200.status_code
+
+  response_parameters = {
+    "method.response.header.Access-Control-Allow-Headers" = "'Content-Type,Authorization'"
+    "method.response.header.Access-Control-Allow-Methods" = "'GET,POST,PUT,DELETE,OPTIONS'"
+    "method.response.header.Access-Control-Allow-Origin"  = "'*'"
+  }
+
+  depends_on = [aws_api_gateway_integration.options_status_integration]
+}
+
 resource "aws_api_gateway_integration" "sqs_integration" {
   rest_api_id             = aws_api_gateway_rest_api.api.id
   resource_id             = aws_api_gateway_resource.status.id
@@ -158,10 +209,14 @@ resource "aws_api_gateway_deployment" "api_deployment" {
       aws_api_gateway_method.post_status.id,
       aws_api_gateway_integration.sqs_integration.id,
       aws_api_gateway_integration_response.sqs_integration_response.id,
+      aws_api_gateway_method.options_status.id,
+      aws_api_gateway_integration.options_status_integration.id,
       # Auth endpoints
       aws_api_gateway_resource.auth_login.id,
       aws_api_gateway_method.post_auth_login.id,
       aws_api_gateway_integration.auth_login_integration.id,
+      aws_api_gateway_method.options_auth_login.id,
+      aws_api_gateway_integration.options_auth_login_integration.id,
       # Admin endpoints
       aws_api_gateway_resource.admin_bins.id,
       aws_api_gateway_resource.admin_bin_id.id,
@@ -170,12 +225,18 @@ resource "aws_api_gateway_deployment" "api_deployment" {
       aws_api_gateway_method.get_admin_bin.id,
       aws_api_gateway_method.put_admin_bin.id,
       aws_api_gateway_method.delete_admin_bin.id,
+      aws_api_gateway_method.options_admin_bins.id,
+      aws_api_gateway_integration.options_admin_bins_integration.id,
+      aws_api_gateway_method.options_admin_bin.id,
+      aws_api_gateway_integration.options_admin_bin_integration.id,
       aws_api_gateway_authorizer.jwt_authorizer.id,
       # Public report endpoints
       aws_api_gateway_resource.report.id,
       aws_api_gateway_resource.report_bin_id.id,
       aws_api_gateway_method.get_report_bin.id,
       aws_api_gateway_integration.get_report_bin_integration.id,
+      aws_api_gateway_method.options_report_bin.id,
+      aws_api_gateway_integration.options_report_bin_integration.id,
       # Static resources
       aws_api_gateway_resource.static.id,
       aws_api_gateway_resource.static_report.id,
@@ -403,6 +464,24 @@ resource "aws_api_gateway_method" "post_auth_login" {
   authorization = "NONE"
 }
 
+# OPTIONS /auth/login - CORS preflight
+resource "aws_api_gateway_method" "options_auth_login" {
+  rest_api_id   = aws_api_gateway_rest_api.api.id
+  resource_id   = aws_api_gateway_resource.auth_login.id
+  http_method   = "OPTIONS"
+  authorization = "NONE"
+}
+
+resource "aws_api_gateway_integration" "options_auth_login_integration" {
+  rest_api_id             = aws_api_gateway_rest_api.api.id
+  resource_id             = aws_api_gateway_resource.auth_login.id
+  http_method             = aws_api_gateway_method.options_auth_login.http_method
+  integration_http_method = "POST"
+  type                    = "AWS_PROXY"
+  uri                     = "arn:aws:apigateway:${var.aws_region}:lambda:path/2015-03-31/functions/${local.admin_dashboard_arn}/invocations"
+  credentials             = aws_iam_role.apigateway_lambda_role.arn
+}
+
 resource "aws_api_gateway_integration" "auth_login_integration" {
   rest_api_id             = aws_api_gateway_rest_api.api.id
   resource_id             = aws_api_gateway_resource.auth_login.id
@@ -433,6 +512,24 @@ resource "aws_api_gateway_resource" "admin_bin_id" {
   rest_api_id = aws_api_gateway_rest_api.api.id
   parent_id   = aws_api_gateway_resource.admin_bins.id
   path_part   = "{bin_id}"
+}
+
+# OPTIONS /admin/bins - CORS preflight
+resource "aws_api_gateway_method" "options_admin_bins" {
+  rest_api_id   = aws_api_gateway_rest_api.api.id
+  resource_id   = aws_api_gateway_resource.admin_bins.id
+  http_method   = "OPTIONS"
+  authorization = "NONE"
+}
+
+resource "aws_api_gateway_integration" "options_admin_bins_integration" {
+  rest_api_id             = aws_api_gateway_rest_api.api.id
+  resource_id             = aws_api_gateway_resource.admin_bins.id
+  http_method             = aws_api_gateway_method.options_admin_bins.http_method
+  integration_http_method = "POST"
+  type                    = "AWS_PROXY"
+  uri                     = "arn:aws:apigateway:${var.aws_region}:lambda:path/2015-03-31/functions/${local.admin_dashboard_arn}/invocations"
+  credentials             = aws_iam_role.apigateway_lambda_role.arn
 }
 
 # GET /admin/bins - List all bins (requires JWT)
@@ -467,6 +564,24 @@ resource "aws_api_gateway_integration" "post_admin_bins_integration" {
   rest_api_id             = aws_api_gateway_rest_api.api.id
   resource_id             = aws_api_gateway_resource.admin_bins.id
   http_method             = aws_api_gateway_method.post_admin_bins.http_method
+  integration_http_method = "POST"
+  type                    = "AWS_PROXY"
+  uri                     = "arn:aws:apigateway:${var.aws_region}:lambda:path/2015-03-31/functions/${local.admin_dashboard_arn}/invocations"
+  credentials             = aws_iam_role.apigateway_lambda_role.arn
+}
+
+# OPTIONS /admin/bins/{bin_id} - CORS preflight
+resource "aws_api_gateway_method" "options_admin_bin" {
+  rest_api_id   = aws_api_gateway_rest_api.api.id
+  resource_id   = aws_api_gateway_resource.admin_bin_id.id
+  http_method   = "OPTIONS"
+  authorization = "NONE"
+}
+
+resource "aws_api_gateway_integration" "options_admin_bin_integration" {
+  rest_api_id             = aws_api_gateway_rest_api.api.id
+  resource_id             = aws_api_gateway_resource.admin_bin_id.id
+  http_method             = aws_api_gateway_method.options_admin_bin.http_method
   integration_http_method = "POST"
   type                    = "AWS_PROXY"
   uri                     = "arn:aws:apigateway:${var.aws_region}:lambda:path/2015-03-31/functions/${local.admin_dashboard_arn}/invocations"
@@ -556,6 +671,24 @@ resource "aws_api_gateway_resource" "report_bin_id" {
   rest_api_id = aws_api_gateway_rest_api.api.id
   parent_id   = aws_api_gateway_resource.report.id
   path_part   = "{bin_id}"
+}
+
+# OPTIONS /report/{bin_id} - CORS preflight
+resource "aws_api_gateway_method" "options_report_bin" {
+  rest_api_id   = aws_api_gateway_rest_api.api.id
+  resource_id   = aws_api_gateway_resource.report_bin_id.id
+  http_method   = "OPTIONS"
+  authorization = "NONE"
+}
+
+resource "aws_api_gateway_integration" "options_report_bin_integration" {
+  rest_api_id             = aws_api_gateway_rest_api.api.id
+  resource_id             = aws_api_gateway_resource.report_bin_id.id
+  http_method             = aws_api_gateway_method.options_report_bin.http_method
+  integration_http_method = "POST"
+  type                    = "AWS_PROXY"
+  uri                     = "arn:aws:apigateway:${var.aws_region}:lambda:path/2015-03-31/functions/${local.admin_dashboard_arn}/invocations"
+  credentials             = aws_iam_role.apigateway_lambda_role.arn
 }
 
 # GET /report/{bin_id} - Get public bin info for QR report page (no auth required)

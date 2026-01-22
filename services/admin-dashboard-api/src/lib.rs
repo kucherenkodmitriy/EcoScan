@@ -84,6 +84,29 @@ fn error_to_status_code(error: &AppError) -> i64 {
     }
 }
 
+/// Build a CORS preflight response for OPTIONS requests
+fn cors_preflight_response(cors_origin: &str) -> ApiGatewayProxyResponse {
+    let mut headers = HeaderMap::new();
+    headers.insert("Access-Control-Allow-Origin", cors_origin.parse().unwrap());
+    headers.insert(
+        "Access-Control-Allow-Headers",
+        "Content-Type, Authorization".parse().unwrap(),
+    );
+    headers.insert(
+        "Access-Control-Allow-Methods",
+        "GET, POST, PUT, DELETE, OPTIONS".parse().unwrap(),
+    );
+    headers.insert("Access-Control-Max-Age", "86400".parse().unwrap());
+
+    ApiGatewayProxyResponse {
+        status_code: 200,
+        headers,
+        multi_value_headers: HeaderMap::new(),
+        body: None,
+        is_base64_encoded: false,
+    }
+}
+
 /// Build an HTML response
 fn html_response(html: &str) -> ApiGatewayProxyResponse {
     let mut headers = HeaderMap::new();
@@ -159,6 +182,9 @@ async fn api_handler_inner(
 
     // Route the request
     let response = match (method, path) {
+        // Handle CORS preflight requests for all paths
+        ("OPTIONS", _) => cors_preflight_response(cors_origin),
+
         // Static pages (no auth required - auth handled client-side with JWT)
         ("GET", "/static/report.html") => html_response(REPORT_HTML),
         ("GET", "/static/login.html") => html_response(LOGIN_HTML),

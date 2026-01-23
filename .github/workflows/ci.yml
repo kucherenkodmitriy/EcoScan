@@ -561,7 +561,6 @@ jobs:
           set +e
           terraform plan \
             -var-file="../../environments/dev.tfvars" \
-            -var="recaptcha_secret_key=${{ secrets.RECAPTCHA_SECRET_KEY }}" \
             -out=tfplan \
             -detailed-exitcode
           EXIT_CODE=$?

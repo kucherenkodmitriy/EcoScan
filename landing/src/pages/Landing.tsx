@@ -86,9 +86,19 @@ function Landing() {
     event.preventDefault()
 
     try {
+      let token = 'no-recaptcha-token'
+
       // Get reCAPTCHA token for spam protection
-      await window.grecaptcha!.ready(() => {})
-      const token = await window.grecaptcha!.execute(RECAPTCHA_SITE_KEY, { action: 'contact_form' })
+      if (window.grecaptcha) {
+        try {
+          await window.grecaptcha.ready(() => {})
+          token = await window.grecaptcha.execute(RECAPTCHA_SITE_KEY, { action: 'contact_form' })
+        } catch (recaptchaError) {
+          console.warn('reCAPTCHA failed, continuing without it:', recaptchaError)
+        }
+      } else {
+        console.warn('reCAPTCHA not loaded yet, continuing without it')
+      }
 
       // Get API endpoint from environment
       const apiGatewayId = import.meta.env.VITE_API_GATEWAY_ID
@@ -131,7 +141,7 @@ function Landing() {
       const body = encodeURIComponent(
         `Name: ${formState.name}\nEmail: ${formState.email}\nOrganization: ${formState.company || 'Not specified'}\n\nMessage:\n${formState.message || 'No message provided'}\n\n---\nSent from EcoScan landing page (API submission failed)`,
       )
-      window.location.href = `mailto:partnerships@ecoscan.ai?subject=${subject}&body=${body}`
+      window.location.href = `mailto:partnerships@ecoscan.city?subject=${subject}&body=${body}`
       setSubmitted(true)
     }
   }
@@ -427,7 +437,7 @@ function Landing() {
               <p className="landing-form-success">
                 Thank you! We&apos;ve received your message and will respond within 24 hours.
                 If you don&apos;t hear from us, please check your spam folder or email{' '}
-                <a href="mailto:partnerships@ecoscan.ai">partnerships@ecoscan.ai</a>
+                <a href="mailto:partnerships@ecoscan.city">partnerships@ecoscan.city</a>
               </p>
             )}
             <p className="landing-form-recaptcha">
@@ -470,7 +480,7 @@ function Landing() {
         <div className="landing-footer-links">
           <a href="/privacy">Privacy Policy</a>
           <a href="/terms">Terms of Service</a>
-          <a href="mailto:partnerships@ecoscan.ai">Contact</a>
+          <a href="mailto:partnerships@ecoscan.city">Contact</a>
         </div>
         <div className="landing-footer-copy">
           <p>© 2026 EcoScan. All rights reserved.</p>

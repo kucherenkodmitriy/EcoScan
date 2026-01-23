@@ -84,13 +84,15 @@ export default function Report() {
     try {
       // Get reCAPTCHA token for spam protection
       let recaptchaToken: string | undefined
-      try {
-        if (window.grecaptcha) {
+      if (window.grecaptcha) {
+        try {
           await window.grecaptcha.ready(() => {})
           recaptchaToken = await window.grecaptcha.execute(RECAPTCHA_SITE_KEY, { action: 'bin_status_report' })
+        } catch (recaptchaError) {
+          console.warn('reCAPTCHA failed, continuing without it:', recaptchaError)
         }
-      } catch (recaptchaError) {
-        console.warn('reCAPTCHA failed, continuing without it:', recaptchaError)
+      } else {
+        console.warn('reCAPTCHA not loaded yet, continuing without it')
       }
 
       await submitBinStatus(binId, status, recaptchaToken)

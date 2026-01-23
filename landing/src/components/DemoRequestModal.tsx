@@ -58,18 +58,22 @@ function DemoRequestModal({ isOpen, onClose }: DemoRequestModalProps) {
     setError(null)
 
     try {
+      let token = 'no-recaptcha-token'
+
       // Get reCAPTCHA token for spam protection
-      await window.grecaptcha!.ready(() => {})
-      const token = await window.grecaptcha!.execute(RECAPTCHA_SITE_KEY, { action: 'demo_request' })
+      if (window.grecaptcha) {
+        try {
+          await window.grecaptcha.ready(() => {})
+          token = await window.grecaptcha.execute(RECAPTCHA_SITE_KEY, { action: 'demo_request' })
+        } catch (recaptchaError) {
+          console.warn('reCAPTCHA failed, continuing without it:', recaptchaError)
+        }
+      } else {
+        console.warn('reCAPTCHA not loaded yet, continuing without it')
+      }
 
-      // Get API endpoint from environment
-      const apiGatewayId = import.meta.env.VITE_API_GATEWAY_ID
-      const apiEndpoint = apiGatewayId
-        ? `https://${apiGatewayId}.execute-api.eu-central-1.amazonaws.com/${import.meta.env.MODE || 'local'}/contact`
-        : 'http://localhost:4566/restapis/YOUR_API_ID/local/_user_request_/contact'
-
-      // Send to API Gateway
-      const response = await fetch(apiEndpoint, {
+      // Use /api/contact - handled by Vite proxy (dev) or CloudFront (prod)
+      const response = await fetch('/api/contact', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -91,7 +95,7 @@ function DemoRequestModal({ isOpen, onClose }: DemoRequestModalProps) {
       setSubmitted(true)
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Unknown error occurred'
-      setError(`Failed to submit: ${errorMessage}. Please try again or email us at partnerships@ecoscan.ai`)
+      setError(`Failed to submit: ${errorMessage}. Please try again or email us at partnerships@ecoscan.city`)
       console.error('Demo request error:', err)
     } finally {
       setIsSubmitting(false)
@@ -192,7 +196,7 @@ function DemoRequestModal({ isOpen, onClose }: DemoRequestModalProps) {
             </p>
             <p style={{ fontSize: '0.9rem', color: '#666' }}>
               If you don&apos;t hear from us, please check your spam folder or contact{' '}
-              <a href="mailto:partnerships@ecoscan.ai">partnerships@ecoscan.ai</a>
+              <a href="mailto:partnerships@ecoscan.city">partnerships@ecoscan.city</a>
             </p>
             <button className="btn btn-secondary" onClick={onClose}>
               Close

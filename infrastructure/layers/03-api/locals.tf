@@ -14,4 +14,5 @@ locals {
   # Get Lambda ARNs from compute layer (deployed before api layer)
   lambda_authorizer_arn = data.terraform_remote_state.compute.outputs.lambda_authorizer_arn
   admin_dashboard_arn   = data.terraform_remote_state.compute.outputs.admin_dashboard_lambda_arn
+  contact_form_arn      = data.terraform_remote_state.compute.outputs.contact_form_lambda_arn
 }

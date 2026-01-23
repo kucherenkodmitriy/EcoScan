@@ -207,7 +207,7 @@ async fn function_handler(
                     500,
                     serde_json::json!({
                         "error": "Server configuration error",
-                        "message": "Please contact us directly at partnerships@ecoscan.ai"
+                        "message": "Please contact us directly at partnerships@ecoscan.city"
                     }),
                 ));
             }
@@ -224,7 +224,7 @@ async fn function_handler(
                     400,
                     serde_json::json!({
                         "error": "Verification failed",
-                        "message": "Please try again or contact us directly at partnerships@ecoscan.ai"
+                        "message": "Please try again or contact us directly at partnerships@ecoscan.city"
                     }),
                 ));
             }
@@ -240,7 +240,7 @@ async fn function_handler(
                 400,
                 serde_json::json!({
                     "error": "Security validation failed",
-                    "message": "Please try again. If the problem persists, contact us at partnerships@ecoscan.ai"
+                    "message": "Please try again. If the problem persists, contact us at partnerships@ecoscan.city"
                 }),
             ));
         }
@@ -256,7 +256,7 @@ async fn function_handler(
                 400,
                 serde_json::json!({
                     "error": "Security check failed",
-                    "message": "Your submission appears automated. Please contact us directly at partnerships@ecoscan.ai",
+                    "message": "Your submission appears automated. Please contact us directly at partnerships@ecoscan.city",
                     "score": score
                 }),
             ));
@@ -282,7 +282,7 @@ async fn function_handler(
                 500,
                 serde_json::json!({
                     "error": "Failed to save request",
-                    "message": "Please try again or contact us at partnerships@ecoscan.ai"
+                    "message": "Please try again or contact us at partnerships@ecoscan.city"
                 }),
             ));
         }

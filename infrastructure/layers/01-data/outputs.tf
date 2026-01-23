@@ -28,6 +28,16 @@ output "admin_users_table_arn" {
   value       = aws_dynamodb_table.admin_users.arn
 }
 
+output "demo_requests_table_name" {
+  description = "Name of the demo requests DynamoDB table"
+  value       = aws_dynamodb_table.demo_requests.name
+}
+
+output "demo_requests_table_arn" {
+  description = "ARN of the demo requests DynamoDB table"
+  value       = aws_dynamodb_table.demo_requests.arn
+}
+
 output "jwt_secret_arn" {
   description = "ARN of the JWT secret in Secrets Manager"
   value       = aws_secretsmanager_secret.jwt_secret.arn

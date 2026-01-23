@@ -39,3 +39,19 @@ output "admin_dashboard_lambda_name" {
   description = "Name of the Admin Dashboard Lambda function"
   value       = aws_lambda_function.admin_dashboard.function_name
 }
+
+# Contact Form Handler Lambda outputs
+output "contact_form_lambda_arn" {
+  description = "ARN of the Contact Form Handler Lambda function"
+  value       = aws_lambda_function.contact_form_handler.arn
+}
+
+output "contact_form_lambda_name" {
+  description = "Name of the Contact Form Handler Lambda function"
+  value       = aws_lambda_function.contact_form_handler.function_name
+}
+
+output "contact_form_invoke_arn" {
+  description = "Invoke ARN of the Contact Form Handler Lambda function"
+  value       = aws_lambda_function.contact_form_handler.invoke_arn
+}

@@ -10,9 +10,11 @@ locals {
   trash_bins_table_name     = data.terraform_remote_state.data.outputs.trash_bins_table_name
   status_reports_table_name = data.terraform_remote_state.data.outputs.status_reports_table_name
   admin_users_table_name    = data.terraform_remote_state.data.outputs.admin_users_table_name
+  demo_requests_table_name  = data.terraform_remote_state.data.outputs.demo_requests_table_name
   trash_bins_table_arn      = data.terraform_remote_state.data.outputs.trash_bins_table_arn
   status_reports_table_arn  = data.terraform_remote_state.data.outputs.status_reports_table_arn
   admin_users_table_arn     = data.terraform_remote_state.data.outputs.admin_users_table_arn
+  demo_requests_table_arn   = data.terraform_remote_state.data.outputs.demo_requests_table_arn
 
   # Get JWT secret from data layer
   jwt_secret_arn = data.terraform_remote_state.data.outputs.jwt_secret_arn

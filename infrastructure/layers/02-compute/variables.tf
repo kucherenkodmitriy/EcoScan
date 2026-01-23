@@ -61,6 +61,25 @@ variable "admin_dashboard_zip_path" {
   default     = "../../../services/target/admin-dashboard.zip"
 }
 
+variable "contact_form_zip_path" {
+  description = "Path to Contact Form Handler deployment package"
+  type        = string
+  default     = "../../../services/target/contact-form-handler.zip"
+}
+
+variable "recaptcha_secret_key" {
+  description = "Google reCAPTCHA v3 secret key"
+  type        = string
+  default     = ""
+  sensitive   = true
+}
+
+variable "skip_recaptcha" {
+  description = "Skip reCAPTCHA validation (for e2e tests only)"
+  type        = bool
+  default     = false
+}
+
 variable "jwt_secret" {
   description = "Secret key for JWT token signing"
   type        = string

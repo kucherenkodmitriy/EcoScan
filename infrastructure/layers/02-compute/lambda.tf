@@ -280,3 +280,106 @@ resource "aws_iam_role_policy_attachment" "admin_dashboard_policy_attachment" {
   role       = aws_iam_role.admin_dashboard_role.name
   policy_arn = aws_iam_policy.admin_dashboard_policy.arn
 }
+
+# =============================================================================
+# Contact Form Handler Lambda
+# =============================================================================
+
+resource "aws_lambda_function" "contact_form_handler" {
+  function_name = "${var.environment}-${var.project_name}-contact-form"
+  role          = aws_iam_role.contact_form_role.arn
+  handler       = "bootstrap"
+  runtime       = "provided.al2"
+  architectures = [var.lambda_architecture]
+  memory_size   = 256
+  timeout       = 30 # reCAPTCHA verification can take several seconds
+
+  filename         = var.contact_form_zip_path
+  source_code_hash = filebase64sha256(var.contact_form_zip_path)
+
+  environment {
+    variables = merge(
+      {
+        DEMO_REQUESTS_TABLE  = local.demo_requests_table_name
+        RECAPTCHA_MIN_SCORE  = "0.5"
+        SKIP_RECAPTCHA       = var.skip_recaptcha ? "true" : "false"
+        RECAPTCHA_SECRET_KEY = var.recaptcha_secret_key
+      },
+      var.use_localstack ? {
+        DYNAMODB_ENDPOINT_URL = local.dynamodb_endpoint_url
+      } : {}
+    )
+  }
+
+  tracing_config {
+    mode = "Active"
+  }
+
+  tags = merge(
+    local.common_tags,
+    {
+      Name = "${var.project_name}-contact-form"
+    }
+  )
+}
+
+# IAM role for Contact Form Handler Lambda
+resource "aws_iam_role" "contact_form_role" {
+  name = "${var.environment}-${var.project_name}-contact-form-role"
+
+  assume_role_policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Action = "sts:AssumeRole"
+        Effect = "Allow"
+        Principal = {
+          Service = "lambda.amazonaws.com"
+        }
+      }
+    ]
+  })
+
+  tags = local.common_tags
+}
+
+# Policy for Contact Form Handler Lambda
+resource "aws_iam_policy" "contact_form_policy" {
+  name = "${var.environment}-${var.project_name}-contact-form-policy"
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Effect = "Allow"
+        Action = [
+          "logs:CreateLogGroup",
+          "logs:CreateLogStream",
+          "logs:PutLogEvents"
+        ]
+        Resource = "arn:aws:logs:*:*:*"
+      },
+      {
+        Effect = "Allow"
+        Action = [
+          "dynamodb:PutItem",
+          "dynamodb:GetItem"
+        ]
+        Resource = local.demo_requests_table_arn
+      },
+      {
+        Effect = "Allow"
+        Action = [
+          "xray:PutTraceSegments",
+          "xray:PutTelemetryRecords"
+        ]
+        Resource = "*"
+      }
+    ]
+  })
+}
+
+resource "aws_iam_role_policy_attachment" "contact_form_policy_attachment" {
+  role       = aws_iam_role.contact_form_role.name
+  policy_arn = aws_iam_policy.contact_form_policy.arn
+}

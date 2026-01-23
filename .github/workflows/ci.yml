@@ -482,10 +482,12 @@ jobs:
   build-frontend:
     name: Build Frontend
     runs-on: ubuntu-latest
-    needs: [detect-changes]
+    needs: [detect-changes, deploy-data]
     if: |
-      needs.detect-changes.outputs.frontend == 'true' ||
-      needs.detect-changes.outputs.frontend_infra == 'true'
+      always() &&
+      github.ref == 'refs/heads/dev' &&
+      (needs.deploy-data.result == 'success' || needs.deploy-data.result == 'skipped') &&
+      (needs.detect-changes.outputs.frontend == 'true' || needs.detect-changes.outputs.frontend_infra == 'true')
     steps:
       - uses: actions/checkout@v4
 

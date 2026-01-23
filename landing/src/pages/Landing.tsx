@@ -9,9 +9,9 @@ declare global {
 }
 
 const sections = [
-  { id: 'problem', label: 'The problem' },
-  { id: 'solution', label: 'Solution' },
-  { id: 'opportunities', label: 'Expansion' },
+  { id: 'problem', label: 'Problem' },
+  { id: 'solution', label: 'How it works' },
+  { id: 'opportunities', label: 'Capabilities' },
   { id: 'advantages', label: 'Why EcoScan' },
   { id: 'roadmap', label: 'Roadmap' },
   { id: 'contact', label: 'Contact' },
@@ -69,6 +69,19 @@ function Landing() {
 
   const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault()
+
+    // Build mailto link with form data
+    const subject = encodeURIComponent(
+      `EcoScan Inquiry${formState.company ? ` from ${formState.company}` : ''}`,
+    )
+    const body = encodeURIComponent(
+      `Name: ${formState.name}\nEmail: ${formState.email}\nOrganization: ${formState.company || 'Not specified'}\n\nMessage:\n${formState.message || 'No message provided'}\n\n---\nSent from EcoScan landing page`,
+    )
+    const mailtoLink = `mailto:partnerships@ecoscan.ai?subject=${subject}&body=${body}`
+
+    // Open email client
+    window.location.href = mailtoLink
+
     setSubmitted(true)
     trackEvent('contact_submit', {
       form_location: 'landing_contact',
@@ -95,43 +108,46 @@ function Landing() {
         <div className="landing-hero-content">
           <div>
             <p className="landing-eyebrow">Smart waste operations at city scale</p>
-            <h1>Real-time visibility for every bin, route, and partner.</h1>
+            <h1>Know what&apos;s happening with every bin, in real time.</h1>
             <p className="landing-subtitle">
-              EcoScan turns fragmented waste operations into a unified, data-driven platform. We reduce
-              overflow incidents, lower collection costs, and help municipalities hit sustainability goals
-              with confidence.
+              EcoScan gives municipalities a unified dashboard for waste bin management. Track fill
+              levels, plan efficient routes, and empower citizens to report issues - all from one
+              platform built for scale.
             </p>
             <div className="landing-hero-actions">
               <button
                 className="btn btn-primary"
                 type="button"
-                onClick={() => trackEvent('cta_click', { label: 'hero_primary' })}
+                onClick={() => {
+                  trackEvent('cta_click', { label: 'hero_primary' })
+                  document.getElementById('contact')?.scrollIntoView({ behavior: 'smooth' })
+                }}
               >
-                See the platform in action
+                Request a demo
               </button>
             </div>
             <div className="landing-metrics">
               <div>
-                <strong>35%</strong>
-                <span>average reduction in overflow events</span>
+                <strong>Map view</strong>
+                <span>See all bins color-coded by status</span>
               </div>
               <div>
-                <strong>22%</strong>
-                <span>lower collection miles in pilot routes</span>
+                <strong>QR reports</strong>
+                <span>Citizens report issues instantly</span>
               </div>
               <div>
-                <strong>24/7</strong>
-                <span>visibility across fleets & assets</span>
+                <strong>IoT-ready</strong>
+                <span>Architecture built for sensor integration</span>
               </div>
             </div>
           </div>
           <div className="landing-hero-card">
-            <h2>Executive snapshot</h2>
+            <h2>What you get today</h2>
             <ul>
-              <li>Live asset health, fill-rate predictions, and SLA alerts.</li>
-              <li>IoT ingestion at scale with serverless, event-driven backend.</li>
-              <li>Automated dashboards for city leadership and partners.</li>
-              <li>Rapid onboarding for new districts and private operators.</li>
+              <li>Interactive map dashboard with color-coded bin statuses.</li>
+              <li>QR code labels for citizen-powered fill level reporting.</li>
+              <li>Route planning with Google Maps integration.</li>
+              <li>Multi-language support (EN, CS, DE) for diverse teams.</li>
             </ul>
           </div>
         </div>
@@ -164,50 +180,68 @@ function Landing() {
 
       <section id="solution" className="landing-section" data-section="solution">
         <div className="landing-section-header">
-          <h2>EcoScan: the unified waste intelligence platform</h2>
+          <h2>How EcoScan works</h2>
           <p>
-            EcoScan connects IoT-enabled bins, operations teams, and executive reporting in one platform so
-            every stakeholder sees the same, actionable data.
+            A simple, scalable system that combines citizen engagement with operational visibility -
+            with a clear path to full IoT automation.
           </p>
         </div>
         <div className="landing-solution-grid">
           <div className="landing-solution">
             <span>01</span>
-            <h3>Live sensing & alerts</h3>
-            <p>Receive real-time fill level updates and instant alerts when thresholds are exceeded.</p>
+            <h3>Deploy QR labels</h3>
+            <p>
+              Print weather-resistant QR codes for each bin. Citizens scan to report fill levels in
+              seconds - no app download required.
+            </p>
           </div>
           <div className="landing-solution">
             <span>02</span>
-            <h3>Operational command center</h3>
-            <p>Dashboards consolidate asset health, SLA compliance, and route efficiency.</p>
+            <h3>Monitor from one dashboard</h3>
+            <p>
+              See all bins on an interactive map. Green, yellow, red indicators show status at a
+              glance. Filter, search, and plan routes instantly.
+            </p>
           </div>
           <div className="landing-solution">
             <span>03</span>
-            <h3>Predictive analytics</h3>
-            <p>Forecast overflow risk and automate smarter route plans before issues appear.</p>
+            <h3>Scale with IoT sensors</h3>
+            <p>
+              When ready, add ultrasonic sensors for automatic readings. Same dashboard, same API -
+              just automated data instead of manual reports.
+            </p>
           </div>
         </div>
       </section>
 
       <section id="opportunities" className="landing-section" data-section="opportunities">
         <div className="landing-section-header">
-          <h2>Additional challenges we can solve</h2>
+          <h2>Built to grow with your needs</h2>
           <p>
-            The same infrastructure unlocks insights for waste, recycling, and city services beyond bins.
+            Start with basic bin tracking and expand capabilities as your program matures.
           </p>
         </div>
         <div className="landing-grid">
           <div className="landing-card">
-            <h3>Illegal dumping detection</h3>
-            <p>Correlate fill spikes with location data to flag potential dumping hotspots.</p>
+            <h3>Multiple bin types</h3>
+            <p>
+              Track mixed waste, plastic, paper, and glass separately. Color-coded badges make
+              sorting visible at a glance.
+            </p>
           </div>
           <div className="landing-card">
-            <h3>Recycling contamination</h3>
-            <p>Track bin usage patterns to guide targeted education and reduce contamination costs.</p>
+            <h3>Citizen engagement</h3>
+            <p>
+              QR codes turn every resident into a sensor. Build community involvement while
+              gathering real operational data.
+            </p>
           </div>
           <div className="landing-card">
-            <h3>Public-space maintenance</h3>
-            <p>Integrate with street cleaning, lighting, and park services for unified city operations.</p>
+            <h3>Future-ready architecture</h3>
+            <p>
+              Event-driven backend handles IoT sensors, third-party integrations, and analytics
+              modules without rewrites.
+            </p>
           </div>
         </div>
       </section>
@@ -250,32 +284,35 @@ function Landing() {
 
       <section id="roadmap" className="landing-section" data-section="roadmap">
         <div className="landing-section-header">
-          <h2>Roadmap</h2>
-          <p>Investment priorities and delivery milestones across the next 12 months.</p>
+          <h2>Platform evolution</h2>
+          <p>A phased approach from manual reporting to fully automated operations.</p>
         </div>
         <div className="landing-roadmap">
           <div>
-            <h3>Q1 - Q2</h3>
+            <h3>Available now</h3>
             <ul>
-              <li>Expand sensor coverage to priority districts.</li>
-              <li>Launch executive KPI suite for leadership reporting.</li>
-              <li>Automate partner onboarding for private haulers.</li>
+              <li>Admin dashboard with interactive map view.</li>
+              <li>QR-based citizen reporting system.</li>
+              <li>Route planning with Google Maps.</li>
+              <li>Multi-language interface (EN, CS, DE).</li>
             </ul>
           </div>
           <div>
-            <h3>Q3</h3>
+            <h3>Coming soon</h3>
             <ul>
-              <li>Predictive route optimization with dynamic dispatch.</li>
-              <li>Citywide contamination analytics and impact scoring.</li>
-              <li>Carbon reporting dashboard for ESG goals.</li>
+              <li>IoT sensor integration (ultrasonic fill detection).</li>
+              <li>Automated threshold alerts via email/SMS.</li>
+              <li>Historical analytics and trend reporting.</li>
+              <li>Mobile app for field crews.</li>
             </ul>
           </div>
           <div>
-            <h3>Q4</h3>
+            <h3>On the horizon</h3>
             <ul>
-              <li>Multi-city benchmarking and regional insights.</li>
-              <li>Marketplace integrations for recycling processors.</li>
-              <li>Open data portal for stakeholder transparency.</li>
+              <li>Predictive fill-level forecasting.</li>
+              <li>Dynamic route optimization.</li>
+              <li>Third-party fleet management integrations.</li>
+              <li>Public transparency dashboards.</li>
             </ul>
           </div>
         </div>
@@ -326,38 +363,44 @@ function Landing() {
             </button>
             {submitted && (
               <p className="landing-form-success">
-                Thanks! We&apos;ll follow up with a tailored demo and deployment plan.
+                Your email client should open with a pre-filled message. If it didn&apos;t, please
+                email us directly at{' '}
+                <a href="mailto:partnerships@ecoscan.ai">partnerships@ecoscan.ai</a>
               </p>
             )}
           </form>
 
           <aside className="landing-contact-info">
-            <h3>Recommended AWS contact form</h3>
-            <p>
-              For production, we recommend an API Gateway + Lambda endpoint that stores submissions in
-              DynamoDB and sends notifications through Amazon SES. Add AWS WAF or reCAPTCHA for spam
-              protection, and CloudWatch alarms for operational visibility.
-            </p>
+            <h3>Why work with us?</h3>
+            <ul>
+              <li>Production-ready platform you can deploy today</li>
+              <li>Enterprise-grade AWS infrastructure</li>
+              <li>Clear upgrade path to IoT automation</li>
+              <li>Open architecture, no vendor lock-in</li>
+            </ul>
             <div className="landing-contact-highlight">
-              <p>Need deeper analytics?</p>
-              <ul>
-                <li>Track section engagement with Google Analytics events.</li>
-                <li>Measure scroll depth and CTA conversion rates.</li>
-                <li>Map high-interest sections to investor questions.</li>
-              </ul>
+              <p>Quick response guaranteed</p>
+              <p>
+                Our team typically responds within 24 hours. We&apos;ll schedule a discovery call to
+                understand your operations and prepare a tailored proposal.
+              </p>
             </div>
           </aside>
         </div>
       </section>
 
       <footer className="landing-footer">
-        <div>
+        <div className="landing-footer-brand">
           <strong>EcoScan</strong>
           <p>Intelligent waste operations for modern cities.</p>
         </div>
-        <div>
-          <p>Contact: partnerships@ecoscan.ai</p>
-          <p>© 2024 EcoScan. All rights reserved.</p>
+        <div className="landing-footer-links">
+          <a href="/privacy">Privacy Policy</a>
+          <a href="/terms">Terms of Service</a>
+          <a href="mailto:partnerships@ecoscan.ai">Contact</a>
+        </div>
+        <div className="landing-footer-copy">
+          <p>© 2026 EcoScan. All rights reserved.</p>
         </div>
       </footer>
     </div>

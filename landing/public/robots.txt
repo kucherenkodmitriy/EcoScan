@@ -1,0 +1,14 @@
+# EcoScan Robots.txt
+# https://ecoscan.ai
+
+User-agent: *
+Allow: /
+
+# Sitemap location
+Sitemap: https://ecoscan.ai/sitemap.xml
+
+# Disallow admin/internal routes
+Disallow: /login
+Disallow: /dashboard
+Disallow: /bins/
+Disallow: /print

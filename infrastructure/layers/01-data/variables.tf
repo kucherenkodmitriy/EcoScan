@@ -55,3 +55,10 @@ variable "jwt_secret_override" {
   default     = ""
   sensitive   = true
 }
+
+variable "google_maps_api_key" {
+  description = "Google Maps API key for frontend map functionality"
+  type        = string
+  default     = ""
+  sensitive   = true
+}

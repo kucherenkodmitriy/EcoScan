@@ -30,3 +30,30 @@ resource "aws_secretsmanager_secret_version" "jwt_secret" {
   secret_id     = aws_secretsmanager_secret.jwt_secret.id
   secret_string = var.jwt_secret_override != "" ? var.jwt_secret_override : random_password.jwt_secret.result
 }
+
+# =============================================================================
+# AWS Secrets Manager - Google Maps API Key
+# =============================================================================
+
+# Create the Secrets Manager secret for Google Maps API key
+resource "aws_secretsmanager_secret" "google_maps_api_key" {
+  name        = "${var.environment}-${var.project_name}-google-maps-api-key"
+  description = "Google Maps API key for EcoScan frontend"
+
+  # For local development, we don't need recovery window
+  recovery_window_in_days = var.use_localstack ? 0 : 30
+
+  tags = merge(
+    local.common_tags,
+    {
+      Name    = "${var.project_name}-google-maps-api-key"
+      Purpose = "Google Maps JavaScript API for bin location mapping"
+    }
+  )
+}
+
+# Store the Google Maps API key value
+resource "aws_secretsmanager_secret_version" "google_maps_api_key" {
+  secret_id     = aws_secretsmanager_secret.google_maps_api_key.id
+  secret_string = var.google_maps_api_key
+}

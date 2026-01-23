@@ -1,6 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
 import type { ChangeEvent, FormEvent } from 'react'
-import { Link } from 'react-router-dom'
 import './Landing.css'
 
 declare global {
@@ -89,16 +88,7 @@ function Landing() {
             ))}
           </div>
           <div className="landing-nav-actions">
-            <Link className="btn btn-secondary" to="/login">
-              Admin Login
-            </Link>
-            <button
-              className="btn btn-primary"
-              type="button"
-              onClick={() => trackEvent('cta_click', { label: 'request_demo' })}
-            >
-              Request a Demo
-            </button>
+            {/* CTAs removed: no admin login or demo request from landing */}
           </div>
         </nav>
 
@@ -118,13 +108,6 @@ function Landing() {
                 onClick={() => trackEvent('cta_click', { label: 'hero_primary' })}
               >
                 See the platform in action
-              </button>
-              <button
-                className="btn btn-secondary"
-                type="button"
-                onClick={() => trackEvent('cta_click', { label: 'hero_secondary' })}
-              >
-                Download the investor deck
               </button>
             </div>
             <div className="landing-metrics">

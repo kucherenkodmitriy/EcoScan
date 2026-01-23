@@ -27,6 +27,7 @@ struct ContactRequest {
 }
 
 #[derive(Debug, Deserialize)]
+#[allow(dead_code)] // Fields are populated by deserialization
 struct RecaptchaResponse {
     success: bool,
     score: Option<f64>,
@@ -39,10 +40,6 @@ struct RecaptchaResponse {
 
 #[derive(Debug, thiserror::Error)]
 enum HandlerError {
-    #[error("Invalid request body: {0}")]
-    InvalidBody(String),
-    #[error("reCAPTCHA verification failed: {0}")]
-    RecaptchaFailed(String),
     #[error("DynamoDB error: {0}")]
     DynamoDb(String),
     #[error("HTTP error: {0}")]
@@ -80,17 +77,35 @@ async fn save_contact_request(
     let ttl = (Utc::now().timestamp() + 90 * 24 * 60 * 60).to_string();
 
     let mut item = HashMap::new();
-    item.insert("requestId".to_string(), AttributeValue::S(request_id.clone()));
+    item.insert(
+        "requestId".to_string(),
+        AttributeValue::S(request_id.clone()),
+    );
     item.insert("createdAt".to_string(), AttributeValue::S(created_at));
-    item.insert("email".to_string(), AttributeValue::S(request.email.clone()));
-    item.insert("recaptchaScore".to_string(), AttributeValue::N(recaptcha_score.to_string()));
+    item.insert(
+        "email".to_string(),
+        AttributeValue::S(request.email.clone()),
+    );
+    item.insert(
+        "recaptchaScore".to_string(),
+        AttributeValue::N(recaptcha_score.to_string()),
+    );
     item.insert("ttl".to_string(), AttributeValue::N(ttl));
-    item.insert("status".to_string(), AttributeValue::S("pending".to_string()));
-    item.insert("requestType".to_string(), AttributeValue::S(request.request_type.clone()));
+    item.insert(
+        "status".to_string(),
+        AttributeValue::S("pending".to_string()),
+    );
+    item.insert(
+        "requestType".to_string(),
+        AttributeValue::S(request.request_type.clone()),
+    );
 
     // Add request-specific fields
     if let Some(company) = &request.company_name {
-        item.insert("companyName".to_string(), AttributeValue::S(company.clone()));
+        item.insert(
+            "companyName".to_string(),
+            AttributeValue::S(company.clone()),
+        );
     }
     if let Some(name) = &request.name {
         item.insert("name".to_string(), AttributeValue::S(name.clone()));
@@ -117,8 +132,14 @@ fn create_response(status_code: i64, body: serde_json::Value) -> ApiGatewayProxy
     let mut headers = HeaderMap::new();
     headers.insert("Content-Type", "application/json".parse().unwrap());
     headers.insert("Access-Control-Allow-Origin", "*".parse().unwrap());
-    headers.insert("Access-Control-Allow-Methods", "POST,OPTIONS".parse().unwrap());
-    headers.insert("Access-Control-Allow-Headers", "Content-Type".parse().unwrap());
+    headers.insert(
+        "Access-Control-Allow-Methods",
+        "POST,OPTIONS".parse().unwrap(),
+    );
+    headers.insert(
+        "Access-Control-Allow-Headers",
+        "Content-Type".parse().unwrap(),
+    );
 
     ApiGatewayProxyResponse {
         status_code,
@@ -154,9 +175,9 @@ async fn function_handler(
         .unwrap_or(0.5);
 
     // Parse request body
-    let body = event.payload.body.ok_or_else(|| "Missing request body")?;
-    let mut request: ContactRequest = serde_json::from_str(&body)
-        .map_err(|e| format!("Invalid request body: {}", e))?;
+    let body = event.payload.body.ok_or("Missing request body")?;
+    let mut request: ContactRequest =
+        serde_json::from_str(&body).map_err(|e| format!("Invalid request body: {}", e))?;
 
     // Auto-detect request type if not provided
     if request.request_type.is_empty() {
@@ -193,7 +214,9 @@ async fn function_handler(
         };
 
         // Verify reCAPTCHA server-side (SECURE!)
-        let recaptcha_response = match verify_recaptcha(&request.recaptcha_token, &recaptcha_secret).await {
+        let recaptcha_response = match verify_recaptcha(&request.recaptcha_token, &recaptcha_secret)
+            .await
+        {
             Ok(resp) => resp,
             Err(e) => {
                 error!("reCAPTCHA verification error: {}", e);

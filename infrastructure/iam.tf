@@ -40,7 +40,9 @@ resource "aws_iam_policy" "lambda_policy" {
         Effect = "Allow",
         Resource = [
           aws_dynamodb_table.trash_bins.arn,
-          aws_dynamodb_table.status_reports.arn
+          aws_dynamodb_table.status_reports.arn,
+          aws_dynamodb_table.demo_requests.arn,
+          "${aws_dynamodb_table.demo_requests.arn}/index/*"
         ]
       }
     ]

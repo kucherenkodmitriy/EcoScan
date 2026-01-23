@@ -31,6 +31,19 @@ lambda_max_concurrency = 100 # Allow higher concurrency in AWS
 # Use "*" for development/testing (less secure)
 # cors_allowed_origins = "https://your-cloudfront-domain.cloudfront.net"
 
+# reCAPTCHA settings
+# Set skip_recaptcha=true for e2e tests, false for production-like environments
+# recaptcha_secret_key should be set via TF_VAR_recaptcha_secret_key or -var flag
+skip_recaptcha       = false
+recaptcha_secret_key = "" # Set via TF_VAR_recaptcha_secret_key
+
+# WAF settings
+waf_rate_limit = 100 # 100 requests per 5 minutes per IP
+
+# API Gateway throttling (MVP: strict limits)
+api_rate_limit  = 2 # 2 requests per second
+api_burst_limit = 5 # Max 5 concurrent requests
+
 # Tags
 tags = {
   Environment = "dev"

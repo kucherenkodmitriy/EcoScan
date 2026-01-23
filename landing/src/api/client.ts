@@ -57,13 +57,25 @@ export async function getPublicBinInfo(binId: string): Promise<PublicBinInfo> {
   return response.json()
 }
 
-export async function submitBinStatus(binId: string, status: number): Promise<void> {
+export async function submitBinStatus(binId: string, status: number, recaptchaToken?: string): Promise<void> {
+  const body: { status: number; source: string; recaptchaToken?: string } = {
+    status,
+    source: 'qr',
+  }
+
+  if (recaptchaToken) {
+    body.recaptchaToken = recaptchaToken
+  }
+
   const response = await fetch(`${API_BASE}/bins/${binId}/status`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ status, source: 'qr' }),
+    body: JSON.stringify(body),
   })
-  if (!response.ok) throw new Error('Failed to submit status')
+  if (!response.ok) {
+    const error = await response.json().catch(() => ({ error: 'Failed to submit status' }))
+    throw new Error(error.error || error.message || 'Failed to submit status')
+  }
 }
 
 export async function getBin(binId: string): Promise<Bin> {

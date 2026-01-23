@@ -15,3 +15,23 @@ variable "project_name" {
   type        = string
   default     = "ecoscan"
 }
+
+variable "recaptcha_secret_key" {
+  description = "Google reCAPTCHA v3 secret key for server-side validation"
+  type        = string
+  sensitive   = true
+  default     = ""
+}
+
+variable "skip_recaptcha" {
+  description = "Skip reCAPTCHA validation (for e2e tests only)"
+  type        = bool
+  default     = false
+}
+
+variable "waf_rate_limit" {
+  description = "WAF rate limit: max requests per 5 minutes per IP"
+  type        = number
+  default     = 100 # Production default, set lower for strict environments
+}
+

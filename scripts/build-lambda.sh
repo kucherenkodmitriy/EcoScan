@@ -7,13 +7,15 @@
 # Arguments:
 #   ARCHITECTURE - Optional. Either 'x86_64' (default) or 'arm64'
 #   SERVICE      - Optional. Which service to build:
-#                  'all' (default), 'bin-status-reporter', 'lambda-authorizer', 'admin-dashboard-api'
+#                  'all' (default), 'bin-status-reporter', 'lambda-authorizer',
+#                  'admin-dashboard-api', 'contact-form-handler'
 #
 # Examples:
 #   ./build-lambda.sh                          # Build all services for x86_64
 #   ./build-lambda.sh x86_64                   # Build all services for x86_64
 #   ./build-lambda.sh arm64                    # Build all services for arm64
 #   ./build-lambda.sh x86_64 bin-status-reporter  # Build only bin-status-reporter
+#   ./build-lambda.sh x86_64 contact-form-handler # Build only contact-form-handler
 
 set -e # Exit immediately if a command exits with a non-zero status.
 
@@ -93,6 +95,7 @@ case "$SERVICE" in
     build_service "bin-status-reporter" "bootstrap" "lambda.zip"
     build_service "lambda-authorizer" "authorizer-bootstrap" "authorizer.zip"
     build_service "admin-dashboard-api" "admin-bootstrap" "admin-dashboard.zip"
+    build_service "contact-form-handler" "contact-form-handler" "contact-form-handler.zip"
     ;;
   bin-status-reporter)
     build_service "bin-status-reporter" "bootstrap" "lambda.zip"
@@ -103,8 +106,11 @@ case "$SERVICE" in
   admin-dashboard-api)
     build_service "admin-dashboard-api" "admin-bootstrap" "admin-dashboard.zip"
     ;;
+  contact-form-handler)
+    build_service "contact-form-handler" "contact-form-handler" "contact-form-handler.zip"
+    ;;
   *)
-    echo "Error: Unknown service '$SERVICE'. Use 'all', 'bin-status-reporter', 'lambda-authorizer', or 'admin-dashboard-api'" >&2
+    echo "Error: Unknown service '$SERVICE'. Use 'all', 'bin-status-reporter', 'lambda-authorizer', 'admin-dashboard-api', or 'contact-form-handler'" >&2
     exit 1
     ;;
 esac
@@ -118,5 +124,6 @@ echo "Artifacts:"
 [ -f "$TARGET_DIR/lambda.zip" ] && echo "  - lambda.zip (bin-status-reporter): $(ls -lh "$TARGET_DIR/lambda.zip" | awk '{print $5}')"
 [ -f "$TARGET_DIR/authorizer.zip" ] && echo "  - authorizer.zip (lambda-authorizer): $(ls -lh "$TARGET_DIR/authorizer.zip" | awk '{print $5}')"
 [ -f "$TARGET_DIR/admin-dashboard.zip" ] && echo "  - admin-dashboard.zip (admin-dashboard-api): $(ls -lh "$TARGET_DIR/admin-dashboard.zip" | awk '{print $5}')"
+[ -f "$TARGET_DIR/contact-form-handler.zip" ] && echo "  - contact-form-handler.zip (contact-form-handler): $(ls -lh "$TARGET_DIR/contact-form-handler.zip" | awk '{print $5}')"
 
 echo -e "\n\xE2\x9C\x85 Build successful!"

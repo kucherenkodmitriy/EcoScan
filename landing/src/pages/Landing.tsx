@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import type { ChangeEvent, FormEvent } from 'react'
+import DemoRequestModal from '../components/DemoRequestModal'
 import './Landing.css'
 
 declare global {
@@ -36,7 +37,21 @@ function Landing() {
     message: '',
   })
   const [submitted, setSubmitted] = useState(false)
+  const [isDemoModalOpen, setIsDemoModalOpen] = useState(false)
   const sectionIndex = useMemo(() => new Map(sections.map((section) => [section.id, section.label])), [])
+
+  // reCAPTCHA site key
+  const RECAPTCHA_SITE_KEY = import.meta.env.VITE_RECAPTCHA_SITE_KEY || '6LeIxAcTAAAAAJcZVRqyHh71UMIEGNQ_MXjiZKhI'
+
+  useEffect(() => {
+    // Load reCAPTCHA script
+    if (!document.getElementById('recaptcha-script')) {
+      const script = document.createElement('script')
+      script.id = 'recaptcha-script'
+      script.src = `https://www.google.com/recaptcha/api.js?render=${RECAPTCHA_SITE_KEY}`
+      document.head.appendChild(script)
+    }
+  }, [])
 
   useEffect(() => {
     const observer = new IntersectionObserver(
@@ -67,25 +82,58 @@ function Landing() {
     setFormState((prev) => ({ ...prev, [name]: value }))
   }
 
-  const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
+  const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault()
 
-    // Build mailto link with form data
-    const subject = encodeURIComponent(
-      `EcoScan Inquiry${formState.company ? ` from ${formState.company}` : ''}`,
-    )
-    const body = encodeURIComponent(
-      `Name: ${formState.name}\nEmail: ${formState.email}\nOrganization: ${formState.company || 'Not specified'}\n\nMessage:\n${formState.message || 'No message provided'}\n\n---\nSent from EcoScan landing page`,
-    )
-    const mailtoLink = `mailto:partnerships@ecoscan.ai?subject=${subject}&body=${body}`
+    try {
+      // Get reCAPTCHA token for spam protection
+      await window.grecaptcha!.ready(() => {})
+      const token = await window.grecaptcha!.execute(RECAPTCHA_SITE_KEY, { action: 'contact_form' })
 
-    // Open email client
-    window.location.href = mailtoLink
+      // Get API endpoint from environment
+      const apiGatewayId = import.meta.env.VITE_API_GATEWAY_ID
+      const apiEndpoint = apiGatewayId
+        ? `https://${apiGatewayId}.execute-api.eu-central-1.amazonaws.com/${import.meta.env.MODE || 'local'}/contact`
+        : 'http://localhost:4566/restapis/YOUR_API_ID/local/_user_request_/contact'
 
-    setSubmitted(true)
-    trackEvent('contact_submit', {
-      form_location: 'landing_contact',
-    })
+      // Send to API Gateway
+      const response = await fetch(apiEndpoint, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          name: formState.name,
+          email: formState.email,
+          organization: formState.company,
+          message: formState.message,
+          recaptchaToken: token,
+          requestType: 'contact',
+        }),
+      })
+
+      const data = await response.json()
+
+      if (!response.ok) {
+        throw new Error(data.message || 'Failed to submit contact form')
+      }
+
+      setSubmitted(true)
+      trackEvent('contact_submit', {
+        form_location: 'landing_contact',
+      })
+    } catch (error) {
+      console.error('Contact form error:', error)
+      // Fallback to mailto if API fails
+      const subject = encodeURIComponent(
+        `EcoScan Inquiry${formState.company ? ` from ${formState.company}` : ''}`,
+      )
+      const body = encodeURIComponent(
+        `Name: ${formState.name}\nEmail: ${formState.email}\nOrganization: ${formState.company || 'Not specified'}\n\nMessage:\n${formState.message || 'No message provided'}\n\n---\nSent from EcoScan landing page (API submission failed)`,
+      )
+      window.location.href = `mailto:partnerships@ecoscan.ai?subject=${subject}&body=${body}`
+      setSubmitted(true)
+    }
   }
 
   return (
@@ -107,12 +155,12 @@ function Landing() {
 
         <div className="landing-hero-content">
           <div>
-            <p className="landing-eyebrow">Smart waste operations at city scale</p>
-            <h1>Know what&apos;s happening with every bin, in real time.</h1>
+            <p className="landing-eyebrow">Exploring smart waste operations at city scale</p>
+            <h1>Demonstrating real-time bin management capabilities</h1>
             <p className="landing-subtitle">
-              EcoScan gives municipalities a unified dashboard for waste bin management. Track fill
-              levels, plan efficient routes, and empower citizens to report issues - all from one
-              platform built for scale.
+              EcoScan is an MVP platform showcasing how municipalities could manage waste bins with
+              modern technology. Track fill levels, plan routes, and enable citizen reporting -
+              a foundation for discussing your specific operational needs.
             </p>
             <div className="landing-hero-actions">
               <button
@@ -123,31 +171,41 @@ function Landing() {
                   document.getElementById('contact')?.scrollIntoView({ behavior: 'smooth' })
                 }}
               >
-                Request a demo
+                Discuss your needs
+              </button>
+              <button
+                className="btn btn-secondary"
+                type="button"
+                onClick={() => {
+                  trackEvent('cta_click', { label: 'hero_demo' })
+                  setIsDemoModalOpen(true)
+                }}
+              >
+                Request a Demo
               </button>
             </div>
             <div className="landing-metrics">
               <div>
                 <strong>Map view</strong>
-                <span>See all bins color-coded by status</span>
+                <span>Visualize bins with color-coded status</span>
               </div>
               <div>
                 <strong>QR reports</strong>
-                <span>Citizens report issues instantly</span>
+                <span>Citizen reporting concept in action</span>
               </div>
               <div>
                 <strong>IoT-ready</strong>
-                <span>Architecture built for sensor integration</span>
+                <span>Architecture designed for sensor data</span>
               </div>
             </div>
           </div>
           <div className="landing-hero-card">
-            <h2>What you get today</h2>
+            <h2>What this MVP demonstrates</h2>
             <ul>
-              <li>Interactive map dashboard with color-coded bin statuses.</li>
-              <li>QR code labels for citizen-powered fill level reporting.</li>
-              <li>Route planning with Google Maps integration.</li>
-              <li>Multi-language support (EN, CS, DE) for diverse teams.</li>
+              <li>Interactive map dashboard with color-coded bin statuses</li>
+              <li>QR code system for citizen-powered reporting</li>
+              <li>Route planning concepts with mapping integration</li>
+              <li>Multi-language support (EN, CS, DE) for international projects</li>
             </ul>
           </div>
         </div>
@@ -180,35 +238,35 @@ function Landing() {
 
       <section id="solution" className="landing-section" data-section="solution">
         <div className="landing-section-header">
-          <h2>How EcoScan works</h2>
+          <h2>How this concept works</h2>
           <p>
-            A simple, scalable system that combines citizen engagement with operational visibility -
-            with a clear path to full IoT automation.
+            A demonstration system combining citizen engagement with operational visibility -
+            designed to evolve toward full IoT automation in production deployments.
           </p>
         </div>
         <div className="landing-solution-grid">
           <div className="landing-solution">
             <span>01</span>
-            <h3>Deploy QR labels</h3>
+            <h3>QR-based reporting</h3>
             <p>
-              Print weather-resistant QR codes for each bin. Citizens scan to report fill levels in
-              seconds - no app download required.
+              Generate QR codes for bins that citizens can scan to report fill levels -
+              no app download required. A practical starting point for community engagement.
             </p>
           </div>
           <div className="landing-solution">
             <span>02</span>
-            <h3>Monitor from one dashboard</h3>
+            <h3>Centralized dashboard view</h3>
             <p>
-              See all bins on an interactive map. Green, yellow, red indicators show status at a
-              glance. Filter, search, and plan routes instantly.
+              View all bins on an interactive map with visual status indicators.
+              The MVP demonstrates filtering, search, and basic route planning capabilities.
             </p>
           </div>
           <div className="landing-solution">
             <span>03</span>
-            <h3>Scale with IoT sensors</h3>
+            <h3>Path to IoT integration</h3>
             <p>
-              When ready, add ultrasonic sensors for automatic readings. Same dashboard, same API -
-              just automated data instead of manual reports.
+              The architecture is designed to accept sensor data for automated readings in future implementations.
+              Same API structure, ready to scale when you add hardware.
             </p>
           </div>
         </div>
@@ -216,31 +274,31 @@ function Landing() {
 
       <section id="opportunities" className="landing-section" data-section="opportunities">
         <div className="landing-section-header">
-          <h2>Built to grow with your needs</h2>
+          <h2>Capabilities we're showcasing</h2>
           <p>
-            Start with basic bin tracking and expand capabilities as your program matures.
+            This MVP demonstrates core concepts that could be expanded based on your operational requirements.
           </p>
         </div>
         <div className="landing-grid">
           <div className="landing-card">
-            <h3>Multiple bin types</h3>
+            <h3>Multiple waste streams</h3>
             <p>
-              Track mixed waste, plastic, paper, and glass separately. Color-coded badges make
-              sorting visible at a glance.
+              The platform supports categorizing bins by waste type (mixed, plastic, paper, glass) with
+              color-coded visual differentiation in the interface.
             </p>
           </div>
           <div className="landing-card">
-            <h3>Citizen engagement</h3>
+            <h3>Community participation model</h3>
             <p>
-              QR codes turn every resident into a sensor. Build community involvement while
-              gathering real operational data.
+              QR code scanning demonstrates how residents could contribute operational data,
+              creating a foundation for citizen engagement programs.
             </p>
           </div>
           <div className="landing-card">
-            <h3>Future-ready architecture</h3>
+            <h3>Extensible architecture</h3>
             <p>
-              Event-driven backend handles IoT sensors, third-party integrations, and analytics
-              modules without rewrites.
+              Built with event-driven patterns that can accommodate IoT sensors, third-party systems,
+              and analytics modules in production implementations.
             </p>
           </div>
         </div>
@@ -248,71 +306,71 @@ function Landing() {
 
       <section id="advantages" className="landing-section" data-section="advantages">
         <div className="landing-section-header">
-          <h2>Built for scale, flexibility, and partnership</h2>
+          <h2>A foundation for scalable solutions</h2>
           <p>
-            Our architecture delivers enterprise reliability while keeping operating costs low and
-            integrations fast.
+            Our architectural approach demonstrates how modern cloud infrastructure could support
+            municipal waste management from pilot to production scale.
           </p>
         </div>
         <div className="landing-advantages">
           <div className="landing-advantage">
-            <h3>Scalable by design</h3>
-            <p>Serverless workflows scale automatically from a single district to a nationwide rollout.</p>
+            <h3>Designed for scale</h3>
+            <p>Serverless architecture showcases how a production system could scale from a single district to regional deployments.</p>
           </div>
           <div className="landing-advantage">
-            <h3>Flexible integrations</h3>
-            <p>Open APIs make it easy to onboard new vendors, hardware partners, and analytics tools.</p>
+            <h3>Integration-ready</h3>
+            <p>API-first design demonstrates how different vendors, hardware types, and analytics tools could connect to a unified platform.</p>
           </div>
           <div className="landing-advantage">
-            <h3>Maintainable & secure</h3>
-            <p>Infrastructure-as-code, automated tests, and JWT-based access control reduce risk.</p>
+            <h3>Professional practices</h3>
+            <p>Infrastructure-as-code, automated testing, and modern authentication patterns showcase enterprise development standards.</p>
           </div>
           <div className="landing-advantage">
-            <h3>Data you can trust</h3>
-            <p>Audit-ready telemetry, role-based dashboards, and service-level reporting in one place.</p>
+            <h3>Transparent operations</h3>
+            <p>The architecture supports audit trails, role-based access, and operational reporting patterns for governance requirements.</p>
           </div>
         </div>
         <div className="landing-architecture">
-          <h3>Modern AWS architecture</h3>
+          <h3>Modern cloud architecture</h3>
           <ul>
-            <li>Event-driven ingestion via API Gateway, SQS, and AWS Lambda.</li>
-            <li>Real-time dashboards backed by DynamoDB and global CDN delivery.</li>
-            <li>Terraform-managed infrastructure for rapid expansion and governance.</li>
+            <li>Event-driven data flow using API Gateway, SQS, and Lambda functions</li>
+            <li>Dashboard backed by DynamoDB with infrastructure managed via Terraform</li>
+            <li>Patterns demonstrated for real-time updates and third-party integrations</li>
           </ul>
         </div>
       </section>
 
       <section id="roadmap" className="landing-section" data-section="roadmap">
         <div className="landing-section-header">
-          <h2>Platform evolution</h2>
-          <p>A phased approach from manual reporting to fully automated operations.</p>
+          <h2>From MVP to production</h2>
+          <p>A staged development approach - what's demonstrated now and what could be built for production deployments.</p>
         </div>
         <div className="landing-roadmap">
           <div>
-            <h3>Available now</h3>
+            <h3>Current MVP features</h3>
             <ul>
-              <li>Admin dashboard with interactive map view.</li>
-              <li>QR-based citizen reporting system.</li>
-              <li>Route planning with Google Maps.</li>
-              <li>Multi-language interface (EN, CS, DE).</li>
+              <li>Admin dashboard with interactive map interface</li>
+              <li>QR-based reporting workflow demonstration</li>
+              <li>Basic route planning with mapping integration</li>
+              <li>Multi-language support (EN, CS, DE) framework</li>
             </ul>
           </div>
           <div>
-            <h3>Coming soon</h3>
+            <h3>Production considerations</h3>
             <ul>
-              <li>IoT sensor integration (ultrasonic fill detection).</li>
-              <li>Automated threshold alerts via email/SMS.</li>
-              <li>Historical analytics and trend reporting.</li>
-              <li>Mobile app for field crews.</li>
+              <li>IoT sensor integration and hardware partnerships</li>
+              <li>Automated alerting systems (email/SMS)</li>
+              <li>Historical analytics and reporting capabilities</li>
+              <li>Mobile applications for field operations</li>
             </ul>
           </div>
           <div>
-            <h3>On the horizon</h3>
+            <h3>Future possibilities</h3>
             <ul>
-              <li>Predictive fill-level forecasting.</li>
-              <li>Dynamic route optimization.</li>
-              <li>Third-party fleet management integrations.</li>
-              <li>Public transparency dashboards.</li>
+              <li>Predictive modeling based on historical patterns</li>
+              <li>Advanced route optimization algorithms</li>
+              <li>Fleet management system integrations</li>
+              <li>Public-facing transparency dashboards</li>
             </ul>
           </div>
         </div>
@@ -320,9 +378,10 @@ function Landing() {
 
       <section id="contact" className="landing-section" data-section="contact">
         <div className="landing-section-header">
-          <h2>Let&apos;s talk</h2>
+          <h2>Let&apos;s explore possibilities together</h2>
           <p>
-            Tell us about your operations and we&apos;ll prepare a tailored deployment plan.
+            Share your operational challenges and we can discuss how this platform concept could be
+            adapted to your specific requirements.
           </p>
         </div>
         <div className="landing-contact">
@@ -349,7 +408,7 @@ function Landing() {
               <input id="company" name="company" value={formState.company} onChange={handleChange} />
             </div>
             <div>
-              <label htmlFor="message">What should we know?</label>
+              <label htmlFor="message">Tell us about your waste management challenges</label>
               <textarea
                 id="message"
                 name="message"
@@ -358,31 +417,45 @@ function Landing() {
                 onChange={handleChange}
               />
             </div>
+            <p className="landing-form-notice">
+              We never send spam or automated messages. Your information is only used for direct communication.
+            </p>
             <button className="btn btn-primary" type="submit">
-              Send contact request
+              Start a conversation
             </button>
             {submitted && (
               <p className="landing-form-success">
-                Your email client should open with a pre-filled message. If it didn&apos;t, please
-                email us directly at{' '}
+                Thank you! We&apos;ve received your message and will respond within 24 hours.
+                If you don&apos;t hear from us, please check your spam folder or email{' '}
                 <a href="mailto:partnerships@ecoscan.ai">partnerships@ecoscan.ai</a>
               </p>
             )}
+            <p className="landing-form-recaptcha">
+              This site is protected by reCAPTCHA and the Google{' '}
+              <a href="https://policies.google.com/privacy" target="_blank" rel="noopener noreferrer">
+                Privacy Policy
+              </a>{' '}
+              and{' '}
+              <a href="https://policies.google.com/terms" target="_blank" rel="noopener noreferrer">
+                Terms of Service
+              </a>{' '}
+              apply.
+            </p>
           </form>
 
           <aside className="landing-contact-info">
-            <h3>Why work with us?</h3>
+            <h3>What to expect</h3>
             <ul>
-              <li>Production-ready platform you can deploy today</li>
-              <li>Enterprise-grade AWS infrastructure</li>
-              <li>Clear upgrade path to IoT automation</li>
-              <li>Open architecture, no vendor lock-in</li>
+              <li>Demo of the current MVP capabilities</li>
+              <li>Discussion of your specific operational needs</li>
+              <li>Exploration of customization and development paths</li>
+              <li>Transparent conversation about timelines and partnerships</li>
             </ul>
             <div className="landing-contact-highlight">
-              <p>Quick response guaranteed</p>
+              <p>Partnership-focused approach</p>
               <p>
-                Our team typically responds within 24 hours. We&apos;ll schedule a discovery call to
-                understand your operations and prepare a tailored proposal.
+                We&apos;re looking for forward-thinking organizations to explore how this concept
+                could evolve into production solutions. Let&apos;s discuss what&apos;s possible together.
               </p>
             </div>
           </aside>
@@ -392,7 +465,7 @@ function Landing() {
       <footer className="landing-footer">
         <div className="landing-footer-brand">
           <strong>EcoScan</strong>
-          <p>Intelligent waste operations for modern cities.</p>
+          <p>Exploring smart waste operations for modern cities.</p>
         </div>
         <div className="landing-footer-links">
           <a href="/privacy">Privacy Policy</a>
@@ -403,6 +476,8 @@ function Landing() {
           <p>© 2026 EcoScan. All rights reserved.</p>
         </div>
       </footer>
+
+      <DemoRequestModal isOpen={isDemoModalOpen} onClose={() => setIsDemoModalOpen(false)} />
     </div>
   )
 }

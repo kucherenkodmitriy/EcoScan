@@ -308,8 +308,9 @@ resource "aws_api_gateway_method_settings" "api_method_settings" {
 
   settings {
     # Throttling settings - prevent spam/abuse
-    throttling_rate_limit  = var.environment == "local" ? 100 : 1000 # requests per second
-    throttling_burst_limit = var.environment == "local" ? 50 : 500   # burst capacity
+    # MVP: strict limits (2 req/sec, 5 burst) to prevent abuse
+    throttling_rate_limit  = var.environment == "local" ? 100 : var.api_rate_limit
+    throttling_burst_limit = var.environment == "local" ? 50 : var.api_burst_limit
 
     # Metrics and logging
     metrics_enabled    = true
@@ -362,10 +363,10 @@ resource "aws_api_gateway_usage_plan" "api_usage_plan" {
   name        = "${var.environment}-${var.project_name}-usage-plan"
   description = "Usage plan for EcoScan API with rate limiting"
 
-  # Throttle limits
+  # Throttle limits - MVP: strict limits to prevent abuse
   throttle_settings {
-    rate_limit  = var.environment == "local" ? 100 : 1000
-    burst_limit = var.environment == "local" ? 50 : 500
+    rate_limit  = var.environment == "local" ? 100 : var.api_rate_limit
+    burst_limit = var.environment == "local" ? 50 : var.api_burst_limit
   }
 
   # Quota limits (daily)

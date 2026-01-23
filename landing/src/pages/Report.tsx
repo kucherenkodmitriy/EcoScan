@@ -6,6 +6,15 @@ import LanguageSwitcher from '../components/LanguageSwitcher'
 import Footer from '../components/Footer'
 import styles from './Report.module.css'
 
+declare global {
+  interface Window {
+    grecaptcha?: {
+      ready: (callback: () => void) => void
+      execute: (siteKey: string, options: { action: string }) => Promise<string>
+    }
+  }
+}
+
 function getStatusColor(value: number): string {
   if (value <= 50) return '#4caf50'
   if (value <= 75) return '#ff9800'
@@ -23,6 +32,19 @@ export default function Report() {
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState('')
   const [success, setSuccess] = useState(false)
+
+  // reCAPTCHA site key
+  const RECAPTCHA_SITE_KEY = import.meta.env.VITE_RECAPTCHA_SITE_KEY || '6LeIxAcTAAAAAJcZVRqyHh71UMIEGNQ_MXjiZKhI'
+
+  useEffect(() => {
+    // Load reCAPTCHA script
+    if (!document.getElementById('recaptcha-script')) {
+      const script = document.createElement('script')
+      script.id = 'recaptcha-script'
+      script.src = `https://www.google.com/recaptcha/api.js?render=${RECAPTCHA_SITE_KEY}`
+      document.head.appendChild(script)
+    }
+  }, [])
 
   const getStatusText = (value: number): string => {
     if (value <= 20) return t('report.statusNearlyEmpty')
@@ -60,7 +82,18 @@ export default function Report() {
     setError('')
 
     try {
-      await submitBinStatus(binId, status)
+      // Get reCAPTCHA token for spam protection
+      let recaptchaToken: string | undefined
+      try {
+        if (window.grecaptcha) {
+          await window.grecaptcha.ready(() => {})
+          recaptchaToken = await window.grecaptcha.execute(RECAPTCHA_SITE_KEY, { action: 'bin_status_report' })
+        }
+      } catch (recaptchaError) {
+        console.warn('reCAPTCHA failed, continuing without it:', recaptchaError)
+      }
+
+      await submitBinStatus(binId, status, recaptchaToken)
       setSuccess(true)
     } catch (err) {
       setError(err instanceof Error ? err.message : t('report.failedToSubmit'))

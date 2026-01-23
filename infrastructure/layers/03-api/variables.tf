@@ -30,3 +30,16 @@ variable "tags" {
   type        = map(string)
   default     = {}
 }
+
+# API Gateway throttling settings
+variable "api_rate_limit" {
+  description = "API Gateway rate limit (requests per second)"
+  type        = number
+  default     = 2
+}
+
+variable "api_burst_limit" {
+  description = "API Gateway burst limit (max concurrent requests)"
+  type        = number
+  default     = 5
+}

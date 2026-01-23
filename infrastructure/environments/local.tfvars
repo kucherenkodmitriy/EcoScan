@@ -26,6 +26,17 @@ lambda_deployments_bucket_name = "lambda-deployments"
 lambda_sqs_batch_size  = 10 # Process up to 10 messages per invocation
 lambda_max_concurrency = 5  # Max 5 concurrent executions for local testing
 
+# reCAPTCHA settings (skip for local testing)
+skip_recaptcha       = true
+recaptcha_secret_key = ""
+
+# WAF settings (higher limit for local testing)
+waf_rate_limit = 1000
+
+# API Gateway throttling (relaxed for local testing)
+api_rate_limit  = 100
+api_burst_limit = 50
+
 # Tags
 tags = {
   Environment = "local"

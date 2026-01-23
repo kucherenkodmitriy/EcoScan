@@ -158,6 +158,43 @@ All documentation is in the `docs/` folder:
 - **[API Flow](docs/api-sqs-lambda-flow.md)** - API Gateway → SQS → Lambda flow
 - **[LocalStack Debugging](docs/localstack-debugging-insights.md)** - LocalStack tips
 
+## Security & Contact Forms
+
+### reCAPTCHA v3 Integration
+
+All public forms (contact, demo requests, bin status reports) are protected with **server-side reCAPTCHA v3 validation**:
+
+```
+User Form → reCAPTCHA (invisible) → API Gateway → WAF → Lambda (validates) → DynamoDB
+```
+
+**Setup** (2 minutes):
+```bash
+# 1. Get keys: https://www.google.com/recaptcha/admin (create v3 site)
+
+# 2. Build Lambda
+cd services/contact-form-handler && ./build.sh
+
+# 3. Deploy
+cd ../../infrastructure
+export TF_VAR_recaptcha_secret_key="YOUR_SECRET_KEY"
+terraform apply -var-file=environments/dev.tfvars
+
+# 4. Configure frontend
+echo "VITE_RECAPTCHA_SITE_KEY=YOUR_SITE_KEY" >> landing/.env
+```
+
+**Protection layers:**
+- ✅ Server-side validation (can't be bypassed)
+- ✅ WAF rate limiting (10 requests/5min per IP)
+- ✅ API Gateway throttling (500/day)
+- ✅ reCAPTCHA score check (≥0.5 required)
+- ✅ DynamoDB storage with 90-day TTL
+
+**Cost:** $0-5/month (free tier + optional $5 WAF)
+
+See service README: [contact-form-handler](services/contact-form-handler/README.md)
+
 ## Development
 
 ### Building Lambda Functions

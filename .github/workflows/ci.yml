@@ -187,6 +187,9 @@ jobs:
           echo ""
           echo "=== admin-dashboard.zip (admin-dashboard-api) ==="
           unzip -l services/target/admin-dashboard.zip
+          echo ""
+          echo "=== contact-form-handler.zip (contact-form-handler) ==="
+          unzip -l services/target/contact-form-handler.zip
 
       - name: Upload Lambda artifacts
         uses: actions/upload-artifact@v4
@@ -244,6 +247,13 @@ jobs:
             s3://ecoscan-terraform-state-dev/lambda-artifacts/admin-dashboard-${HASH}.zip
           aws s3 cp services/target/admin-dashboard.zip \
             s3://ecoscan-terraform-state-dev/lambda-artifacts/admin-dashboard-latest.zip
+
+          # Upload contact-form-handler
+          HASH=$(sha256sum services/target/contact-form-handler.zip | cut -d' ' -f1)
+          aws s3 cp services/target/contact-form-handler.zip \
+            s3://ecoscan-terraform-state-dev/lambda-artifacts/contact-form-handler-${HASH}.zip
+          aws s3 cp services/target/contact-form-handler.zip \
+            s3://ecoscan-terraform-state-dev/lambda-artifacts/contact-form-handler-latest.zip
 
   # ============================================
   # TERRAFORM VALIDATION (runs if any infra changed)
@@ -515,6 +525,8 @@ jobs:
             services/target/authorizer.zip
           aws s3 cp s3://ecoscan-terraform-state-dev/lambda-artifacts/admin-dashboard-latest.zip \
             services/target/admin-dashboard.zip
+          aws s3 cp s3://ecoscan-terraform-state-dev/lambda-artifacts/contact-form-handler-latest.zip \
+            services/target/contact-form-handler.zip
 
       - name: Verify Lambda artifacts
         run: |
@@ -525,6 +537,7 @@ jobs:
           [ -f services/target/lambda.zip ] && echo "  - lambda.zip: OK" || echo "  - lambda.zip: MISSING"
           [ -f services/target/authorizer.zip ] && echo "  - authorizer.zip: OK" || echo "  - authorizer.zip: MISSING"
           [ -f services/target/admin-dashboard.zip ] && echo "  - admin-dashboard.zip: OK" || echo "  - admin-dashboard.zip: MISSING"
+          [ -f services/target/contact-form-handler.zip ] && echo "  - contact-form-handler.zip: OK" || echo "  - contact-form-handler.zip: MISSING"
 
       - name: Cache Terraform providers
         uses: actions/cache@v4
@@ -546,7 +559,11 @@ jobs:
         working-directory: infrastructure/layers/02-compute
         run: |
           set +e
-          terraform plan -var-file="../../environments/dev.tfvars" -out=tfplan -detailed-exitcode
+          terraform plan \
+            -var-file="../../environments/dev.tfvars" \
+            -var="recaptcha_secret_key=${{ secrets.RECAPTCHA_SECRET_KEY }}" \
+            -out=tfplan \
+            -detailed-exitcode
           EXIT_CODE=$?
           echo "exitcode=$EXIT_CODE" >> $GITHUB_OUTPUT
           if [ $EXIT_CODE -eq 1 ]; then exit 1; fi
@@ -605,6 +622,7 @@ jobs:
         working-directory: landing
         env:
           VITE_GOOGLE_MAPS_API_KEY: ${{ steps.secrets.outputs.GOOGLE_MAPS_API_KEY }}
+          VITE_RECAPTCHA_SITE_KEY: ${{ secrets.RECAPTCHA_SITE_KEY }}
         run: npm run build
 
       - name: Upload frontend build

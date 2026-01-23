@@ -2,6 +2,7 @@
 resolver = "2"
 members = [
     "bin-status-reporter",
+    "contact-form-handler",
     "e2e-tests",
     "lambda-authorizer",
     "admin-dashboard-api",

@@ -6,6 +6,11 @@ on:
   pull_request:
     branches: [main]
 
+# Cancel in-progress runs when new commits are pushed
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 env:
   CARGO_TERM_COLOR: always
   AWS_REGION: eu-central-1
@@ -291,6 +296,14 @@ jobs:
         with:
           terraform_version: ${{ env.TERRAFORM_VERSION }}
 
+      - name: Cache Terraform providers
+        uses: actions/cache@v4
+        with:
+          path: infrastructure/layers/00-foundation/.terraform/providers
+          key: ${{ runner.os }}-tf-foundation-${{ hashFiles('infrastructure/layers/00-foundation/.terraform.lock.hcl') }}
+          restore-keys: |
+            ${{ runner.os }}-tf-foundation-
+
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v4
         with:
@@ -306,12 +319,24 @@ jobs:
             -backend-config="key=layers/00-foundation/terraform.tfstate"
 
       - name: Terraform Plan
+        id: plan
         working-directory: infrastructure/layers/00-foundation
-        run: terraform plan -var-file="../../environments/dev.tfvars" -out=tfplan
+        run: |
+          set +e
+          terraform plan -var-file="../../environments/dev.tfvars" -out=tfplan -detailed-exitcode
+          EXIT_CODE=$?
+          echo "exitcode=$EXIT_CODE" >> $GITHUB_OUTPUT
+          if [ $EXIT_CODE -eq 1 ]; then exit 1; fi
+          exit 0
 
       - name: Terraform Apply
+        if: steps.plan.outputs.exitcode == '2'
         working-directory: infrastructure/layers/00-foundation
         run: terraform apply -auto-approve tfplan
+
+      - name: Skip Apply (no changes)
+        if: steps.plan.outputs.exitcode == '0'
+        run: echo "No infrastructure changes detected, skipping apply"
 
   # ============================================
   # DEPLOY DATA LAYER
@@ -334,6 +359,14 @@ jobs:
         with:
           terraform_version: ${{ env.TERRAFORM_VERSION }}
 
+      - name: Cache Terraform providers
+        uses: actions/cache@v4
+        with:
+          path: infrastructure/layers/01-data/.terraform/providers
+          key: ${{ runner.os }}-tf-data-${{ hashFiles('infrastructure/layers/01-data/.terraform.lock.hcl') }}
+          restore-keys: |
+            ${{ runner.os }}-tf-data-
+
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v4
         with:
@@ -349,16 +382,28 @@ jobs:
             -backend-config="key=layers/01-data/terraform.tfstate"
 
       - name: Terraform Plan
+        id: plan
         working-directory: infrastructure/layers/01-data
         run: |
+          set +e
           terraform plan \
             -var-file="../../environments/dev.tfvars" \
             -var="google_maps_api_key=${{ secrets.GOOGLE_MAPS_API_KEY }}" \
-            -out=tfplan
+            -out=tfplan \
+            -detailed-exitcode
+          EXIT_CODE=$?
+          echo "exitcode=$EXIT_CODE" >> $GITHUB_OUTPUT
+          if [ $EXIT_CODE -eq 1 ]; then exit 1; fi
+          exit 0
 
       - name: Terraform Apply
+        if: steps.plan.outputs.exitcode == '2'
         working-directory: infrastructure/layers/01-data
         run: terraform apply -auto-approve tfplan
+
+      - name: Skip Apply (no changes)
+        if: steps.plan.outputs.exitcode == '0'
+        run: echo "No infrastructure changes detected, skipping apply"
 
   # ============================================
   # DEPLOY API LAYER (SQS must exist before compute)
@@ -381,6 +426,14 @@ jobs:
         with:
           terraform_version: ${{ env.TERRAFORM_VERSION }}
 
+      - name: Cache Terraform providers
+        uses: actions/cache@v4
+        with:
+          path: infrastructure/layers/03-api/.terraform/providers
+          key: ${{ runner.os }}-tf-api-${{ hashFiles('infrastructure/layers/03-api/.terraform.lock.hcl') }}
+          restore-keys: |
+            ${{ runner.os }}-tf-api-
+
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v4
         with:
@@ -396,12 +449,24 @@ jobs:
             -backend-config="key=layers/03-api/terraform.tfstate"
 
       - name: Terraform Plan
+        id: plan
         working-directory: infrastructure/layers/03-api
-        run: terraform plan -var-file="../../environments/dev.tfvars" -out=tfplan
+        run: |
+          set +e
+          terraform plan -var-file="../../environments/dev.tfvars" -out=tfplan -detailed-exitcode
+          EXIT_CODE=$?
+          echo "exitcode=$EXIT_CODE" >> $GITHUB_OUTPUT
+          if [ $EXIT_CODE -eq 1 ]; then exit 1; fi
+          exit 0
 
       - name: Terraform Apply
+        if: steps.plan.outputs.exitcode == '2'
         working-directory: infrastructure/layers/03-api
         run: terraform apply -auto-approve tfplan
+
+      - name: Skip Apply (no changes)
+        if: steps.plan.outputs.exitcode == '0'
+        run: echo "No infrastructure changes detected, skipping apply"
 
   # ============================================
   # DEPLOY COMPUTE LAYER (requires Lambda artifact)
@@ -461,6 +526,14 @@ jobs:
           [ -f services/target/authorizer.zip ] && echo "  - authorizer.zip: OK" || echo "  - authorizer.zip: MISSING"
           [ -f services/target/admin-dashboard.zip ] && echo "  - admin-dashboard.zip: OK" || echo "  - admin-dashboard.zip: MISSING"
 
+      - name: Cache Terraform providers
+        uses: actions/cache@v4
+        with:
+          path: infrastructure/layers/02-compute/.terraform/providers
+          key: ${{ runner.os }}-tf-compute-${{ hashFiles('infrastructure/layers/02-compute/.terraform.lock.hcl') }}
+          restore-keys: |
+            ${{ runner.os }}-tf-compute-
+
       - name: Terraform Init
         working-directory: infrastructure/layers/02-compute
         run: |
@@ -469,12 +542,24 @@ jobs:
             -backend-config="key=layers/02-compute/terraform.tfstate"
 
       - name: Terraform Plan
+        id: plan
         working-directory: infrastructure/layers/02-compute
-        run: terraform plan -var-file="../../environments/dev.tfvars" -out=tfplan
+        run: |
+          set +e
+          terraform plan -var-file="../../environments/dev.tfvars" -out=tfplan -detailed-exitcode
+          EXIT_CODE=$?
+          echo "exitcode=$EXIT_CODE" >> $GITHUB_OUTPUT
+          if [ $EXIT_CODE -eq 1 ]; then exit 1; fi
+          exit 0
 
       - name: Terraform Apply
+        if: steps.plan.outputs.exitcode == '2'
         working-directory: infrastructure/layers/02-compute
         run: terraform apply -auto-approve tfplan
+
+      - name: Skip Apply (no changes)
+        if: steps.plan.outputs.exitcode == '0'
+        run: echo "No infrastructure changes detected, skipping apply"
 
   # ============================================
   # BUILD FRONTEND (React SPA)
@@ -482,11 +567,9 @@ jobs:
   build-frontend:
     name: Build Frontend
     runs-on: ubuntu-latest
-    needs: [detect-changes, deploy-data]
+    needs: [detect-changes]
     if: |
-      always() &&
       github.ref == 'refs/heads/dev' &&
-      (needs.deploy-data.result == 'success' || needs.deploy-data.result == 'skipped') &&
       (needs.detect-changes.outputs.frontend == 'true' || needs.detect-changes.outputs.frontend_infra == 'true')
     steps:
       - uses: actions/checkout@v4
@@ -566,6 +649,14 @@ jobs:
           name: frontend-build
           path: landing/dist
 
+      - name: Cache Terraform providers
+        uses: actions/cache@v4
+        with:
+          path: infrastructure/layers/04-frontend/.terraform/providers
+          key: ${{ runner.os }}-tf-frontend-${{ hashFiles('infrastructure/layers/04-frontend/.terraform.lock.hcl') }}
+          restore-keys: |
+            ${{ runner.os }}-tf-frontend-
+
       - name: Terraform Init
         working-directory: infrastructure/layers/04-frontend
         run: |
@@ -574,12 +665,24 @@ jobs:
             -backend-config="key=layers/04-frontend/terraform.tfstate"
 
       - name: Terraform Plan
+        id: plan
         working-directory: infrastructure/layers/04-frontend
-        run: terraform plan -var-file="../../environments/dev.tfvars" -out=tfplan
+        run: |
+          set +e
+          terraform plan -var-file="../../environments/dev.tfvars" -out=tfplan -detailed-exitcode
+          EXIT_CODE=$?
+          echo "exitcode=$EXIT_CODE" >> $GITHUB_OUTPUT
+          if [ $EXIT_CODE -eq 1 ]; then exit 1; fi
+          exit 0
 
       - name: Terraform Apply
+        if: steps.plan.outputs.exitcode == '2'
         working-directory: infrastructure/layers/04-frontend
         run: terraform apply -auto-approve tfplan
+
+      - name: Skip Apply (no changes)
+        if: steps.plan.outputs.exitcode == '0'
+        run: echo "No Terraform changes, continuing with S3 upload"
 
       - name: Get S3 bucket and CloudFront ID
         id: infra-outputs
@@ -631,7 +734,8 @@ jobs:
       github.ref == 'refs/heads/dev' &&
       (needs.deploy-compute.result == 'success' || needs.deploy-compute.result == 'skipped') &&
       (needs.deploy-api.result == 'success' || needs.deploy-api.result == 'skipped') &&
-      (needs.deploy-data.result == 'success' || needs.deploy-data.result == 'skipped')
+      (needs.deploy-data.result == 'success' || needs.deploy-data.result == 'skipped') &&
+      (needs.detect-changes.outputs.rust == 'true' || needs.detect-changes.outputs.any_infra == 'true')
     steps:
       - uses: actions/checkout@v4
 

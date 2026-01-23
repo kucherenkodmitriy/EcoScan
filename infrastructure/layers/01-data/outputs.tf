@@ -58,3 +58,13 @@ output "sqs_dlq_arn" {
   description = "ARN of the dead letter queue"
   value       = aws_sqs_queue.status_updates_dlq.arn
 }
+
+output "google_maps_api_key_secret_arn" {
+  description = "ARN of the Google Maps API key secret in Secrets Manager"
+  value       = aws_secretsmanager_secret.google_maps_api_key.arn
+}
+
+output "google_maps_api_key_secret_name" {
+  description = "Name of the Google Maps API key secret in Secrets Manager"
+  value       = aws_secretsmanager_secret.google_maps_api_key.name
+}

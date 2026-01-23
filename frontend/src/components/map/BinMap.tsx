@@ -1,4 +1,5 @@
 import { useCallback, useMemo, useState, useEffect, useRef } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { GoogleMap, DirectionsRenderer } from '@react-google-maps/api'
 import { MarkerClusterer, SuperClusterAlgorithm } from '@googlemaps/markerclusterer'
 import { useTranslation } from 'react-i18next'
@@ -69,6 +70,7 @@ export default function BinMap({
   directions = null,
 }: BinMapProps) {
   const { t } = useTranslation()
+  const navigate = useNavigate()
   const apiKey = useGoogleMapsApiKey()
   const { isLoaded, loadError } = useGoogleMaps()
 
@@ -195,12 +197,23 @@ export default function BinMap({
               <div style="font-size: 14px; color: ${statusColor};"><strong>${bin.status || 0}%</strong></div>
             </div>
             ${bin.address ? `<p style="font-size: 13px; color: #666; margin: 0 0 12px 0;">${bin.address}</p>` : ''}
-            <a href="/bins/${bin.bin_id}" style="display: inline-block; color: #2e7d32; font-size: 14px; font-weight: 500; text-decoration: none;">View Details →</a>
+            <a id="bin-details-link" href="/bins/${bin.bin_id}" style="display: inline-block; color: #2e7d32; font-size: 14px; font-weight: 500; text-decoration: none; cursor: pointer;">View Details →</a>
           </div>
         `
 
         infoWindowRef.current.setContent(content)
         infoWindowRef.current.open(map, marker)
+
+        // Add click handler after InfoWindow DOM is ready for client-side navigation
+        google.maps.event.addListenerOnce(infoWindowRef.current, 'domready', () => {
+          const link = document.getElementById('bin-details-link')
+          if (link) {
+            link.addEventListener('click', (e) => {
+              e.preventDefault()
+              navigate(`/bins/${bin.bin_id}`)
+            })
+          }
+        })
       })
 
       markersRef.current.set(bin.bin_id, marker)

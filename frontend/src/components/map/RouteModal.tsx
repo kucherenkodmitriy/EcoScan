@@ -1,7 +1,14 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useTranslation, Trans } from 'react-i18next'
 import AddressAutocomplete from './AddressAutocomplete'
 import styles from './RouteModal.module.css'
+
+// Helper to hide Google Places autocomplete dropdowns
+const hidePacContainers = () => {
+  document.querySelectorAll('.pac-container').forEach((el) => {
+    ;(el as HTMLElement).style.display = 'none'
+  })
+}
 
 interface RoutePoint {
   address: string
@@ -60,6 +67,7 @@ export default function RouteModal({
   }
 
   const handleClose = () => {
+    hidePacContainers()
     setStartAddress('')
     setStartCoords(null)
     setEndAddress('')
@@ -67,6 +75,13 @@ export default function RouteModal({
     setError('')
     onClose()
   }
+
+  // Hide pac-containers when modal closes
+  useEffect(() => {
+    if (!isOpen) {
+      hidePacContainers()
+    }
+  }, [isOpen])
 
   if (!isOpen) return null
 
@@ -94,10 +109,7 @@ export default function RouteModal({
             <AddressAutocomplete
               id="startPoint"
               value={startAddress}
-              onChange={(value) => {
-                setStartAddress(value)
-                setStartCoords(null) // Clear coords when typing manually
-              }}
+              onChange={setStartAddress}
               onPlaceSelect={(place) => {
                 setStartAddress(place.address)
                 setStartCoords({ lat: place.lat, lng: place.lng })
@@ -112,10 +124,7 @@ export default function RouteModal({
             <AddressAutocomplete
               id="endPoint"
               value={endAddress}
-              onChange={(value) => {
-                setEndAddress(value)
-                setEndCoords(null)
-              }}
+              onChange={setEndAddress}
               onPlaceSelect={(place) => {
                 setEndAddress(place.address)
                 setEndCoords({ lat: place.lat, lng: place.lng })

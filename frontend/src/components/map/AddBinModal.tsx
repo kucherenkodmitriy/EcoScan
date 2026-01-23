@@ -5,6 +5,13 @@ import { createBin, CreateBinInput } from '../../api/client'
 import AddressAutocomplete from './AddressAutocomplete'
 import styles from './AddBinModal.module.css'
 
+// Helper to hide Google Places autocomplete dropdowns
+const hidePacContainers = () => {
+  document.querySelectorAll('.pac-container').forEach((el) => {
+    ;(el as HTMLElement).style.display = 'none'
+  })
+}
+
 interface AddBinModalProps {
   isOpen: boolean
   onClose: () => void
@@ -184,8 +191,16 @@ export default function AddBinModal({
   }
 
   const handleClose = () => {
+    hidePacContainers()
     onClose()
   }
+
+  // Hide pac-containers when modal closes
+  useEffect(() => {
+    if (!isOpen) {
+      hidePacContainers()
+    }
+  }, [isOpen])
 
   if (!isOpen) return null
 

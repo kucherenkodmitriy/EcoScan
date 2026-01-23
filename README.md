@@ -181,7 +181,7 @@ export TF_VAR_recaptcha_secret_key="YOUR_SECRET_KEY"
 terraform apply -var-file=environments/dev.tfvars
 
 # 4. Configure frontend
-echo "VITE_RECAPTCHA_SITE_KEY=YOUR_SITE_KEY" >> landing/.env
+echo "VITE_RECAPTCHA_SITE_KEY=YOUR_SITE_KEY" >> frontend/.env
 ```
 
 **Protection layers:**

@@ -41,14 +41,15 @@ export default function AddressAutocomplete({
       const place = autocompleteRef.current.getPlace()
 
       if (place.formatted_address) {
-        onChange(place.formatted_address)
-
+        // Call onPlaceSelect with coords if available, otherwise just update address
         if (onPlaceSelect && place.geometry?.location) {
           onPlaceSelect({
             address: place.formatted_address,
             lat: place.geometry.location.lat(),
             lng: place.geometry.location.lng(),
           })
+        } else {
+          onChange(place.formatted_address)
         }
       }
     }

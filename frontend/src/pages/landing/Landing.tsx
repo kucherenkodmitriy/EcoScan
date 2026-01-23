@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import type { ChangeEvent, FormEvent } from 'react'
-import DemoRequestModal from '../components/DemoRequestModal'
+import DemoRequestModal from './DemoRequestModal'
 import './Landing.css'
 
 declare global {

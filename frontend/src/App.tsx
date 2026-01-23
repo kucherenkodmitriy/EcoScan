@@ -8,7 +8,7 @@ import BinForm from './pages/BinForm'
 import QRPrint from './pages/QRPrint'
 import PrivacyPolicy from './pages/PrivacyPolicy'
 import Terms from './pages/Terms'
-import Landing from './pages/Landing'
+import Landing from './pages/landing/Landing'
 
 function PrivateRoute({ children }: { children: React.ReactNode }) {
   const { isAuthenticated } = useAuth()

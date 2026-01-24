@@ -416,80 +416,17 @@ jobs:
         run: echo "No infrastructure changes detected, skipping apply"
 
   # ============================================
-  # DEPLOY API LAYER (SQS must exist before compute)
+  # DEPLOY COMPUTE LAYER (requires Lambda artifact, deployed before API)
   # ============================================
-  deploy-api:
-    name: Deploy API
+  deploy-compute:
+    name: Deploy Compute
     runs-on: ubuntu-latest
-    needs: [detect-changes, terraform-validate, deploy-data]
+    needs: [detect-changes, terraform-validate, deploy-data, build-lambda, upload-lambda-s3]
     if: |
       always() &&
       github.ref == 'refs/heads/dev' &&
       (needs.terraform-validate.result == 'success' || needs.terraform-validate.result == 'skipped') &&
       (needs.deploy-data.result == 'success' || needs.deploy-data.result == 'skipped') &&
-      (needs.detect-changes.outputs.api == 'true' || needs.detect-changes.outputs.tfvars == 'true')
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: Setup Terraform
-        uses: hashicorp/setup-terraform@v3
-        with:
-          terraform_version: ${{ env.TERRAFORM_VERSION }}
-
-      - name: Cache Terraform providers
-        uses: actions/cache@v4
-        with:
-          path: infrastructure/layers/03-api/.terraform/providers
-          key: ${{ runner.os }}-tf-api-${{ hashFiles('infrastructure/layers/03-api/.terraform.lock.hcl') }}
-          restore-keys: |
-            ${{ runner.os }}-tf-api-
-
-      - name: Configure AWS credentials
-        uses: aws-actions/configure-aws-credentials@v4
-        with:
-          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
-          aws-region: ${{ env.AWS_REGION }}
-          role-session-name: GitHubActions-DeployAPI
-
-      - name: Terraform Init
-        working-directory: infrastructure/layers/03-api
-        run: |
-          terraform init \
-            -backend-config="../../../infrastructure/backend/dev.tfbackend" \
-            -backend-config="key=layers/03-api/terraform.tfstate"
-
-      - name: Terraform Plan
-        id: plan
-        working-directory: infrastructure/layers/03-api
-        run: |
-          set +e
-          terraform plan -var-file="../../environments/dev.tfvars" -out=tfplan -detailed-exitcode
-          EXIT_CODE=$?
-          echo "exitcode=$EXIT_CODE" >> $GITHUB_OUTPUT
-          if [ $EXIT_CODE -eq 1 ]; then exit 1; fi
-          exit 0
-
-      - name: Terraform Apply
-        if: steps.plan.outputs.exitcode == '2'
-        working-directory: infrastructure/layers/03-api
-        run: terraform apply -auto-approve tfplan
-
-      - name: Skip Apply (no changes)
-        if: steps.plan.outputs.exitcode == '0'
-        run: echo "No infrastructure changes detected, skipping apply"
-
-  # ============================================
-  # DEPLOY COMPUTE LAYER (requires Lambda artifact)
-  # ============================================
-  deploy-compute:
-    name: Deploy Compute
-    runs-on: ubuntu-latest
-    needs: [detect-changes, terraform-validate, deploy-api, build-lambda, upload-lambda-s3]
-    if: |
-      always() &&
-      github.ref == 'refs/heads/dev' &&
-      (needs.terraform-validate.result == 'success' || needs.terraform-validate.result == 'skipped') &&
-      (needs.deploy-api.result == 'success' || needs.deploy-api.result == 'skipped') &&
       (needs.detect-changes.outputs.compute == 'true' || needs.detect-changes.outputs.tfvars == 'true' || needs.detect-changes.outputs.rust == 'true')
     steps:
       - uses: actions/checkout@v4
@@ -572,6 +509,69 @@ jobs:
       - name: Terraform Apply
         if: steps.plan.outputs.exitcode == '2'
         working-directory: infrastructure/layers/02-compute
+        run: terraform apply -auto-approve tfplan
+
+      - name: Skip Apply (no changes)
+        if: steps.plan.outputs.exitcode == '0'
+        run: echo "No infrastructure changes detected, skipping apply"
+
+  # ============================================
+  # DEPLOY API LAYER (needs Lambda ARNs from compute)
+  # ============================================
+  deploy-api:
+    name: Deploy API
+    runs-on: ubuntu-latest
+    needs: [detect-changes, terraform-validate, deploy-compute]
+    if: |
+      always() &&
+      github.ref == 'refs/heads/dev' &&
+      (needs.terraform-validate.result == 'success' || needs.terraform-validate.result == 'skipped') &&
+      (needs.deploy-compute.result == 'success' || needs.deploy-compute.result == 'skipped') &&
+      (needs.detect-changes.outputs.api == 'true' || needs.detect-changes.outputs.tfvars == 'true')
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: ${{ env.TERRAFORM_VERSION }}
+
+      - name: Cache Terraform providers
+        uses: actions/cache@v4
+        with:
+          path: infrastructure/layers/03-api/.terraform/providers
+          key: ${{ runner.os }}-tf-api-${{ hashFiles('infrastructure/layers/03-api/.terraform.lock.hcl') }}
+          restore-keys: |
+            ${{ runner.os }}-tf-api-
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+          role-session-name: GitHubActions-DeployAPI
+
+      - name: Terraform Init
+        working-directory: infrastructure/layers/03-api
+        run: |
+          terraform init \
+            -backend-config="../../../infrastructure/backend/dev.tfbackend" \
+            -backend-config="key=layers/03-api/terraform.tfstate"
+
+      - name: Terraform Plan
+        id: plan
+        working-directory: infrastructure/layers/03-api
+        run: |
+          set +e
+          terraform plan -var-file="../../environments/dev.tfvars" -out=tfplan -detailed-exitcode
+          EXIT_CODE=$?
+          echo "exitcode=$EXIT_CODE" >> $GITHUB_OUTPUT
+          if [ $EXIT_CODE -eq 1 ]; then exit 1; fi
+          exit 0
+
+      - name: Terraform Apply
+        if: steps.plan.outputs.exitcode == '2'
+        working-directory: infrastructure/layers/03-api
         run: terraform apply -auto-approve tfplan
 
       - name: Skip Apply (no changes)

@@ -598,6 +598,11 @@ jobs:
           aws-region: ${{ env.AWS_REGION }}
           role-session-name: GitHubActions-BuildFrontend
 
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: ${{ env.TERRAFORM_VERSION }}
+
       - name: Get Google Maps API Key from Secrets Manager
         id: secrets
         run: |
@@ -606,6 +611,16 @@ jobs:
             --query SecretString --output text)
           echo "::add-mask::$GOOGLE_MAPS_KEY"
           echo "GOOGLE_MAPS_API_KEY=$GOOGLE_MAPS_KEY" >> $GITHUB_OUTPUT
+
+      - name: Get API Gateway ID from Terraform
+        id: api-gateway
+        working-directory: infrastructure/layers/03-api
+        run: |
+          terraform init \
+            -backend-config="../../backend/dev.tfbackend" \
+            -backend-config="key=layers/03-api/terraform.tfstate"
+          API_GW_ID=$(terraform output -raw api_gateway_id 2>/dev/null || echo "")
+          echo "API_GATEWAY_ID=$API_GW_ID" >> $GITHUB_OUTPUT
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
@@ -621,6 +636,7 @@ jobs:
       - name: Build frontend
         working-directory: frontend
         env:
+          VITE_API_GATEWAY_ID: ${{ steps.api-gateway.outputs.API_GATEWAY_ID }}
           VITE_GOOGLE_MAPS_API_KEY: ${{ steps.secrets.outputs.GOOGLE_MAPS_API_KEY }}
           VITE_RECAPTCHA_SITE_KEY: ${{ secrets.RECAPTCHA_SITE_KEY }}
         run: npm run build

@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import type { FormEvent, ChangeEvent } from 'react'
+import { useTranslation } from 'react-i18next'
 import './DemoRequestModal.css'
 
 declare global {
@@ -17,6 +18,7 @@ interface DemoRequestModalProps {
 }
 
 function DemoRequestModal({ isOpen, onClose }: DemoRequestModalProps) {
+  const { t } = useTranslation()
   const [formState, setFormState] = useState({
     companyName: '',
     email: '',
@@ -95,7 +97,7 @@ function DemoRequestModal({ isOpen, onClose }: DemoRequestModalProps) {
       setSubmitted(true)
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Unknown error occurred'
-      setError(`Failed to submit: ${errorMessage}. Please try again or email us at partnerships@ecoscan.city`)
+      setError(`${errorMessage}. ${t('demoModal.errorFallback')}`)
       console.error('Demo request error:', err)
     } finally {
       setIsSubmitting(false)
@@ -113,22 +115,19 @@ function DemoRequestModal({ isOpen, onClose }: DemoRequestModalProps) {
   return (
     <div className="modal-backdrop" onClick={handleBackdropClick}>
       <div className="modal-content">
-        <button className="modal-close" onClick={onClose} aria-label="Close modal">
+        <button className="modal-close" onClick={onClose} aria-label={t('common.close')}>
           ×
         </button>
 
         {!submitted ? (
           <>
-            <h2>Request a Demo</h2>
-            <p className="modal-description">
-              See EcoScan in action. We&apos;ll walk you through the platform and discuss how it could fit
-              your operational needs.
-            </p>
+            <h2>{t('demoModal.title')}</h2>
+            <p className="modal-description">{t('demoModal.description')}</p>
 
             <form onSubmit={handleSubmit} className="demo-form">
               <div className="form-group">
                 <label htmlFor="companyName">
-                  Company Name <span className="required">*</span>
+                  {t('demoModal.companyName')} <span className="required">{t('demoModal.required')}</span>
                 </label>
                 <input
                   id="companyName"
@@ -136,7 +135,7 @@ function DemoRequestModal({ isOpen, onClose }: DemoRequestModalProps) {
                   type="text"
                   value={formState.companyName}
                   onChange={handleChange}
-                  placeholder="Your organization"
+                  placeholder={t('demoModal.companyPlaceholder')}
                   required
                   autoFocus
                 />
@@ -144,7 +143,7 @@ function DemoRequestModal({ isOpen, onClose }: DemoRequestModalProps) {
 
               <div className="form-group">
                 <label htmlFor="email">
-                  Email Address <span className="required">*</span>
+                  {t('demoModal.email')} <span className="required">{t('demoModal.required')}</span>
                 </label>
                 <input
                   id="email"
@@ -152,7 +151,7 @@ function DemoRequestModal({ isOpen, onClose }: DemoRequestModalProps) {
                   type="email"
                   value={formState.email}
                   onChange={handleChange}
-                  placeholder="you@company.com"
+                  placeholder={t('demoModal.emailPlaceholder')}
                   required
                 />
               </div>
@@ -161,45 +160,41 @@ function DemoRequestModal({ isOpen, onClose }: DemoRequestModalProps) {
                 <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
                   <path d="M8 1a2 2 0 0 1 2 2v4H6V3a2 2 0 0 1 2-2zm3 6V3a3 3 0 0 0-6 0v4a2 2 0 0 0-2 2v5a2 2 0 0 0 2 2h6a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2z" />
                 </svg>
-                <span>
-                  We never send spam or automated messages. Your information is only used to schedule a
-                  personalized demo.
-                </span>
+                <span>{t('demoModal.privacyNotice')}</span>
               </div>
 
               {error && <div className="form-error">{error}</div>}
 
               <div className="recaptcha-notice">
-                This site is protected by reCAPTCHA and the Google{' '}
+                {t('demoModal.recaptchaNotice')}{' '}
                 <a href="https://policies.google.com/privacy" target="_blank" rel="noopener noreferrer">
-                  Privacy Policy
+                  {t('demoModal.privacyPolicy')}
                 </a>{' '}
-                and{' '}
+                {t('demoModal.and')}{' '}
                 <a href="https://policies.google.com/terms" target="_blank" rel="noopener noreferrer">
-                  Terms of Service
+                  {t('demoModal.termsOfService')}
                 </a>{' '}
-                apply.
+                {t('demoModal.apply')}
               </div>
 
               <button type="submit" className="btn btn-primary btn-full" disabled={isSubmitting}>
-                {isSubmitting ? 'Submitting...' : 'Request Demo'}
+                {isSubmitting ? t('demoModal.submitting') : t('demoModal.submit')}
               </button>
             </form>
           </>
         ) : (
           <div className="success-message">
             <div className="success-icon">✓</div>
-            <h2>Thank you!</h2>
+            <h2>{t('demoModal.successTitle')}</h2>
             <p>
-              Your demo request has been received. We&apos;ll review it and get back to you within 24 hours at{' '}
-              <strong>{formState.email}</strong>.
+              {t('demoModal.successMessage')} <strong>{formState.email}</strong>.
             </p>
             <p style={{ fontSize: '0.9rem', color: '#666' }}>
-              If you don&apos;t hear from us, please check your spam folder or contact{' '}
+              {t('demoModal.successNote')}{' '}
               <a href="mailto:partnerships@ecoscan.city">partnerships@ecoscan.city</a>
             </p>
             <button className="btn btn-secondary" onClick={onClose}>
-              Close
+              {t('demoModal.close')}
             </button>
           </div>
         )}

@@ -1,6 +1,8 @@
 import { useEffect, useMemo, useState } from 'react'
 import type { ChangeEvent, FormEvent } from 'react'
+import { useTranslation } from 'react-i18next'
 import DemoRequestModal from './DemoRequestModal'
+import LanguageSelector from '../../components/LanguageSelector'
 import './Landing.css'
 
 declare global {
@@ -8,15 +10,6 @@ declare global {
     gtag?: (...args: unknown[]) => void
   }
 }
-
-const sections = [
-  { id: 'problem', label: 'Problem' },
-  { id: 'solution', label: 'How it works' },
-  { id: 'opportunities', label: 'Capabilities' },
-  { id: 'advantages', label: 'Why EcoScan' },
-  { id: 'roadmap', label: 'Roadmap' },
-  { id: 'contact', label: 'Contact' },
-]
 
 function trackEvent(action: string, details?: Record<string, unknown>) {
   if (!window.gtag) {
@@ -30,6 +23,20 @@ function trackEvent(action: string, details?: Record<string, unknown>) {
 }
 
 function Landing() {
+  const { t, i18n } = useTranslation()
+
+  const sections = useMemo(
+    () => [
+      { id: 'problem', label: t('landing.nav.problem') },
+      { id: 'solution', label: t('landing.nav.solution') },
+      { id: 'opportunities', label: t('landing.nav.capabilities') },
+      { id: 'advantages', label: t('landing.nav.whyEcoScan') },
+      { id: 'roadmap', label: t('landing.nav.roadmap') },
+      { id: 'contact', label: t('landing.nav.contact') },
+    ],
+    [t]
+  )
+
   const [formState, setFormState] = useState({
     name: '',
     email: '',
@@ -38,10 +45,19 @@ function Landing() {
   })
   const [submitted, setSubmitted] = useState(false)
   const [isDemoModalOpen, setIsDemoModalOpen] = useState(false)
-  const sectionIndex = useMemo(() => new Map(sections.map((section) => [section.id, section.label])), [])
+  const sectionIndex = useMemo(() => new Map(sections.map((section) => [section.id, section.label])), [sections])
 
   // reCAPTCHA site key
   const RECAPTCHA_SITE_KEY = import.meta.env.VITE_RECAPTCHA_SITE_KEY || '6LeIxAcTAAAAAJcZVRqyHh71UMIEGNQ_MXjiZKhI'
+
+  // Check URL for lang parameter on mount
+  useEffect(() => {
+    const urlParams = new URLSearchParams(window.location.search)
+    const langParam = urlParams.get('lang')
+    if (langParam && ['en', 'cs', 'de'].includes(langParam)) {
+      i18n.changeLanguage(langParam)
+    }
+  }, [i18n])
 
   useEffect(() => {
     // Load reCAPTCHA script
@@ -69,7 +85,7 @@ function Landing() {
           }
         })
       },
-      { threshold: 0.4 },
+      { threshold: 0.4 }
     )
 
     document.querySelectorAll('[data-section]').forEach((section) => observer.observe(section))
@@ -136,10 +152,10 @@ function Landing() {
       console.error('Contact form error:', error)
       // Fallback to mailto if API fails
       const subject = encodeURIComponent(
-        `EcoScan Inquiry${formState.company ? ` from ${formState.company}` : ''}`,
+        `EcoScan Inquiry${formState.company ? ` from ${formState.company}` : ''}`
       )
       const body = encodeURIComponent(
-        `Name: ${formState.name}\nEmail: ${formState.email}\nOrganization: ${formState.company || 'Not specified'}\n\nMessage:\n${formState.message || 'No message provided'}\n\n---\nSent from EcoScan landing page (API submission failed)`,
+        `Name: ${formState.name}\nEmail: ${formState.email}\nOrganization: ${formState.company || 'Not specified'}\n\nMessage:\n${formState.message || 'No message provided'}\n\n---\nSent from EcoScan landing page (API submission failed)`
       )
       window.location.href = `mailto:partnerships@ecoscan.city?subject=${subject}&body=${body}`
       setSubmitted(true)
@@ -159,19 +175,15 @@ function Landing() {
             ))}
           </div>
           <div className="landing-nav-actions">
-            {/* CTAs removed: no admin login or demo request from landing */}
+            <LanguageSelector variant="landing" />
           </div>
         </nav>
 
         <div className="landing-hero-content">
           <div>
-            <p className="landing-eyebrow">Exploring smart waste operations at city scale</p>
-            <h1>Demonstrating real-time bin management capabilities</h1>
-            <p className="landing-subtitle">
-              EcoScan is an MVP platform showcasing how municipalities could manage waste bins with
-              modern technology. Track fill levels, plan routes, and enable citizen reporting -
-              a foundation for discussing your specific operational needs.
-            </p>
+            <p className="landing-eyebrow">{t('landing.hero.eyebrow')}</p>
+            <h1>{t('landing.hero.title')}</h1>
+            <p className="landing-subtitle">{t('landing.hero.subtitle')}</p>
             <div className="landing-hero-actions">
               <button
                 className="btn btn-primary"
@@ -181,7 +193,7 @@ function Landing() {
                   document.getElementById('contact')?.scrollIntoView({ behavior: 'smooth' })
                 }}
               >
-                Discuss your needs
+                {t('landing.hero.cta')}
               </button>
               <button
                 className="btn btn-secondary"
@@ -191,31 +203,31 @@ function Landing() {
                   setIsDemoModalOpen(true)
                 }}
               >
-                Request a Demo
+                {t('landing.hero.ctaDemo')}
               </button>
             </div>
             <div className="landing-metrics">
               <div>
-                <strong>Map view</strong>
-                <span>Visualize bins with color-coded status</span>
+                <strong>{t('landing.hero.metric1Title')}</strong>
+                <span>{t('landing.hero.metric1Desc')}</span>
               </div>
               <div>
-                <strong>QR reports</strong>
-                <span>Citizen reporting concept in action</span>
+                <strong>{t('landing.hero.metric2Title')}</strong>
+                <span>{t('landing.hero.metric2Desc')}</span>
               </div>
               <div>
-                <strong>IoT-ready</strong>
-                <span>Architecture designed for sensor data</span>
+                <strong>{t('landing.hero.metric3Title')}</strong>
+                <span>{t('landing.hero.metric3Desc')}</span>
               </div>
             </div>
           </div>
           <div className="landing-hero-card">
-            <h2>What this MVP demonstrates</h2>
+            <h2>{t('landing.heroCard.title')}</h2>
             <ul>
-              <li>Interactive map dashboard with color-coded bin statuses</li>
-              <li>QR code system for citizen-powered reporting</li>
-              <li>Route planning concepts with mapping integration</li>
-              <li>Multi-language support (EN, CS, DE) for international projects</li>
+              <li>{t('landing.heroCard.item1')}</li>
+              <li>{t('landing.heroCard.item2')}</li>
+              <li>{t('landing.heroCard.item3')}</li>
+              <li>{t('landing.heroCard.item4')}</li>
             </ul>
           </div>
         </div>
@@ -223,164 +235,134 @@ function Landing() {
 
       <section id="problem" className="landing-section" data-section="problem">
         <div className="landing-section-header">
-          <h2>The problem we solve</h2>
-          <p>
-            Waste operations still rely on fixed routes, manual inspections, and siloed data. The result is
-            overflowing bins, costly emergency pickups, and limited accountability across public-private
-            partnerships.
-          </p>
+          <h2>{t('landing.problem.title')}</h2>
+          <p>{t('landing.problem.subtitle')}</p>
         </div>
         <div className="landing-grid">
           <div className="landing-card">
-            <h3>Overflow & service risk</h3>
-            <p>Bins overflow before crews arrive, hurting public satisfaction and city hygiene scores.</p>
+            <h3>{t('landing.problem.card1Title')}</h3>
+            <p>{t('landing.problem.card1Desc')}</p>
           </div>
           <div className="landing-card">
-            <h3>Blind spots</h3>
-            <p>Leadership lacks a unified view of asset performance, vendor SLAs, and budget impacts.</p>
+            <h3>{t('landing.problem.card2Title')}</h3>
+            <p>{t('landing.problem.card2Desc')}</p>
           </div>
           <div className="landing-card">
-            <h3>Static routes</h3>
-            <p>Fixed schedules waste fuel, labor, and maintenance capacity when bins are half empty.</p>
+            <h3>{t('landing.problem.card3Title')}</h3>
+            <p>{t('landing.problem.card3Desc')}</p>
           </div>
         </div>
       </section>
 
       <section id="solution" className="landing-section" data-section="solution">
         <div className="landing-section-header">
-          <h2>How this concept works</h2>
-          <p>
-            A demonstration system combining citizen engagement with operational visibility -
-            designed to evolve toward full IoT automation in production deployments.
-          </p>
+          <h2>{t('landing.solution.title')}</h2>
+          <p>{t('landing.solution.subtitle')}</p>
         </div>
         <div className="landing-solution-grid">
           <div className="landing-solution">
-            <span>01</span>
-            <h3>QR-based reporting</h3>
-            <p>
-              Generate QR codes for bins that citizens can scan to report fill levels -
-              no app download required. A practical starting point for community engagement.
-            </p>
+            <span>{t('landing.solution.step1Num')}</span>
+            <h3>{t('landing.solution.step1Title')}</h3>
+            <p>{t('landing.solution.step1Desc')}</p>
           </div>
           <div className="landing-solution">
-            <span>02</span>
-            <h3>Centralized dashboard view</h3>
-            <p>
-              View all bins on an interactive map with visual status indicators.
-              The MVP demonstrates filtering, search, and basic route planning capabilities.
-            </p>
+            <span>{t('landing.solution.step2Num')}</span>
+            <h3>{t('landing.solution.step2Title')}</h3>
+            <p>{t('landing.solution.step2Desc')}</p>
           </div>
           <div className="landing-solution">
-            <span>03</span>
-            <h3>Path to IoT integration</h3>
-            <p>
-              The architecture is designed to accept sensor data for automated readings in future implementations.
-              Same API structure, ready to scale when you add hardware.
-            </p>
+            <span>{t('landing.solution.step3Num')}</span>
+            <h3>{t('landing.solution.step3Title')}</h3>
+            <p>{t('landing.solution.step3Desc')}</p>
           </div>
         </div>
       </section>
 
       <section id="opportunities" className="landing-section" data-section="opportunities">
         <div className="landing-section-header">
-          <h2>Capabilities we're showcasing</h2>
-          <p>
-            This MVP demonstrates core concepts that could be expanded based on your operational requirements.
-          </p>
+          <h2>{t('landing.capabilities.title')}</h2>
+          <p>{t('landing.capabilities.subtitle')}</p>
         </div>
         <div className="landing-grid">
           <div className="landing-card">
-            <h3>Multiple waste streams</h3>
-            <p>
-              The platform supports categorizing bins by waste type (mixed, plastic, paper, glass) with
-              color-coded visual differentiation in the interface.
-            </p>
+            <h3>{t('landing.capabilities.card1Title')}</h3>
+            <p>{t('landing.capabilities.card1Desc')}</p>
           </div>
           <div className="landing-card">
-            <h3>Community participation model</h3>
-            <p>
-              QR code scanning demonstrates how residents could contribute operational data,
-              creating a foundation for citizen engagement programs.
-            </p>
+            <h3>{t('landing.capabilities.card2Title')}</h3>
+            <p>{t('landing.capabilities.card2Desc')}</p>
           </div>
           <div className="landing-card">
-            <h3>Extensible architecture</h3>
-            <p>
-              Built with event-driven patterns that can accommodate IoT sensors, third-party systems,
-              and analytics modules in production implementations.
-            </p>
+            <h3>{t('landing.capabilities.card3Title')}</h3>
+            <p>{t('landing.capabilities.card3Desc')}</p>
           </div>
         </div>
       </section>
 
       <section id="advantages" className="landing-section" data-section="advantages">
         <div className="landing-section-header">
-          <h2>A foundation for scalable solutions</h2>
-          <p>
-            Our architectural approach demonstrates how modern cloud infrastructure could support
-            municipal waste management from pilot to production scale.
-          </p>
+          <h2>{t('landing.advantages.title')}</h2>
+          <p>{t('landing.advantages.subtitle')}</p>
         </div>
         <div className="landing-advantages">
           <div className="landing-advantage">
-            <h3>Designed for scale</h3>
-            <p>Serverless architecture showcases how a production system could scale from a single district to regional deployments.</p>
+            <h3>{t('landing.advantages.adv1Title')}</h3>
+            <p>{t('landing.advantages.adv1Desc')}</p>
           </div>
           <div className="landing-advantage">
-            <h3>Integration-ready</h3>
-            <p>API-first design demonstrates how different vendors, hardware types, and analytics tools could connect to a unified platform.</p>
+            <h3>{t('landing.advantages.adv2Title')}</h3>
+            <p>{t('landing.advantages.adv2Desc')}</p>
           </div>
           <div className="landing-advantage">
-            <h3>Professional practices</h3>
-            <p>Infrastructure-as-code, automated testing, and modern authentication patterns showcase enterprise development standards.</p>
+            <h3>{t('landing.advantages.adv3Title')}</h3>
+            <p>{t('landing.advantages.adv3Desc')}</p>
           </div>
           <div className="landing-advantage">
-            <h3>Transparent operations</h3>
-            <p>The architecture supports audit trails, role-based access, and operational reporting patterns for governance requirements.</p>
+            <h3>{t('landing.advantages.adv4Title')}</h3>
+            <p>{t('landing.advantages.adv4Desc')}</p>
           </div>
         </div>
         <div className="landing-architecture">
-          <h3>Modern cloud architecture</h3>
+          <h3>{t('landing.advantages.archTitle')}</h3>
           <ul>
-            <li>Event-driven data flow using API Gateway, SQS, and Lambda functions</li>
-            <li>Dashboard backed by DynamoDB with infrastructure managed via Terraform</li>
-            <li>Patterns demonstrated for real-time updates and third-party integrations</li>
+            <li>{t('landing.advantages.archItem1')}</li>
+            <li>{t('landing.advantages.archItem2')}</li>
+            <li>{t('landing.advantages.archItem3')}</li>
           </ul>
         </div>
       </section>
 
       <section id="roadmap" className="landing-section" data-section="roadmap">
         <div className="landing-section-header">
-          <h2>From MVP to production</h2>
-          <p>A staged development approach - what's demonstrated now and what could be built for production deployments.</p>
+          <h2>{t('landing.roadmap.title')}</h2>
+          <p>{t('landing.roadmap.subtitle')}</p>
         </div>
         <div className="landing-roadmap">
           <div>
-            <h3>Current MVP features</h3>
+            <h3>{t('landing.roadmap.phase1Title')}</h3>
             <ul>
-              <li>Admin dashboard with interactive map interface</li>
-              <li>QR-based reporting workflow demonstration</li>
-              <li>Basic route planning with mapping integration</li>
-              <li>Multi-language support (EN, CS, DE) framework</li>
+              <li>{t('landing.roadmap.phase1Item1')}</li>
+              <li>{t('landing.roadmap.phase1Item2')}</li>
+              <li>{t('landing.roadmap.phase1Item3')}</li>
+              <li>{t('landing.roadmap.phase1Item4')}</li>
             </ul>
           </div>
           <div>
-            <h3>Production considerations</h3>
+            <h3>{t('landing.roadmap.phase2Title')}</h3>
             <ul>
-              <li>IoT sensor integration and hardware partnerships</li>
-              <li>Automated alerting systems (email/SMS)</li>
-              <li>Historical analytics and reporting capabilities</li>
-              <li>Mobile applications for field operations</li>
+              <li>{t('landing.roadmap.phase2Item1')}</li>
+              <li>{t('landing.roadmap.phase2Item2')}</li>
+              <li>{t('landing.roadmap.phase2Item3')}</li>
+              <li>{t('landing.roadmap.phase2Item4')}</li>
             </ul>
           </div>
           <div>
-            <h3>Future possibilities</h3>
+            <h3>{t('landing.roadmap.phase3Title')}</h3>
             <ul>
-              <li>Predictive modeling based on historical patterns</li>
-              <li>Advanced route optimization algorithms</li>
-              <li>Fleet management system integrations</li>
-              <li>Public-facing transparency dashboards</li>
+              <li>{t('landing.roadmap.phase3Item1')}</li>
+              <li>{t('landing.roadmap.phase3Item2')}</li>
+              <li>{t('landing.roadmap.phase3Item3')}</li>
+              <li>{t('landing.roadmap.phase3Item4')}</li>
             </ul>
           </div>
         </div>
@@ -388,21 +370,18 @@ function Landing() {
 
       <section id="contact" className="landing-section" data-section="contact">
         <div className="landing-section-header">
-          <h2>Let&apos;s explore possibilities together</h2>
-          <p>
-            Share your operational challenges and we can discuss how this platform concept could be
-            adapted to your specific requirements.
-          </p>
+          <h2>{t('landing.contact.title')}</h2>
+          <p>{t('landing.contact.subtitle')}</p>
         </div>
         <div className="landing-contact">
           <form className="landing-form" onSubmit={handleSubmit}>
             <div className="landing-form-row">
               <div>
-                <label htmlFor="name">Name</label>
+                <label htmlFor="name">{t('landing.contact.formName')}</label>
                 <input id="name" name="name" value={formState.name} onChange={handleChange} required />
               </div>
               <div>
-                <label htmlFor="email">Work email</label>
+                <label htmlFor="email">{t('landing.contact.formEmail')}</label>
                 <input
                   id="email"
                   name="email"
@@ -414,11 +393,11 @@ function Landing() {
               </div>
             </div>
             <div>
-              <label htmlFor="company">Organization</label>
+              <label htmlFor="company">{t('landing.contact.formOrganization')}</label>
               <input id="company" name="company" value={formState.company} onChange={handleChange} />
             </div>
             <div>
-              <label htmlFor="message">Tell us about your waste management challenges</label>
+              <label htmlFor="message">{t('landing.contact.formMessage')}</label>
               <textarea
                 id="message"
                 name="message"
@@ -427,46 +406,40 @@ function Landing() {
                 onChange={handleChange}
               />
             </div>
-            <p className="landing-form-notice">
-              We never send spam or automated messages. Your information is only used for direct communication.
-            </p>
+            <p className="landing-form-notice">{t('landing.contact.formNotice')}</p>
             <button className="btn btn-primary" type="submit">
-              Start a conversation
+              {t('landing.contact.formSubmit')}
             </button>
             {submitted && (
               <p className="landing-form-success">
-                Thank you! We&apos;ve received your message and will respond within 24 hours.
-                If you don&apos;t hear from us, please check your spam folder or email{' '}
+                {t('landing.contact.formSuccess')}{' '}
                 <a href="mailto:partnerships@ecoscan.city">partnerships@ecoscan.city</a>
               </p>
             )}
             <p className="landing-form-recaptcha">
-              This site is protected by reCAPTCHA and the Google{' '}
+              {t('landing.contact.recaptchaNotice')}{' '}
               <a href="https://policies.google.com/privacy" target="_blank" rel="noopener noreferrer">
-                Privacy Policy
+                {t('landing.contact.recaptchaPrivacy')}
               </a>{' '}
-              and{' '}
+              {t('landing.contact.recaptchaAnd')}{' '}
               <a href="https://policies.google.com/terms" target="_blank" rel="noopener noreferrer">
-                Terms of Service
+                {t('landing.contact.recaptchaTerms')}
               </a>{' '}
-              apply.
+              {t('landing.contact.recaptchaApply')}
             </p>
           </form>
 
           <aside className="landing-contact-info">
-            <h3>What to expect</h3>
+            <h3>{t('landing.contact.infoTitle')}</h3>
             <ul>
-              <li>Demo of the current MVP capabilities</li>
-              <li>Discussion of your specific operational needs</li>
-              <li>Exploration of customization and development paths</li>
-              <li>Transparent conversation about timelines and partnerships</li>
+              <li>{t('landing.contact.infoItem1')}</li>
+              <li>{t('landing.contact.infoItem2')}</li>
+              <li>{t('landing.contact.infoItem3')}</li>
+              <li>{t('landing.contact.infoItem4')}</li>
             </ul>
             <div className="landing-contact-highlight">
-              <p>Partnership-focused approach</p>
-              <p>
-                We&apos;re looking for forward-thinking organizations to explore how this concept
-                could evolve into production solutions. Let&apos;s discuss what&apos;s possible together.
-              </p>
+              <p>{t('landing.contact.highlightTitle')}</p>
+              <p>{t('landing.contact.highlightDesc')}</p>
             </div>
           </aside>
         </div>
@@ -475,15 +448,15 @@ function Landing() {
       <footer className="landing-footer">
         <div className="landing-footer-brand">
           <strong>EcoScan</strong>
-          <p>Exploring smart waste operations for modern cities.</p>
+          <p>{t('landing.footer.tagline')}</p>
         </div>
         <div className="landing-footer-links">
-          <a href="/privacy">Privacy Policy</a>
-          <a href="/terms">Terms of Service</a>
-          <a href="mailto:partnerships@ecoscan.city">Contact</a>
+          <a href="/privacy">{t('landing.footer.privacy')}</a>
+          <a href="/terms">{t('landing.footer.terms')}</a>
+          <a href="mailto:partnerships@ecoscan.city">{t('landing.footer.contact')}</a>
         </div>
         <div className="landing-footer-copy">
-          <p>© 2026 EcoScan. All rights reserved.</p>
+          <p>{t('landing.footer.copyright')}</p>
         </div>
       </footer>
 

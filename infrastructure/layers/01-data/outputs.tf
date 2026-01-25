@@ -29,12 +29,12 @@ output "admin_users_table_arn" {
 }
 
 output "demo_requests_table_name" {
-  description = "Name of the demo requests DynamoDB table"
+  description = "DynamoDB table name for demo requests"
   value       = aws_dynamodb_table.demo_requests.name
 }
 
 output "demo_requests_table_arn" {
-  description = "ARN of the demo requests DynamoDB table"
+  description = "DynamoDB table ARN for demo requests"
   value       = aws_dynamodb_table.demo_requests.arn
 }
 

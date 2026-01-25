@@ -147,7 +147,6 @@ resource "aws_dynamodb_table" "demo_requests" {
     {
       Name        = "${var.project_name}-demo-requests"
       Purpose     = "Store demo/contact form submissions"
-      ForceUpdate = "true"
     }
   )
 }

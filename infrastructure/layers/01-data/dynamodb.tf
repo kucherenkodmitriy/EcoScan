@@ -142,11 +142,16 @@ resource "aws_dynamodb_table" "demo_requests" {
     }
   }
 
+  lifecycle {
+    replace_triggered_by = [self.tags["StateRefresh"]]
+  }
+
   tags = merge(
     local.common_tags,
     {
-      Name        = "${var.project_name}-demo-requests"
-      Purpose     = "Store demo/contact form submissions"
+      Name         = "${var.project_name}-demo-requests"
+      Purpose      = "Store demo/contact form submissions"
+      StateRefresh = "2026-01-25"
     }
   )
 }

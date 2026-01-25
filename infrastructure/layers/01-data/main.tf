@@ -12,10 +12,3 @@ terraform {
     }
   }
 }
-
-# Temporary resource to force state update for missing outputs
-resource "null_resource" "force_state_update" {
-  triggers = {
-    always_run = timestamp()
-  }
-}

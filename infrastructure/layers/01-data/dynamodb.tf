@@ -145,8 +145,8 @@ resource "aws_dynamodb_table" "demo_requests" {
   tags = merge(
     local.common_tags,
     {
-      Name    = "${var.project_name}-demo-requests"
-      Purpose = "Store demo/contact form submissions"
+      Name        = "${var.project_name}-demo-requests"
+      Purpose     = "Store demo/contact form submissions"
       ForceUpdate = "true"
     }
   )

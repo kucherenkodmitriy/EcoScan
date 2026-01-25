@@ -147,7 +147,7 @@ resource "aws_dynamodb_table" "demo_requests" {
     {
       Name         = "${var.project_name}-demo-requests"
       Purpose      = "Store demo/contact form submissions"
-      StateRefresh = "2026-01-25"
+      StateRefresh = "2026-01-25-v2"
     }
   )
 }

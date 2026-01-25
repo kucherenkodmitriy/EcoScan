@@ -53,11 +53,17 @@ aws $AWS_OPTS dynamodb put-item \
     --table-name "$BINS_TABLE" \
     --item '{
         "binId": {"S": "00000000-0000-0000-0000-000000000001"},
-        "Name": {"S": "Main Street Bin"},
+        "Name": {"S": "Old Town Square Bin"},
+        "bin_type": {"S": "General Waste"},
+        "address": {"S": "Staroměstské náměstí, 110 00 Josefov, Prague 1"},
         "status": {"N": "0"},
         "lastUpdated": {"S": "'$(date -u +"%Y-%m-%dT%H:%M:%SZ")'"},
         "reportsCount": {"N": "0"},
-        "isActive": {"BOOL": true}
+        "isActive": {"BOOL": true},
+        "coordinates": {"M": {
+            "latitude": {"N": "50.0857"},
+            "longitude": {"N": "14.4195"}
+        }}
     }' 2>/dev/null || echo "  (bin may already exist)"
 
 # Test bin 2
@@ -66,11 +72,17 @@ aws $AWS_OPTS dynamodb put-item \
     --table-name "$BINS_TABLE" \
     --item '{
         "binId": {"S": "00000000-0000-0000-0000-000000000002"},
-        "Name": {"S": "Park Entrance Bin"},
+        "Name": {"S": "Charles Bridge Bin"},
+        "bin_type": {"S": "Recycling"},
+        "address": {"S": "Karlův most, 110 00 Prague 1"},
         "status": {"N": "25"},
         "lastUpdated": {"S": "'$(date -u +"%Y-%m-%dT%H:%M:%SZ")'"},
         "reportsCount": {"N": "5"},
-        "isActive": {"BOOL": true}
+        "isActive": {"BOOL": true},
+        "coordinates": {"M": {
+            "latitude": {"N": "50.0852"},
+            "longitude": {"N": "14.4071"}
+        }}
     }' 2>/dev/null || echo "  (bin may already exist)"
 
 # Test bin 3
@@ -79,11 +91,17 @@ aws $AWS_OPTS dynamodb put-item \
     --table-name "$BINS_TABLE" \
     --item '{
         "binId": {"S": "00000000-0000-0000-0000-000000000003"},
-        "Name": {"S": "Shopping Center Bin"},
+        "Name": {"S": "Prague Castle Bin"},
+        "bin_type": {"S": "General Waste"},
+        "address": {"S": "Hradčany, 119 08 Prague 1"},
         "status": {"N": "75"},
         "lastUpdated": {"S": "'$(date -u +"%Y-%m-%dT%H:%M:%SZ")'"},
         "reportsCount": {"N": "15"},
-        "isActive": {"BOOL": true}
+        "isActive": {"BOOL": true},
+        "coordinates": {"M": {
+            "latitude": {"N": "50.0897"},
+            "longitude": {"N": "14.3984"}
+        }}
     }' 2>/dev/null || echo "  (bin may already exist)"
 
 echo "Trash bins seeded."

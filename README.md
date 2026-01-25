@@ -197,6 +197,27 @@ See service README: [contact-form-handler](services/contact-form-handler/README.
 
 ## Development
 
+### Workspace Cleanup
+
+Build artifacts and caches can grow to several gigabytes. Clean them regularly:
+
+```bash
+# Quick clean (build artifacts only)
+make clean
+
+# Deep clean (removes all caches, build artifacts, and temporary files)
+make deep-clean
+
+# Manual cleanup script
+./scripts/cleanup.sh
+```
+
+**What gets cleaned:**
+- Rust `target/` directories (~11GB)
+- Terraform `.terraform/` caches (~4GB)
+- Frontend `dist/` and `node_modules/.vite` caches
+- Large log files and temporary files
+
 ### Building Lambda Functions
 
 ```bash

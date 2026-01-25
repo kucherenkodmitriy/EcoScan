@@ -70,6 +70,10 @@ clean: ## Clean build artifacts
 	rm -rf services/bin-status-reporter/target/lambda.zip
 	rm -f output*.json
 
+deep-clean: ## Deep clean all build artifacts, caches, and temporary files (frees GBs)
+	@echo "🧹 Running deep workspace cleanup..."
+	./scripts/cleanup.sh
+
 # Documentation
 docs: ## Generate and serve documentation
 	@echo "📚 Generating documentation..."

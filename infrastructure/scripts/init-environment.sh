@@ -85,8 +85,12 @@ if [[ ! -f "$PROJECT_ROOT/services/target/lambda.zip" ]]; then
     # Determine architecture based on environment
     # LocalStack uses arm64 (for Apple Silicon), AWS uses x86_64
     if [[ "$ENVIRONMENT" == "local" ]]; then
-        ARCH="arm64"
-        echo "Building for LocalStack (arm64 architecture)"
+        if [[ "$(uname -m)" == "x86_64" ]]; then
+            ARCH="x86_64"
+        else
+            ARCH="arm64"
+        fi
+        echo "Building for LocalStack ($ARCH architecture)"
     else
         ARCH="x86_64"
         echo "Building for AWS Lambda (x86_64 architecture)"

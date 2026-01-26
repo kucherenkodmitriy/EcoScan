@@ -80,6 +80,18 @@ variable "skip_recaptcha" {
   default     = false
 }
 
+variable "notify_email" {
+  description = "Email address to receive contact form notifications"
+  type        = string
+  default     = ""
+}
+
+variable "from_email" {
+  description = "Email address to send notifications from (must be verified in SES)"
+  type        = string
+  default     = ""
+}
+
 variable "jwt_secret" {
   description = "Secret key for JWT token signing"
   type        = string

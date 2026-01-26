@@ -3,6 +3,8 @@ use aws_lambda_events::encodings::Body;
 use aws_lambda_events::http::HeaderMap;
 use aws_sdk_dynamodb::types::AttributeValue;
 use aws_sdk_dynamodb::Client as DynamoDbClient;
+use aws_sdk_sesv2::types::{Body as SesBody, Content, Destination, EmailContent, Message};
+use aws_sdk_sesv2::Client as SesClient;
 use chrono::Utc;
 use lambda_runtime::{service_fn, Error, LambdaEvent};
 use serde::Deserialize;
@@ -44,6 +46,8 @@ enum HandlerError {
     DynamoDb(String),
     #[error("HTTP error: {0}")]
     Http(String),
+    #[error("SES error: {0}")]
+    Ses(String),
 }
 
 async fn verify_recaptcha(token: &str, secret: &str) -> Result<RecaptchaResponse, HandlerError> {
@@ -126,6 +130,90 @@ async fn save_contact_request(
         .map_err(|e| HandlerError::DynamoDb(format!("Failed to save to DynamoDB: {}", e)))?;
 
     Ok(request_id)
+}
+
+async fn send_notification_email(
+    ses_client: &SesClient,
+    from_email: &str,
+    to_email: &str,
+    request: &ContactRequest,
+    request_id: &str,
+) -> Result<(), HandlerError> {
+    let subject = match request.request_type.as_str() {
+        "demo" => format!(
+            "New Demo Request from {}",
+            request.company_name.as_deref().unwrap_or("Unknown Company")
+        ),
+        _ => format!(
+            "New Contact Form Submission from {}",
+            request.name.as_deref().unwrap_or("Unknown")
+        ),
+    };
+
+    let body_text = match request.request_type.as_str() {
+        "demo" => format!(
+            "New demo request received!\n\n\
+             Request ID: {}\n\
+             Company: {}\n\
+             Email: {}\n\
+             Type: Demo Request\n\n\
+             ---\n\
+             Respond to this inquiry at: {}\n",
+            request_id,
+            request.company_name.as_deref().unwrap_or("Not provided"),
+            request.email,
+            request.email
+        ),
+        _ => format!(
+            "New contact form submission received!\n\n\
+             Request ID: {}\n\
+             Name: {}\n\
+             Email: {}\n\
+             Organization: {}\n\
+             Type: Contact Form\n\n\
+             Message:\n{}\n\n\
+             ---\n\
+             Respond to this inquiry at: {}\n",
+            request_id,
+            request.name.as_deref().unwrap_or("Not provided"),
+            request.email,
+            request.organization.as_deref().unwrap_or("Not provided"),
+            request.message.as_deref().unwrap_or("No message provided"),
+            request.email
+        ),
+    };
+
+    let subject_content = Content::builder()
+        .data(subject)
+        .charset("UTF-8")
+        .build()
+        .map_err(|e| HandlerError::Ses(format!("Failed to build subject: {}", e)))?;
+
+    let body_content = Content::builder()
+        .data(body_text)
+        .charset("UTF-8")
+        .build()
+        .map_err(|e| HandlerError::Ses(format!("Failed to build body: {}", e)))?;
+
+    let email_content = EmailContent::builder()
+        .simple(
+            Message::builder()
+                .subject(subject_content)
+                .body(SesBody::builder().text(body_content).build())
+                .build(),
+        )
+        .build();
+
+    ses_client
+        .send_email()
+        .from_email_address(from_email)
+        .destination(Destination::builder().to_addresses(to_email).build())
+        .content(email_content)
+        .send()
+        .await
+        .map_err(|e| HandlerError::Ses(format!("Failed to send email: {}", e)))?;
+
+    Ok(())
 }
 
 fn create_response(status_code: i64, body: serde_json::Value) -> ApiGatewayProxyResponse {
@@ -272,9 +360,9 @@ async fn function_handler(
 
     // Save to DynamoDB
     let config = aws_config::load_from_env().await;
-    let client = DynamoDbClient::new(&config);
+    let dynamodb_client = DynamoDbClient::new(&config);
 
-    let request_id = match save_contact_request(&client, &table_name, &request, score).await {
+    let request_id = match save_contact_request(&dynamodb_client, &table_name, &request, score).await {
         Ok(id) => id,
         Err(e) => {
             error!("Failed to save request: {}", e);
@@ -289,6 +377,23 @@ async fn function_handler(
     };
 
     info!("Request saved with ID: {} (score: {})", request_id, score);
+
+    // Send email notification
+    let notify_email = std::env::var("NOTIFY_EMAIL").ok();
+    let from_email = std::env::var("FROM_EMAIL").ok();
+
+    if let (Some(to_email), Some(from_email)) = (notify_email, from_email) {
+        let ses_client = SesClient::new(&config);
+        match send_notification_email(&ses_client, &from_email, &to_email, &request, &request_id).await {
+            Ok(_) => info!("Notification email sent to {}", to_email),
+            Err(e) => {
+                // Log error but don't fail the request - email is best-effort
+                warn!("Failed to send notification email: {}", e);
+            }
+        }
+    } else {
+        info!("Email notifications disabled (NOTIFY_EMAIL or FROM_EMAIL not configured)");
+    }
 
     // Success response
     Ok(create_response(

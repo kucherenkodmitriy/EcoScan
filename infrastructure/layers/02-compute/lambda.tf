@@ -304,6 +304,8 @@ resource "aws_lambda_function" "contact_form_handler" {
         RECAPTCHA_MIN_SCORE  = "0.5"
         SKIP_RECAPTCHA       = var.skip_recaptcha ? "true" : "false"
         RECAPTCHA_SECRET_KEY = var.recaptcha_secret_key
+        NOTIFY_EMAIL         = var.notify_email
+        FROM_EMAIL           = var.from_email
       },
       var.use_localstack ? {
         DYNAMODB_ENDPOINT_URL = local.dynamodb_endpoint_url
@@ -372,6 +374,14 @@ resource "aws_iam_policy" "contact_form_policy" {
         Action = [
           "xray:PutTraceSegments",
           "xray:PutTelemetryRecords"
+        ]
+        Resource = "*"
+      },
+      {
+        Effect = "Allow"
+        Action = [
+          "ses:SendEmail",
+          "ses:SendRawEmail"
         ]
         Resource = "*"
       }

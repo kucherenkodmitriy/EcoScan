@@ -499,6 +499,8 @@ jobs:
           terraform plan \
             -var-file="../../environments/dev.tfvars" \
             -var="recaptcha_secret_key=${{ secrets.RECAPTCHA_SECRET_KEY }}" \
+            -var="notify_email=partnerships@ecoscan.city" \
+            -var="from_email=noreply@ecoscan.city" \
             -out=tfplan \
             -detailed-exitcode
           EXIT_CODE=$?

@@ -116,14 +116,8 @@ function Landing() {
         console.warn('reCAPTCHA not loaded yet, continuing without it')
       }
 
-      // Get API endpoint from environment
-      const apiGatewayId = import.meta.env.VITE_API_GATEWAY_ID
-      const apiEndpoint = apiGatewayId
-        ? `https://${apiGatewayId}.execute-api.eu-central-1.amazonaws.com/${import.meta.env.MODE || 'local'}/contact`
-        : 'http://localhost:4566/restapis/YOUR_API_ID/local/_user_request_/contact'
-
-      // Send to API Gateway
-      const response = await fetch(apiEndpoint, {
+      // Use /api/contact - handled by Vite proxy (dev) or CloudFront (prod)
+      const response = await fetch('/api/contact', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

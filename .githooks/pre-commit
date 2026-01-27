@@ -1,0 +1,32 @@
+#!/bin/bash
+# Pre-commit hook to run cargo fmt check on Rust code
+
+# Colors for output
+RED='\033[0;31m'
+GREEN='\033[0;32m'
+NC='\033[0m' # No Color
+
+# Check if any Rust files are staged
+RUST_FILES=$(git diff --cached --name-only --diff-filter=ACM | grep -E '\.rs$')
+
+if [ -n "$RUST_FILES" ]; then
+    echo "Running cargo fmt check on staged Rust files..."
+
+    # Run cargo fmt check in the services directory
+    cd services
+    cargo fmt -- --check
+    FMT_RESULT=$?
+    cd ..
+
+    if [ $FMT_RESULT -ne 0 ]; then
+        echo -e "${RED}ERROR: Rust formatting check failed!${NC}"
+        echo ""
+        echo "Please run 'cd services && cargo fmt' to fix formatting issues."
+        echo "Then stage the changes and commit again."
+        exit 1
+    fi
+
+    echo -e "${GREEN}Rust formatting check passed.${NC}"
+fi
+
+exit 0

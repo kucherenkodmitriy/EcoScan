@@ -4,24 +4,24 @@
 
   <!-- Homepage -->
   <url>
-    <loc>https://ecoscan.ai/</loc>
-    <xhtml:link rel="alternate" hreflang="en" href="https://ecoscan.ai/"/>
-    <xhtml:link rel="alternate" hreflang="cs" href="https://ecoscan.ai/?lang=cs"/>
-    <xhtml:link rel="alternate" hreflang="de" href="https://ecoscan.ai/?lang=de"/>
+    <loc>https://ecoscan.city/</loc>
+    <xhtml:link rel="alternate" hreflang="en" href="https://ecoscan.city/"/>
+    <xhtml:link rel="alternate" hreflang="cs" href="https://ecoscan.city/?lang=cs"/>
+    <xhtml:link rel="alternate" hreflang="de" href="https://ecoscan.city/?lang=de"/>
     <changefreq>weekly</changefreq>
     <priority>1.0</priority>
   </url>
 
   <!-- Privacy Policy -->
   <url>
-    <loc>https://ecoscan.ai/privacy</loc>
+    <loc>https://ecoscan.city/privacy</loc>
     <changefreq>monthly</changefreq>
     <priority>0.3</priority>
   </url>
 
   <!-- Terms of Service -->
   <url>
-    <loc>https://ecoscan.ai/terms</loc>
+    <loc>https://ecoscan.city/terms</loc>
     <changefreq>monthly</changefreq>
     <priority>0.3</priority>
   </url>

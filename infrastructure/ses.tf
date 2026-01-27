@@ -1,6 +1,6 @@
 # SES Email Identity (verify your email domain)
 resource "aws_ses_email_identity" "partnerships" {
-  email = "partnerships@ecoscan.ai"
+  email = "partnerships@ecoscan.city"
 }
 
 # SES Configuration Set for tracking
@@ -42,7 +42,7 @@ resource "aws_iam_role_policy" "lambda_ses_policy" {
         Resource = "*"
         Condition = {
           StringEquals = {
-            "ses:FromAddress" = "partnerships@ecoscan.ai"
+            "ses:FromAddress" = "partnerships@ecoscan.city"
           }
         }
       }
@@ -69,6 +69,6 @@ resource "aws_budgets_budget" "ses_budget" {
     threshold                  = 80
     threshold_type             = "PERCENTAGE"
     notification_type          = "ACTUAL"
-    subscriber_email_addresses = ["partnerships@ecoscan.ai"]
+    subscriber_email_addresses = ["partnerships@ecoscan.city"]
   }
 }

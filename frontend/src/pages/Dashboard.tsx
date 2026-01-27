@@ -142,15 +142,7 @@ export default function Dashboard() {
         })
 
         setDirections(result)
-
-        // Log the optimized order
-        if (result.routes[0]?.waypoint_order) {
-          console.log('Optimized waypoint order:', result.routes[0].waypoint_order)
-          const orderedBins = result.routes[0].waypoint_order.map(i => binsWithCoords[i].name)
-          console.log('Bins in order:', orderedBins)
-        }
       } catch (err) {
-        console.error('Failed to create route:', err)
         alert('Failed to create route. Please try again.')
       } finally {
         setRouteLoading(false)

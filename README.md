@@ -243,6 +243,21 @@ ENVIRONMENT=local ./scripts/run-e2e-tests.sh  # LocalStack
 ENVIRONMENT=dev ./scripts/run-e2e-tests.sh    # AWS dev environment
 ```
 
+### Git Hooks
+
+Enable pre-commit hooks to catch formatting issues before pushing:
+
+```bash
+# Configure git to use project hooks (run once after cloning)
+git config core.hooksPath .githooks
+```
+
+The pre-commit hook automatically runs `cargo fmt --check` on staged Rust files and blocks commits with formatting errors. To fix issues:
+
+```bash
+cd services && cargo fmt
+```
+
 ### Deploying Infrastructure
 
 ```bash

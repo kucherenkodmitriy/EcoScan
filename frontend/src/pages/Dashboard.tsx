@@ -107,7 +107,7 @@ export default function Dashboard() {
 
   // Get bins with coordinates for routing
   const binsWithCoords = useMemo(() => {
-    return filteredBins.filter(b => b.coordinates && b.is_active !== false)
+    return filteredBins.filter(b => b.coordinates && b.is_active)
   }, [filteredBins])
 
   // Handle route creation

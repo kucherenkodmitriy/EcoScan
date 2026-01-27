@@ -393,6 +393,3 @@ resource "aws_iam_role_policy_attachment" "contact_form_policy_attachment" {
   role       = aws_iam_role.contact_form_role.name
   policy_arn = aws_iam_policy.contact_form_policy.arn
 }
-# trigger deploy
-# trigger recaptcha deploy
-# trigger recaptcha secret update

@@ -362,19 +362,20 @@ async fn function_handler(
     let config = aws_config::load_from_env().await;
     let dynamodb_client = DynamoDbClient::new(&config);
 
-    let request_id = match save_contact_request(&dynamodb_client, &table_name, &request, score).await {
-        Ok(id) => id,
-        Err(e) => {
-            error!("Failed to save request: {}", e);
-            return Ok(create_response(
-                500,
-                serde_json::json!({
-                    "error": "Failed to save request",
-                    "message": "Please try again or contact us at partnerships@ecoscan.city"
-                }),
-            ));
-        }
-    };
+    let request_id =
+        match save_contact_request(&dynamodb_client, &table_name, &request, score).await {
+            Ok(id) => id,
+            Err(e) => {
+                error!("Failed to save request: {}", e);
+                return Ok(create_response(
+                    500,
+                    serde_json::json!({
+                        "error": "Failed to save request",
+                        "message": "Please try again or contact us at partnerships@ecoscan.city"
+                    }),
+                ));
+            }
+        };
 
     info!("Request saved with ID: {} (score: {})", request_id, score);
 
@@ -384,7 +385,9 @@ async fn function_handler(
 
     if let (Some(to_email), Some(from_email)) = (notify_email, from_email) {
         let ses_client = SesClient::new(&config);
-        match send_notification_email(&ses_client, &from_email, &to_email, &request, &request_id).await {
+        match send_notification_email(&ses_client, &from_email, &to_email, &request, &request_id)
+            .await
+        {
             Ok(_) => info!("Notification email sent to {}", to_email),
             Err(e) => {
                 // Log error but don't fail the request - email is best-effort

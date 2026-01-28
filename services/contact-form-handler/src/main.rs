@@ -420,3 +420,4 @@ async fn main() -> Result<(), Error> {
 
     lambda_runtime::run(service_fn(function_handler)).await
 }
+// v1.1.0 - Added SES email notifications

@@ -131,7 +131,7 @@ if !response.success || response.score < 0.5 {
 - **0.3-0.5**: Probably bot
 - **0.0-0.3**: Very likely bot
 
-Adjust threshold in `infrastructure/lambda.tf`:
+Adjust threshold in `infrastructure/layers/02-compute/lambda.tf`:
 ```bash
 RECAPTCHA_MIN_SCORE = "0.3"  # More lenient
 RECAPTCHA_MIN_SCORE = "0.7"  # More strict

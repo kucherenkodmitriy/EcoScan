@@ -9,7 +9,7 @@ The primary symptom was the end-to-end test consistently failing with an **HTTP 
 ### 1. Build and Compilation
 
 - **Problem**: Cross-compiling a statically linked binary for the `x86_64-unknown-linux-musl` target on an Apple Silicon (ARM64) machine proved to be impossible due to compiler flag incompatibilities in the `aws-lc-sys` dependency.
-- **Solution**: Switched the build process to target `aarch64-unknown-linux-musl` and configured the Lambda function in `infrastructure/lambda.tf` to use the `arm64` architecture. This resulted in a fully static, compatible binary.
+- **Solution**: Switched the build process to target `aarch64-unknown-linux-musl` and configured the Lambda function in `infrastructure/layers/02-compute/lambda.tf` to use the `arm64` architecture. This resulted in a fully static, compatible binary.
 
 ### 2. LocalStack Networking and Configuration
 

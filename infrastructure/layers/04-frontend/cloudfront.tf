@@ -128,14 +128,10 @@ resource "aws_cloudfront_distribution" "frontend" {
     }
   }
 
-  # SPA routing - custom error responses redirect to index.html
-  custom_error_response {
-    error_code            = 403
-    response_code         = 200
-    response_page_path    = "/index.html"
-    error_caching_min_ttl = 10
-  }
-
+  # SPA routing - handle 404 for client-side routes
+  # Note: Only handle 404, NOT 403. The 403 custom_error_response was removed because
+  # it intercepted API Gateway authorizer 403 responses and returned index.html instead.
+  # S3 with OAC returns 404 (not 403) for missing files, so 404 handling is sufficient.
   custom_error_response {
     error_code            = 404
     response_code         = 200

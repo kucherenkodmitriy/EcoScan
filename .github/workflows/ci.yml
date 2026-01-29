@@ -287,6 +287,8 @@ jobs:
         uses: hashicorp/setup-terraform@v3
         with:
           terraform_version: ${{ env.TERRAFORM_VERSION }}
+          # Disable wrapper to ensure -detailed-exitcode works correctly
+          terraform_wrapper: false
 
       - name: Cache Terraform providers
         uses: actions/cache@v4
@@ -350,6 +352,8 @@ jobs:
         uses: hashicorp/setup-terraform@v3
         with:
           terraform_version: ${{ env.TERRAFORM_VERSION }}
+          # Disable wrapper to ensure -detailed-exitcode works correctly
+          terraform_wrapper: false
 
       - name: Cache Terraform providers
         uses: actions/cache@v4
@@ -417,6 +421,8 @@ jobs:
         uses: hashicorp/setup-terraform@v3
         with:
           terraform_version: ${{ env.TERRAFORM_VERSION }}
+          # Disable wrapper to ensure -detailed-exitcode works correctly
+          terraform_wrapper: false
 
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v4
@@ -519,6 +525,8 @@ jobs:
         uses: hashicorp/setup-terraform@v3
         with:
           terraform_version: ${{ env.TERRAFORM_VERSION }}
+          # Disable wrapper to ensure -detailed-exitcode works correctly
+          terraform_wrapper: false
 
       - name: Cache Terraform providers
         uses: actions/cache@v4
@@ -653,6 +661,8 @@ jobs:
         uses: hashicorp/setup-terraform@v3
         with:
           terraform_version: ${{ env.TERRAFORM_VERSION }}
+          # Disable wrapper to ensure -detailed-exitcode works correctly
+          terraform_wrapper: false
 
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v4

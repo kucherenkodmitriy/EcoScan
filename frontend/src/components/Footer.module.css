@@ -46,14 +46,18 @@
   color: #8ecae6;
 }
 
-/* Light variant (for login/public pages) */
+/* Light variant (for login/public pages with dark/gradient backgrounds) */
 .light {
-  background: transparent;
-  color: #666;
+  background: rgba(0, 0, 0, 0.2);
+  color: rgba(255, 255, 255, 0.8);
 }
 
 .light .link {
-  color: #2e7d32;
+  color: rgba(255, 255, 255, 0.9);
+}
+
+.light .separator {
+  color: rgba(255, 255, 255, 0.5);
 }
 
 @media (max-width: 480px) {

@@ -470,6 +470,7 @@ resource "aws_iam_policy" "github_actions_extra_policy" {
           "secretsmanager:GetSecretValue",
           "secretsmanager:PutSecretValue",
           "secretsmanager:UpdateSecret",
+          "secretsmanager:UpdateSecretVersionStage",
           "secretsmanager:TagResource",
           "secretsmanager:UntagResource",
           "secretsmanager:GetResourcePolicy",

@@ -176,6 +176,11 @@
   "qrLabel": {
     "scanToReport": "Scan to report bin status"
   },
+  "cookies": {
+    "message": "We use cookies to analyze site traffic and improve your experience. No personal data is shared with third parties.",
+    "accept": "Accept",
+    "decline": "Decline"
+  },
   "footer": {
     "privacy": "Privacy Policy",
     "terms": "Terms of Service",
@@ -193,8 +198,8 @@
     "dataItem3": "General bin location data (as configured by administrators)",
     "noPersonalDataTitle": "No Personal Data Collection",
     "noPersonalDataText": "We do NOT collect any personally identifiable information (PII). We do not collect your name, email address, phone number, IP address, device identifiers, or any other information that could be used to identify you personally. All bin status reports are submitted anonymously.",
-    "cookiesTitle": "Cookies and Local Storage",
-    "cookiesText": "EcoScan uses local storage only to save your language preference and administrator authentication tokens. We do not use tracking cookies or third-party analytics.",
+    "cookiesTitle": "Cookies and Analytics",
+    "cookiesText": "EcoScan uses local storage to save your language preference and administrator authentication tokens. With your consent, we use Google Analytics to understand how visitors use our site. Google Analytics collects anonymized data (IP addresses are anonymized). You can decline analytics cookies when prompted.",
     "thirdPartyTitle": "Third-Party Services",
     "thirdPartyText": "EcoScan uses Google Maps for map display and geocoding. Google's privacy policy applies to their services. We do not share any data with other third parties.",
     "contactTitle": "Contact",

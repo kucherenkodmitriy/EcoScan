@@ -176,6 +176,11 @@
   "qrLabel": {
     "scanToReport": "Naskenujte pro nahlášení stavu koše"
   },
+  "cookies": {
+    "message": "Používáme cookies k analýze návštěvnosti a zlepšení vašeho zážitku. Osobní údaje nesdílíme s třetími stranami.",
+    "accept": "Přijmout",
+    "decline": "Odmítnout"
+  },
   "footer": {
     "privacy": "Zásady ochrany soukromí",
     "terms": "Podmínky služby",
@@ -193,8 +198,8 @@
     "dataItem3": "Obecná data o poloze košů (podle konfigurace administrátorů)",
     "noPersonalDataTitle": "Neshromažďujeme osobní údaje",
     "noPersonalDataText": "NEshromažďujeme žádné osobně identifikovatelné údaje (OÚ). Neshromažďujeme vaše jméno, e-mailovou adresu, telefonní číslo, IP adresu, identifikátory zařízení ani jiné informace, které by mohly být použity k vaší osobní identifikaci. Všechna hlášení o stavu košů jsou odesílána anonymně.",
-    "cookiesTitle": "Cookies a lokální úložiště",
-    "cookiesText": "EcoScan používá lokální úložiště pouze pro uložení vaší jazykové preference a autentizačních tokenů administrátorů. Nepoužíváme sledovací cookies ani analytické nástroje třetích stran.",
+    "cookiesTitle": "Cookies a analytika",
+    "cookiesText": "EcoScan používá lokální úložiště pro uložení vaší jazykové preference a autentizačních tokenů administrátorů. S vaším souhlasem používáme Google Analytics k pochopení návštěvnosti našeho webu. Google Analytics shromažďuje anonymizovaná data (IP adresy jsou anonymizovány). Analytické cookies můžete odmítnout při zobrazení výzvy.",
     "thirdPartyTitle": "Služby třetích stran",
     "thirdPartyText": "EcoScan používá Google Maps pro zobrazení mapy a geokódování. Na jejich služby se vztahují zásady ochrany soukromí společnosti Google. S jinými třetími stranami nesdílíme žádná data.",
     "contactTitle": "Kontakt",

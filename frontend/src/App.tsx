@@ -9,6 +9,7 @@ import QRPrint from './pages/QRPrint'
 import PrivacyPolicy from './pages/PrivacyPolicy'
 import Terms from './pages/Terms'
 import Landing from './pages/landing/Landing'
+import CookieConsent from './components/CookieConsent'
 
 function PrivateRoute({ children }: { children: React.ReactNode }) {
   const { isAuthenticated, isLoading } = useAuth()
@@ -22,7 +23,8 @@ function PrivateRoute({ children }: { children: React.ReactNode }) {
 
 function App() {
   return (
-    <Routes>
+    <>
+      <Routes>
       <Route path="/" element={<Landing />} />
       <Route path="/login" element={<Login />} />
       <Route path="/report" element={<Report />} />
@@ -70,6 +72,8 @@ function App() {
       />
       <Route path="*" element={<Navigate to="/" />} />
     </Routes>
+    <CookieConsent />
+    </>
   )
 }
 

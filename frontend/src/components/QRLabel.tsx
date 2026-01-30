@@ -6,14 +6,29 @@ import styles from './QRLabel.module.css'
 interface QRLabelProps {
   bin: Bin
   baseUrl?: string
-  size?: 'small' | 'medium' | 'large'
+  size?: 'small' | 'medium' | 'large' | 'fullpage'
 }
 
 export default function QRLabel({ bin, baseUrl, size = 'medium' }: QRLabelProps) {
   const { t } = useTranslation()
   const url = `${baseUrl || window.location.origin}/report?bin=${bin.bin_id}`
 
-  const qrSize = size === 'large' ? 200 : size === 'medium' ? 150 : 100
+  // For fullpage, we want QR to fill A4 (~190mm usable = ~720px at 96dpi)
+  const qrSize = size === 'fullpage' ? 720 : size === 'large' ? 200 : size === 'medium' ? 150 : 100
+
+  // Full page mode - QR code fills entire A4 page
+  if (size === 'fullpage') {
+    return (
+      <div className={styles.fullpage}>
+        <QRCodeSVG
+          value={url}
+          size={1000}
+          level="L"
+          style={{ width: '100%', height: '100%' }}
+        />
+      </div>
+    )
+  }
 
   return (
     <div className={`${styles.label} ${styles[size]}`}>

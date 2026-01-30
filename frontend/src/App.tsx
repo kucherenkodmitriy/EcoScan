@@ -11,7 +11,12 @@ import Terms from './pages/Terms'
 import Landing from './pages/landing/Landing'
 
 function PrivateRoute({ children }: { children: React.ReactNode }) {
-  const { isAuthenticated } = useAuth()
+  const { isAuthenticated, isLoading } = useAuth()
+
+  if (isLoading) {
+    return null
+  }
+
   return isAuthenticated ? <>{children}</> : <Navigate to="/login" />
 }
 

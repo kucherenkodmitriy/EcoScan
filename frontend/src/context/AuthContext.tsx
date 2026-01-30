@@ -10,6 +10,7 @@ interface AuthContextType {
   user: User | null
   token: string | null
   isAuthenticated: boolean
+  isLoading: boolean
   login: (email: string, password: string) => Promise<void>
   logout: () => void
 }
@@ -31,6 +32,7 @@ interface AuthProviderProps {
 export function AuthProvider({ children }: AuthProviderProps) {
   const [user, setUser] = useState<User | null>(null)
   const [token, setToken] = useState<string | null>(null)
+  const [isLoading, setIsLoading] = useState(true)
 
   useEffect(() => {
     const storedToken = localStorage.getItem('ecoscan_token')
@@ -39,6 +41,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
       setToken(storedToken)
       setUser(JSON.parse(storedUser))
     }
+    setIsLoading(false)
   }, [])
 
   const login = async (email: string, password: string) => {
@@ -75,6 +78,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
         user,
         token,
         isAuthenticated: !!token,
+        isLoading,
         login,
         logout,
       }}

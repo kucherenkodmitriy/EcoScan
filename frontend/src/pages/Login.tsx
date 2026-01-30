@@ -12,14 +12,19 @@ export default function Login() {
   const [password, setPassword] = useState('')
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
-  const { login, isAuthenticated } = useAuth()
+  const { login, isAuthenticated, isLoading: authLoading } = useAuth()
   const navigate = useNavigate()
 
   useEffect(() => {
-    if (isAuthenticated) {
+    if (!authLoading && isAuthenticated) {
       navigate('/dashboard')
     }
-  }, [isAuthenticated, navigate])
+  }, [isAuthenticated, authLoading, navigate])
+
+  // Don't render login form while checking auth state
+  if (authLoading || isAuthenticated) {
+    return null
+  }
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault()

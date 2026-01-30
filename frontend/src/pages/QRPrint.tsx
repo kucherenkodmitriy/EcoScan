@@ -1,10 +1,12 @@
 import { useState, useEffect } from 'react'
 import { Link } from 'react-router-dom'
+import { QRCodeSVG } from 'qrcode.react'
 import { useAuth } from '../context/AuthContext'
 import { getBins, Bin } from '../api/client'
 import QRLabel from '../components/QRLabel'
 import styles from './QRPrint.module.css'
 
+// Component to render full-page QR
 const BIN_TYPES = [
   { value: '', label: 'All Types' },
   { value: 'mixed', label: 'Mixed' },
@@ -47,6 +49,9 @@ export default function QRPrint() {
   // Print mode
   const [isPrintMode, setIsPrintMode] = useState(false)
 
+  // Full page mode (one QR per A4 page)
+  const [fullPageMode, setFullPageMode] = useState(false)
+
   useEffect(() => {
     const loadBins = async () => {
       try {
@@ -78,9 +83,9 @@ export default function QRPrint() {
 
     // Active filter
     if (activeFilter === 'active' && !bin.is_active) return false
-    if (activeFilter === 'inactive' && bin.is_active) return false
+    return !(activeFilter === 'inactive' && bin.is_active);
 
-    return true
+
   })
 
   const selectedBins = filteredBins.filter((bin) => selectedIds.has(bin.bin_id))
@@ -107,10 +112,14 @@ export default function QRPrint() {
 
   const handlePrint = () => {
     setIsPrintMode(true)
-    setTimeout(() => {
-      window.print()
-      setIsPrintMode(false)
-    }, 100)
+    if (!fullPageMode) {
+      // For grid mode, print immediately
+      setTimeout(() => {
+        window.print()
+        setIsPrintMode(false)
+      }, 100)
+    }
+    // For full page mode, show preview first - user can press Ctrl+P
   }
 
   const handlePrintSingle = (bin: Bin) => {
@@ -133,6 +142,160 @@ export default function QRPrint() {
   // Print view
   if (isPrintMode) {
     const binsToPrint = selectedBins.length > 0 ? selectedBins : (previewBin ? [previewBin] : [])
+
+    // Full page mode - one QR per A4 page, QR fills entire page
+    if (fullPageMode) {
+      return (
+        <div style={{ background: '#eee', padding: '20px' }}>
+          <style>{`
+            .qr-page {
+              width: 210mm;
+              height: 297mm;
+              display: flex;
+              align-items: center;
+              justify-content: center;
+              background: white;
+              box-sizing: border-box;
+              margin: 0 auto 20px auto;
+              box-shadow: 0 2px 10px rgba(0,0,0,0.2);
+              position: relative;
+            }
+            .qr-content {
+              display: flex;
+              flex-direction: column;
+              align-items: center;
+              gap: 10px;
+              padding: 20px;
+            }
+            .qr-cta {
+              font-size: 48px;
+              font-weight: 700;
+              color: #2e7d32;
+              margin: 0 0 30px 0;
+              text-align: center;
+            }
+            .qr-bin-info {
+              display: flex;
+              flex-direction: column;
+              align-items: center;
+              gap: 8px;
+              margin-top: 10px;
+            }
+            .bin-name {
+              font-size: 24px;
+              font-weight: 600;
+              color: #333;
+            }
+            .bin-type {
+              font-size: 18px;
+              color: #666;
+              text-transform: capitalize;
+            }
+            .bin-address {
+              font-size: 16px;
+              color: #888;
+            }
+            @media print {
+              @page {
+                size: A4 portrait;
+                margin: 0;
+              }
+              html, body {
+                margin: 0 !important;
+                padding: 0 !important;
+                background: white !important;
+              }
+              .no-print {
+                display: none !important;
+              }
+              .qr-page-container {
+                padding: 0 !important;
+                background: white !important;
+              }
+              .qr-page {
+                margin: 0;
+                box-shadow: none;
+                page-break-after: always;
+                break-after: page;
+              }
+              .qr-page:last-child {
+                page-break-after: auto;
+                break-after: auto;
+              }
+            }
+          `}</style>
+          <div className="qr-page-container">
+            {binsToPrint.map((bin, index) => (
+              <div key={bin.bin_id} className="qr-page">
+                <div className="qr-content">
+                  <h1 className="qr-cta">Container full? Scan and report!</h1>
+                  <QRCodeSVG
+                    value={`${window.location.origin}/report?bin=${bin.bin_id}`}
+                    size={550}
+                    level="L"
+                  />
+                  <div className="qr-bin-info">
+                    <span className="bin-name">{bin.name || 'Unnamed Bin'}</span>
+                    {bin.bin_type && <span className="bin-type">{bin.bin_type}</span>}
+                    {bin.address && <span className="bin-address">{bin.address}</span>}
+                  </div>
+                </div>
+                <div className="page-number no-print" style={{
+                  position: 'absolute',
+                  bottom: '10px',
+                  right: '10px',
+                  fontSize: '14px',
+                  color: '#666'
+                }}>
+                  Page {index + 1} of {binsToPrint.length}
+                </div>
+              </div>
+            ))}
+          </div>
+          <div
+            style={{
+              position: 'fixed',
+              top: 20,
+              right: 20,
+              display: 'flex',
+              gap: '10px',
+              zIndex: 1000
+            }}
+            className="no-print"
+          >
+            <button
+              onClick={() => window.print()}
+              style={{
+                padding: '10px 20px',
+                background: '#2e7d32',
+                color: 'white',
+                border: 'none',
+                borderRadius: '8px',
+                cursor: 'pointer',
+                fontWeight: 'bold'
+              }}
+            >
+              Print Now
+            </button>
+            <button
+              onClick={() => setIsPrintMode(false)}
+              style={{
+                padding: '10px 20px',
+                background: '#333',
+                color: 'white',
+                border: 'none',
+                borderRadius: '8px',
+                cursor: 'pointer',
+              }}
+            >
+              ← Back
+            </button>
+          </div>
+        </div>
+      )
+    }
+
+    // Grid mode - 4 per page
     return (
       <div className={styles.printContainer}>
         <div className={styles.printGrid}>
@@ -231,13 +394,23 @@ export default function QRPrint() {
           <span className={styles.counter}>
             {selectedIds.size} bin{selectedIds.size !== 1 ? 's' : ''} selected
           </span>
-          <button
-            className="btn btn-primary"
-            onClick={handlePrint}
-            disabled={selectedIds.size === 0}
-          >
-            Print Selected ({selectedIds.size})
-          </button>
+          <div className={styles.printOptions}>
+            <label className={styles.printModeToggle}>
+              <input
+                type="checkbox"
+                checked={fullPageMode}
+                onChange={(e) => setFullPageMode(e.target.checked)}
+              />
+              <span>Full A4 page</span>
+            </label>
+            <button
+              className="btn btn-primary"
+              onClick={handlePrint}
+              disabled={selectedIds.size === 0}
+            >
+              Print Selected ({selectedIds.size})
+            </button>
+          </div>
         </div>
 
         {/* Bin list */}

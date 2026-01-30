@@ -87,11 +87,41 @@
   gap: 12px;
 }
 
+/* Full page variant - for A4 printing */
+.fullpage {
+  width: 100%;
+  height: 100%;
+  padding: 5mm;
+  background: white;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
+}
+
+.fullpage svg {
+  width: 100% !important;
+  height: 100% !important;
+  max-width: 200mm;
+  max-height: 280mm;
+}
+
 /* Print-specific styles */
 @media print {
   .label {
     border: 1px solid #ccc;
     page-break-inside: avoid;
     box-shadow: none;
+  }
+
+  .fullpage {
+    width: 100%;
+    height: 100%;
+    padding: 5mm;
+  }
+
+  .fullpage svg {
+    width: 200mm !important;
+    height: 280mm !important;
   }
 }

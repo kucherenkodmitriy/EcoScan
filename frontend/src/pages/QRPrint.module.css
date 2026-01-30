@@ -167,6 +167,28 @@
   font-weight: 500;
 }
 
+.printOptions {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.printModeToggle {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+  font-size: 14px;
+  color: #333;
+}
+
+.printModeToggle input[type="checkbox"] {
+  width: 18px;
+  height: 18px;
+  accent-color: #2e7d32;
+  cursor: pointer;
+}
+
 /* Bin list */
 .binList {
   background: white;
@@ -295,7 +317,7 @@
   justify-content: flex-end;
 }
 
-/* Print container */
+/* Print container - grid mode */
 .printContainer {
   padding: 20px;
 }
@@ -313,7 +335,32 @@
   min-height: calc(50vh - 30px);
 }
 
+/* Print container - full page mode */
+.printContainerFullPage {
+  padding: 0;
+  margin: 0;
+  background: white;
+  min-height: 100vh;
+}
+
+.printFullPage {
+  width: 210mm;
+  height: 297mm;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  background: white;
+  margin: 0 auto;
+  box-sizing: border-box;
+  padding: 5mm;
+}
+
 /* Print styles */
+@page {
+  size: A4;
+  margin: 0;
+}
+
 @media print {
   .page {
     display: none !important;
@@ -343,6 +390,30 @@
   /* Force page break after every 4 labels */
   .printLabel:nth-child(4n) {
     page-break-after: always;
+  }
+
+  /* Full page print mode */
+  .printContainerFullPage {
+    display: block !important;
+    padding: 0 !important;
+    margin: 0 !important;
+  }
+
+  .printFullPage {
+    width: 210mm;
+    height: 297mm;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    page-break-after: always;
+    page-break-inside: avoid;
+    box-sizing: border-box;
+    padding: 5mm;
+    margin: 0;
+  }
+
+  .printFullPage:last-child {
+    page-break-after: auto;
   }
 }
 
@@ -385,6 +456,11 @@
     flex-direction: column;
     gap: 12px;
     text-align: center;
+  }
+
+  .printOptions {
+    flex-direction: column;
+    gap: 12px;
   }
 
   .binItem {

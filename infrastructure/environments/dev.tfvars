@@ -44,6 +44,10 @@ waf_rate_limit = 100 # 100 requests per 5 minutes per IP
 api_rate_limit  = 2 # 2 requests per second
 api_burst_limit = 5 # Max 5 concurrent requests
 
+# Custom domain
+custom_domain       = "ecoscan.city"
+acm_certificate_arn = "arn:aws:acm:us-east-1:019891040755:certificate/abf83fba-4c07-4c98-a621-493da23f764a"
+
 # Tags
 tags = {
   Environment = "dev"

@@ -190,6 +190,9 @@ jobs:
           echo ""
           echo "=== contact-form-handler.zip (contact-form-handler) ==="
           unzip -l services/target/contact-form-handler.zip
+          echo ""
+          echo "=== webhook-sender.zip (webhook-sender) ==="
+          unzip -l services/target/webhook-sender.zip
 
       - name: Upload Lambda artifacts
         uses: actions/upload-artifact@v4
@@ -236,6 +239,8 @@ jobs:
             s3://ecoscan-terraform-state-dev/lambda-artifacts/admin-dashboard-latest.zip
           aws s3 cp services/target/contact-form-handler.zip \
             s3://ecoscan-terraform-state-dev/lambda-artifacts/contact-form-handler-latest.zip
+          aws s3 cp services/target/webhook-sender.zip \
+            s3://ecoscan-terraform-state-dev/lambda-artifacts/webhook-sender-latest.zip
 
   # ============================================
   # TERRAFORM VALIDATION (runs if any infra changed)
@@ -452,6 +457,8 @@ jobs:
             services/target/admin-dashboard.zip
           aws s3 cp s3://ecoscan-terraform-state-dev/lambda-artifacts/contact-form-handler-latest.zip \
             services/target/contact-form-handler.zip
+          aws s3 cp s3://ecoscan-terraform-state-dev/lambda-artifacts/webhook-sender-latest.zip \
+            services/target/webhook-sender.zip
 
       - name: Verify Lambda artifacts
         run: |
@@ -463,6 +470,7 @@ jobs:
           [ -f services/target/authorizer.zip ] && echo "  - authorizer.zip: OK" || echo "  - authorizer.zip: MISSING"
           [ -f services/target/admin-dashboard.zip ] && echo "  - admin-dashboard.zip: OK" || echo "  - admin-dashboard.zip: MISSING"
           [ -f services/target/contact-form-handler.zip ] && echo "  - contact-form-handler.zip: OK" || echo "  - contact-form-handler.zip: MISSING"
+          [ -f services/target/webhook-sender.zip ] && echo "  - webhook-sender.zip: OK" || echo "  - webhook-sender.zip: MISSING"
 
       - name: Cache Terraform providers
         uses: actions/cache@v4

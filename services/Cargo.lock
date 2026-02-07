@@ -3970,6 +3970,25 @@ dependencies = [
 ]
 
 [[package]]
+name = "webhook-sender"
+version = "0.1.0"
+dependencies = [
+ "async-trait",
+ "aws-config",
+ "aws-sdk-dynamodb",
+ "aws_lambda_events 0.11.1",
+ "chrono",
+ "lambda_runtime 0.8.3",
+ "reqwest 0.12.28",
+ "serde",
+ "serde_json",
+ "thiserror 1.0.69",
+ "tokio",
+ "tracing",
+ "tracing-subscriber",
+]
+
+[[package]]
 name = "webpki-roots"
 version = "1.0.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"

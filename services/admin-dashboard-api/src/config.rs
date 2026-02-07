@@ -6,6 +6,7 @@ pub struct Config {
     pub admin_users_table: String,
     pub trash_bins_table: String,
     pub status_reports_table: String,
+    pub webhook_configs_table: String,
     pub dynamodb_endpoint: Option<String>,
     pub aws_region: String,
     pub jwt_secret: String,
@@ -29,6 +30,8 @@ impl Config {
                 .unwrap_or_else(|_| "dev-ecoscan-trash-bins".to_string()),
             status_reports_table: std::env::var("STATUS_REPORTS_TABLE_NAME")
                 .unwrap_or_else(|_| "dev-ecoscan-status-reports".to_string()),
+            webhook_configs_table: std::env::var("WEBHOOK_CONFIGS_TABLE_NAME")
+                .unwrap_or_else(|_| "dev-ecoscan-webhook-configs".to_string()),
             dynamodb_endpoint: std::env::var("DYNAMODB_ENDPOINT_URL").ok(),
             aws_region: std::env::var("AWS_REGION").unwrap_or_else(|_| "eu-central-1".to_string()),
             jwt_secret: std::env::var("JWT_SECRET").unwrap_or_else(|_| "test-secret".to_string()),
@@ -59,6 +62,8 @@ impl Config {
                 .unwrap_or_else(|_| "dev-ecoscan-trash-bins".to_string()),
             status_reports_table: std::env::var("STATUS_REPORTS_TABLE_NAME")
                 .unwrap_or_else(|_| "dev-ecoscan-status-reports".to_string()),
+            webhook_configs_table: std::env::var("WEBHOOK_CONFIGS_TABLE_NAME")
+                .unwrap_or_else(|_| "dev-ecoscan-webhook-configs".to_string()),
             dynamodb_endpoint,
             aws_region: std::env::var("AWS_REGION").unwrap_or_else(|_| "eu-central-1".to_string()),
             jwt_secret: jwt_secret_value.secret,

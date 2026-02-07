@@ -357,6 +357,47 @@
       "copyright": "© 2026 EcoScan. All rights reserved."
     }
   },
+  "webhooks": {
+    "title": "Webhooks",
+    "newWebhook": "+ New Webhook",
+    "createTitle": "Create Webhook",
+    "editTitle": "Edit Webhook",
+    "noWebhooks": "No webhooks configured. Create your first webhook to push status updates to external systems.",
+    "noWebhookId": "No webhook ID provided",
+    "failedToLoad": "Failed to load webhooks",
+    "failedToSave": "Failed to save webhook",
+    "failedToDelete": "Failed to delete webhook",
+    "deleteConfirm": "Are you sure you want to delete \"{{name}}\"? This will deactivate the webhook.",
+    "backToList": "Back to Webhooks",
+    "nameRequired": "Webhook name is required",
+    "urlRequired": "Webhook URL is required",
+    "deliveryStats": "Delivery Statistics",
+    "successCount": "Successful",
+    "failureCount": "Failed",
+    "allEvents": "All events",
+    "createdAt": "Created",
+    "updatedAt": "Updated",
+    "table": {
+      "name": "Name",
+      "url": "URL",
+      "status": "Status",
+      "deliveries": "Deliveries",
+      "lastTriggered": "Last Triggered",
+      "actions": "Actions"
+    },
+    "form": {
+      "name": "Name",
+      "namePlaceholder": "e.g. Golemio Integration",
+      "url": "URL",
+      "urlPlaceholder": "https://api.example.com/webhook",
+      "authType": "Authentication",
+      "authHeader": "Auth Header",
+      "authValue": "Auth Value",
+      "authValuePlaceholder": "Enter secret value",
+      "authValueEditHint": "Leave blank to keep current value",
+      "events": "Events"
+    }
+  },
   "demoModal": {
     "title": "Request a Demo",
     "description": "See EcoScan in action. We'll walk you through the platform and discuss how it could fit your operational needs.",

@@ -1,8 +1,12 @@
 pub mod error;
 pub mod user;
+pub mod webhook;
 
 pub use error::{AppError, Result};
 pub use user::{AdminUser, LoginRequest, LoginResponse, UserInfo, UserRole};
+pub use webhook::{
+    CreateWebhookRequest, UpdateWebhookRequest, WebhookAuthType, WebhookConfig, WebhookInfo,
+};
 
 use async_trait::async_trait;
 use chrono::{DateTime, Utc};
@@ -119,4 +123,14 @@ pub trait BinRepository: Send + Sync {
     async fn create_bin(&self, bin_id: &Uuid, request: &CreateBinRequest) -> Result<()>;
     async fn update_bin(&self, bin_id: &Uuid, request: &UpdateBinRequest) -> Result<()>;
     async fn delete_bin(&self, bin_id: &Uuid) -> Result<()>;
+}
+
+/// Repository trait for webhook operations
+#[async_trait]
+pub trait WebhookRepository: Send + Sync {
+    async fn list_webhooks(&self) -> Result<Vec<WebhookConfig>>;
+    async fn get_webhook(&self, webhook_id: &str) -> Result<Option<WebhookConfig>>;
+    async fn create_webhook(&self, webhook: &WebhookConfig) -> Result<()>;
+    async fn update_webhook(&self, webhook_id: &str, request: &UpdateWebhookRequest) -> Result<()>;
+    async fn delete_webhook(&self, webhook_id: &str) -> Result<()>;
 }

@@ -14,6 +14,9 @@ pub enum AppError {
     #[error("Bin not found: {0}")]
     BinNotFound(String),
 
+    #[error("Webhook not found: {0}")]
+    WebhookNotFound(String),
+
     #[error("Validation error: {0}")]
     ValidationError(String),
 

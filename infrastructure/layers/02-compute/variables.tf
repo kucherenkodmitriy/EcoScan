@@ -67,6 +67,12 @@ variable "contact_form_zip_path" {
   default     = "../../../services/target/contact-form-handler.zip"
 }
 
+variable "webhook_sender_zip_path" {
+  description = "Path to Webhook Sender deployment package"
+  type        = string
+  default     = "../../../services/target/webhook-sender.zip"
+}
+
 variable "recaptcha_secret_key" {
   description = "Google reCAPTCHA v3 secret key"
   type        = string

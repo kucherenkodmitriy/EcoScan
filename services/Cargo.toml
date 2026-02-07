@@ -6,6 +6,7 @@ members = [
     "e2e-tests",
     "lambda-authorizer",
     "admin-dashboard-api",
+    "webhook-sender",
     # Temporarily disabled until implemented:
     # "notifier",
     # "shared"
@@ -27,6 +28,7 @@ chrono = { version = "0.4", features = ["serde"] }
 thiserror = "1.0"
 tracing = "0.1"
 tracing-subscriber = { version = "0.3", features = ["env-filter", "json"] }
+reqwest = { version = "0.12", default-features = false, features = ["json", "rustls-tls"] }
 
 [profile.release]
 # Optimize for size.

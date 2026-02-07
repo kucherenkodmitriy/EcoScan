@@ -110,6 +110,41 @@ resource "aws_dynamodb_table" "admin_users" {
   )
 }
 
+resource "aws_dynamodb_table" "webhook_configs" {
+  name         = "${var.environment}-${var.project_name}-webhook-configs"
+  billing_mode = var.dynamodb_billing_mode
+  hash_key     = "webhookId"
+
+  read_capacity  = var.dynamodb_billing_mode == "PROVISIONED" ? var.dynamodb_read_capacity : null
+  write_capacity = var.dynamodb_billing_mode == "PROVISIONED" ? var.dynamodb_write_capacity : null
+
+  attribute {
+    name = "webhookId"
+    type = "S"
+  }
+
+  # Enable point-in-time recovery for production
+  point_in_time_recovery {
+    enabled = var.environment == "prod"
+  }
+
+  # Enable encryption for non-local environments
+  dynamic "server_side_encryption" {
+    for_each = var.use_localstack ? [] : [1]
+    content {
+      enabled = true
+    }
+  }
+
+  tags = merge(
+    local.common_tags,
+    {
+      Name    = "${var.project_name}-webhook-configs"
+      Purpose = "Store outbound webhook configurations"
+    }
+  )
+}
+
 resource "aws_dynamodb_table" "demo_requests" {
   name         = "${var.environment}-${var.project_name}-demo-requests"
   billing_mode = var.dynamodb_billing_mode

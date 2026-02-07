@@ -14,8 +14,8 @@ resource "aws_api_gateway_rest_api" "api" {
 # IAM Role for API Gateway to send messages to SQS
 # =============================================================================
 
-resource "aws_iam_role" "apigateway_sqs_role" {
-  name = "${var.environment}-${var.project_name}-apigateway-sqs-role"
+resource "aws_iam_role" "apigateway_sns_role" {
+  name = "${var.environment}-${var.project_name}-apigateway-sns-role"
 
   assume_role_policy = jsonencode({
     Version = "2012-10-17"
@@ -33,9 +33,9 @@ resource "aws_iam_role" "apigateway_sqs_role" {
   tags = local.common_tags
 }
 
-resource "aws_iam_role_policy" "apigateway_sqs_policy" {
-  name = "${var.environment}-${var.project_name}-apigateway-sqs-policy"
-  role = aws_iam_role.apigateway_sqs_role.id
+resource "aws_iam_role_policy" "apigateway_sns_policy" {
+  name = "${var.environment}-${var.project_name}-apigateway-sns-policy"
+  role = aws_iam_role.apigateway_sns_role.id
 
   policy = jsonencode({
     Version = "2012-10-17"
@@ -43,9 +43,9 @@ resource "aws_iam_role_policy" "apigateway_sqs_policy" {
       {
         Effect = "Allow"
         Action = [
-          "sqs:SendMessage"
+          "sns:Publish"
         ]
-        Resource = local.sqs_queue_arn
+        Resource = local.sns_topic_arn
       }
     ]
   })
@@ -134,37 +134,33 @@ resource "aws_api_gateway_integration_response" "options_status_response" {
   depends_on = [aws_api_gateway_integration.options_status_integration]
 }
 
-resource "aws_api_gateway_integration" "sqs_integration" {
+resource "aws_api_gateway_integration" "sns_integration" {
   rest_api_id             = aws_api_gateway_rest_api.api.id
   resource_id             = aws_api_gateway_resource.status.id
   http_method             = aws_api_gateway_method.post_status.http_method
   integration_http_method = "POST"
   type                    = "AWS"
-  credentials             = aws_iam_role.apigateway_sqs_role.arn
-  uri                     = "arn:aws:apigateway:${var.aws_region}:sqs:path/${data.aws_caller_identity.current.account_id}/${local.sqs_queue_name}"
+  credentials             = aws_iam_role.apigateway_sns_role.arn
+  uri                     = "arn:aws:apigateway:${var.aws_region}:sns:action/Publish"
 
   request_parameters = {
     "integration.request.header.Content-Type" = "'application/x-www-form-urlencoded'"
   }
 
-  # Transform the incoming JSON to SQS message format
-  # Combine binId from path with status from body into a JSON message
-  # Include optional source field (defaults to "qr" if not provided)
-  # Add message attributes for distributed tracing:
-  #   - RequestId: API Gateway request ID (for correlation)
-  #   - TraceId: X-Ray trace ID (for distributed tracing)
-  #   - SourceIp: Client IP address
+  # Transform the incoming JSON to SNS Publish format
+  # Same JSON message body as before, but published to SNS topic for fan-out
+  # SNS subscriptions use raw_message_delivery=true so downstream consumers
+  # receive the same message format as before (no code changes needed)
   request_templates = {
     "application/json" = <<TEMPLATE
 #set($source = $input.json('$.source'))
 #if($source == "" || $source == "null")
 #set($source = "qr")
 #end
-Action=SendMessage&MessageBody=$util.urlEncode("{""binId"":""$input.params().path.bin_id"",""status"":$input.json('$.status'),""source"":$source}")
+Action=Publish&TopicArn=$util.urlEncode("${local.sns_topic_arn}")&Message=$util.urlEncode("{""binId"":""$input.params().path.bin_id"",""status"":$input.json('$.status'),""source"":$source}")
 TEMPLATE
   }
 
-  # Define how to handle the response
   passthrough_behavior = "NEVER"
 }
 
@@ -180,8 +176,8 @@ resource "aws_api_gateway_method_response" "status_200" {
   }
 }
 
-# Integration response to return 200 when SQS accepts the message
-resource "aws_api_gateway_integration_response" "sqs_integration_response" {
+# Integration response to return 200 when SNS accepts the message
+resource "aws_api_gateway_integration_response" "sns_integration_response" {
   rest_api_id = aws_api_gateway_rest_api.api.id
   resource_id = aws_api_gateway_resource.status.id
   http_method = aws_api_gateway_method.post_status.http_method
@@ -193,7 +189,7 @@ resource "aws_api_gateway_integration_response" "sqs_integration_response" {
     })
   }
 
-  depends_on = [aws_api_gateway_integration.sqs_integration]
+  depends_on = [aws_api_gateway_integration.sns_integration]
 }
 
 # Data source to get AWS account ID
@@ -207,8 +203,8 @@ resource "aws_api_gateway_deployment" "api_deployment" {
       # Bin status endpoints
       aws_api_gateway_resource.status.id,
       aws_api_gateway_method.post_status.id,
-      aws_api_gateway_integration.sqs_integration.id,
-      aws_api_gateway_integration_response.sqs_integration_response.id,
+      aws_api_gateway_integration.sns_integration.id,
+      aws_api_gateway_integration_response.sns_integration_response.id,
       aws_api_gateway_method.options_status.id,
       aws_api_gateway_integration.options_status_integration.id,
       # Auth endpoints
@@ -254,6 +250,18 @@ resource "aws_api_gateway_deployment" "api_deployment" {
       aws_api_gateway_integration.contact_integration.id,
       aws_api_gateway_method.options_contact.id,
       aws_api_gateway_integration.options_contact_integration.id,
+      # Webhook admin endpoints
+      aws_api_gateway_resource.admin_webhooks.id,
+      aws_api_gateway_resource.admin_webhook_id.id,
+      aws_api_gateway_method.get_admin_webhooks.id,
+      aws_api_gateway_method.post_admin_webhooks.id,
+      aws_api_gateway_method.get_admin_webhook.id,
+      aws_api_gateway_method.put_admin_webhook.id,
+      aws_api_gateway_method.delete_admin_webhook.id,
+      aws_api_gateway_method.options_admin_webhooks.id,
+      aws_api_gateway_integration.options_admin_webhooks_integration.id,
+      aws_api_gateway_method.options_admin_webhook.id,
+      aws_api_gateway_integration.options_admin_webhook_integration.id,
     ]))
   }
 
@@ -264,8 +272,8 @@ resource "aws_api_gateway_deployment" "api_deployment" {
   # Base dependencies (always present)
   # Conditional admin resources are handled by their own resource dependencies
   depends_on = [
-    aws_api_gateway_integration.sqs_integration,
-    aws_api_gateway_integration_response.sqs_integration_response,
+    aws_api_gateway_integration.sns_integration,
+    aws_api_gateway_integration_response.sns_integration_response,
   ]
 }
 
@@ -846,5 +854,164 @@ resource "aws_api_gateway_integration" "options_contact_integration" {
   integration_http_method = "POST"
   type                    = "AWS_PROXY"
   uri                     = "arn:aws:apigateway:${var.aws_region}:lambda:path/2015-03-31/functions/${local.contact_form_arn}/invocations"
+  credentials             = aws_iam_role.apigateway_lambda_role.arn
+}
+
+# =============================================================================
+# Admin Webhook Resources (/admin/webhooks)
+# =============================================================================
+
+resource "aws_api_gateway_resource" "admin_webhooks" {
+  rest_api_id = aws_api_gateway_rest_api.api.id
+  parent_id   = aws_api_gateway_resource.admin.id
+  path_part   = "webhooks"
+}
+
+resource "aws_api_gateway_resource" "admin_webhook_id" {
+  rest_api_id = aws_api_gateway_rest_api.api.id
+  parent_id   = aws_api_gateway_resource.admin_webhooks.id
+  path_part   = "{webhook_id}"
+}
+
+# OPTIONS /admin/webhooks - CORS preflight
+resource "aws_api_gateway_method" "options_admin_webhooks" {
+  rest_api_id   = aws_api_gateway_rest_api.api.id
+  resource_id   = aws_api_gateway_resource.admin_webhooks.id
+  http_method   = "OPTIONS"
+  authorization = "NONE"
+}
+
+resource "aws_api_gateway_integration" "options_admin_webhooks_integration" {
+  rest_api_id             = aws_api_gateway_rest_api.api.id
+  resource_id             = aws_api_gateway_resource.admin_webhooks.id
+  http_method             = aws_api_gateway_method.options_admin_webhooks.http_method
+  integration_http_method = "POST"
+  type                    = "AWS_PROXY"
+  uri                     = "arn:aws:apigateway:${var.aws_region}:lambda:path/2015-03-31/functions/${local.admin_dashboard_arn}/invocations"
+  credentials             = aws_iam_role.apigateway_lambda_role.arn
+}
+
+# GET /admin/webhooks - List all webhooks (requires JWT)
+resource "aws_api_gateway_method" "get_admin_webhooks" {
+  rest_api_id   = aws_api_gateway_rest_api.api.id
+  resource_id   = aws_api_gateway_resource.admin_webhooks.id
+  http_method   = "GET"
+  authorization = "CUSTOM"
+  authorizer_id = aws_api_gateway_authorizer.jwt_authorizer.id
+}
+
+resource "aws_api_gateway_integration" "get_admin_webhooks_integration" {
+  rest_api_id             = aws_api_gateway_rest_api.api.id
+  resource_id             = aws_api_gateway_resource.admin_webhooks.id
+  http_method             = aws_api_gateway_method.get_admin_webhooks.http_method
+  integration_http_method = "POST"
+  type                    = "AWS_PROXY"
+  uri                     = "arn:aws:apigateway:${var.aws_region}:lambda:path/2015-03-31/functions/${local.admin_dashboard_arn}/invocations"
+  credentials             = aws_iam_role.apigateway_lambda_role.arn
+}
+
+# POST /admin/webhooks - Create new webhook (requires JWT)
+resource "aws_api_gateway_method" "post_admin_webhooks" {
+  rest_api_id   = aws_api_gateway_rest_api.api.id
+  resource_id   = aws_api_gateway_resource.admin_webhooks.id
+  http_method   = "POST"
+  authorization = "CUSTOM"
+  authorizer_id = aws_api_gateway_authorizer.jwt_authorizer.id
+}
+
+resource "aws_api_gateway_integration" "post_admin_webhooks_integration" {
+  rest_api_id             = aws_api_gateway_rest_api.api.id
+  resource_id             = aws_api_gateway_resource.admin_webhooks.id
+  http_method             = aws_api_gateway_method.post_admin_webhooks.http_method
+  integration_http_method = "POST"
+  type                    = "AWS_PROXY"
+  uri                     = "arn:aws:apigateway:${var.aws_region}:lambda:path/2015-03-31/functions/${local.admin_dashboard_arn}/invocations"
+  credentials             = aws_iam_role.apigateway_lambda_role.arn
+}
+
+# OPTIONS /admin/webhooks/{webhook_id} - CORS preflight
+resource "aws_api_gateway_method" "options_admin_webhook" {
+  rest_api_id   = aws_api_gateway_rest_api.api.id
+  resource_id   = aws_api_gateway_resource.admin_webhook_id.id
+  http_method   = "OPTIONS"
+  authorization = "NONE"
+}
+
+resource "aws_api_gateway_integration" "options_admin_webhook_integration" {
+  rest_api_id             = aws_api_gateway_rest_api.api.id
+  resource_id             = aws_api_gateway_resource.admin_webhook_id.id
+  http_method             = aws_api_gateway_method.options_admin_webhook.http_method
+  integration_http_method = "POST"
+  type                    = "AWS_PROXY"
+  uri                     = "arn:aws:apigateway:${var.aws_region}:lambda:path/2015-03-31/functions/${local.admin_dashboard_arn}/invocations"
+  credentials             = aws_iam_role.apigateway_lambda_role.arn
+}
+
+# GET /admin/webhooks/{webhook_id} - Get single webhook (requires JWT)
+resource "aws_api_gateway_method" "get_admin_webhook" {
+  rest_api_id   = aws_api_gateway_rest_api.api.id
+  resource_id   = aws_api_gateway_resource.admin_webhook_id.id
+  http_method   = "GET"
+  authorization = "CUSTOM"
+  authorizer_id = aws_api_gateway_authorizer.jwt_authorizer.id
+
+  request_parameters = {
+    "method.request.path.webhook_id" = true
+  }
+}
+
+resource "aws_api_gateway_integration" "get_admin_webhook_integration" {
+  rest_api_id             = aws_api_gateway_rest_api.api.id
+  resource_id             = aws_api_gateway_resource.admin_webhook_id.id
+  http_method             = aws_api_gateway_method.get_admin_webhook.http_method
+  integration_http_method = "POST"
+  type                    = "AWS_PROXY"
+  uri                     = "arn:aws:apigateway:${var.aws_region}:lambda:path/2015-03-31/functions/${local.admin_dashboard_arn}/invocations"
+  credentials             = aws_iam_role.apigateway_lambda_role.arn
+}
+
+# PUT /admin/webhooks/{webhook_id} - Update webhook (requires JWT)
+resource "aws_api_gateway_method" "put_admin_webhook" {
+  rest_api_id   = aws_api_gateway_rest_api.api.id
+  resource_id   = aws_api_gateway_resource.admin_webhook_id.id
+  http_method   = "PUT"
+  authorization = "CUSTOM"
+  authorizer_id = aws_api_gateway_authorizer.jwt_authorizer.id
+
+  request_parameters = {
+    "method.request.path.webhook_id" = true
+  }
+}
+
+resource "aws_api_gateway_integration" "put_admin_webhook_integration" {
+  rest_api_id             = aws_api_gateway_rest_api.api.id
+  resource_id             = aws_api_gateway_resource.admin_webhook_id.id
+  http_method             = aws_api_gateway_method.put_admin_webhook.http_method
+  integration_http_method = "POST"
+  type                    = "AWS_PROXY"
+  uri                     = "arn:aws:apigateway:${var.aws_region}:lambda:path/2015-03-31/functions/${local.admin_dashboard_arn}/invocations"
+  credentials             = aws_iam_role.apigateway_lambda_role.arn
+}
+
+# DELETE /admin/webhooks/{webhook_id} - Delete webhook (requires JWT)
+resource "aws_api_gateway_method" "delete_admin_webhook" {
+  rest_api_id   = aws_api_gateway_rest_api.api.id
+  resource_id   = aws_api_gateway_resource.admin_webhook_id.id
+  http_method   = "DELETE"
+  authorization = "CUSTOM"
+  authorizer_id = aws_api_gateway_authorizer.jwt_authorizer.id
+
+  request_parameters = {
+    "method.request.path.webhook_id" = true
+  }
+}
+
+resource "aws_api_gateway_integration" "delete_admin_webhook_integration" {
+  rest_api_id             = aws_api_gateway_rest_api.api.id
+  resource_id             = aws_api_gateway_resource.admin_webhook_id.id
+  http_method             = aws_api_gateway_method.delete_admin_webhook.http_method
+  integration_http_method = "POST"
+  type                    = "AWS_PROXY"
+  uri                     = "arn:aws:apigateway:${var.aws_region}:lambda:path/2015-03-31/functions/${local.admin_dashboard_arn}/invocations"
   credentials             = aws_iam_role.apigateway_lambda_role.arn
 }

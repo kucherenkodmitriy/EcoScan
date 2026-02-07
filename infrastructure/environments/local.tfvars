@@ -16,7 +16,8 @@ dynamodb_write_capacity = 5
 lambda_memory_size  = 128
 lambda_timeout      = 30
 lambda_architecture = "x86_64"
-lambda_zip_path     = "../../../services/target/lambda.zip"
+lambda_zip_path          = "../../../services/target/lambda.zip"
+webhook_sender_zip_path  = "../../../services/target/webhook-sender.zip"
 
 # S3 bucket settings (LocalStack uses simple names)
 health_bucket_name             = "health"

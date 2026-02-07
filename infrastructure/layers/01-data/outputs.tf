@@ -69,6 +69,49 @@ output "sqs_dlq_arn" {
   value       = aws_sqs_queue.status_updates_dlq.arn
 }
 
+# SNS Topic outputs
+output "sns_topic_arn" {
+  description = "ARN of the status updates SNS topic"
+  value       = aws_sns_topic.status_updates.arn
+}
+
+output "sns_topic_name" {
+  description = "Name of the status updates SNS topic"
+  value       = aws_sns_topic.status_updates.name
+}
+
+# Webhook SQS Queue outputs
+output "webhook_sqs_queue_arn" {
+  description = "ARN of the webhook delivery SQS queue"
+  value       = aws_sqs_queue.webhook_delivery.arn
+}
+
+output "webhook_sqs_queue_url" {
+  description = "URL of the webhook delivery SQS queue"
+  value       = aws_sqs_queue.webhook_delivery.url
+}
+
+output "webhook_sqs_queue_name" {
+  description = "Name of the webhook delivery SQS queue"
+  value       = aws_sqs_queue.webhook_delivery.name
+}
+
+output "webhook_sqs_dlq_arn" {
+  description = "ARN of the webhook delivery dead letter queue"
+  value       = aws_sqs_queue.webhook_delivery_dlq.arn
+}
+
+# Webhook Configs DynamoDB outputs
+output "webhook_configs_table_name" {
+  description = "Name of the webhook configs DynamoDB table"
+  value       = aws_dynamodb_table.webhook_configs.name
+}
+
+output "webhook_configs_table_arn" {
+  description = "ARN of the webhook configs DynamoDB table"
+  value       = aws_dynamodb_table.webhook_configs.arn
+}
+
 output "google_maps_api_key_secret_arn" {
   description = "ARN of the Google Maps API key secret in Secrets Manager"
   value       = aws_secretsmanager_secret.google_maps_api_key.arn

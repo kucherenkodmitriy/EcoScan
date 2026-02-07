@@ -201,3 +201,112 @@ export async function deleteBin(binId: string): Promise<void> {
     throw new Error(errorMessage)
   }
 }
+
+// =============================================================================
+// Webhook API
+// =============================================================================
+
+export interface WebhookInfo {
+  webhook_id: string
+  name: string
+  url: string
+  auth_type: string
+  auth_header: string | null
+  events: string[]
+  is_active: boolean
+  created_at: string | null
+  updated_at: string | null
+  last_triggered_at: string | null
+  success_count: number
+  failure_count: number
+}
+
+export interface CreateWebhookInput {
+  name: string
+  url: string
+  auth_type?: string
+  auth_header?: string
+  auth_value?: string
+  events?: string[]
+}
+
+export interface UpdateWebhookInput {
+  name?: string
+  url?: string
+  auth_type?: string
+  auth_header?: string
+  auth_value?: string
+  events?: string[]
+  is_active?: boolean
+}
+
+export async function getWebhooks(): Promise<WebhookInfo[]> {
+  const response = await fetchWithAuth('/admin/webhooks')
+  if (!response.ok) throw new Error('Failed to fetch webhooks')
+  const data = await response.json()
+  return data.webhooks || []
+}
+
+export async function getWebhook(webhookId: string): Promise<WebhookInfo> {
+  const response = await fetchWithAuth(`/admin/webhooks/${webhookId}`)
+  if (!response.ok) {
+    const error = await response.json()
+    throw new Error(error.error || 'Failed to fetch webhook')
+  }
+  return response.json()
+}
+
+export async function createWebhook(input: CreateWebhookInput): Promise<WebhookInfo> {
+  const response = await fetchWithAuth('/admin/webhooks', {
+    method: 'POST',
+    body: JSON.stringify(input),
+  })
+  if (!response.ok) {
+    const errorText = await response.text()
+    let errorMessage = 'Failed to create webhook'
+    try {
+      const errorJson = JSON.parse(errorText)
+      errorMessage = errorJson.error || errorJson.message || errorMessage
+    } catch {
+      if (errorText) errorMessage = errorText
+    }
+    throw new Error(errorMessage)
+  }
+  return response.json()
+}
+
+export async function updateWebhook(webhookId: string, input: UpdateWebhookInput): Promise<WebhookInfo> {
+  const response = await fetchWithAuth(`/admin/webhooks/${webhookId}`, {
+    method: 'PUT',
+    body: JSON.stringify(input),
+  })
+  if (!response.ok) {
+    const errorText = await response.text()
+    let errorMessage = 'Failed to update webhook'
+    try {
+      const errorJson = JSON.parse(errorText)
+      errorMessage = errorJson.error || errorJson.message || errorMessage
+    } catch {
+      if (errorText) errorMessage = errorText
+    }
+    throw new Error(errorMessage)
+  }
+  return response.json()
+}
+
+export async function deleteWebhook(webhookId: string): Promise<void> {
+  const response = await fetchWithAuth(`/admin/webhooks/${webhookId}`, {
+    method: 'DELETE',
+  })
+  if (!response.ok) {
+    const errorText = await response.text()
+    let errorMessage = 'Failed to delete webhook'
+    try {
+      const errorJson = JSON.parse(errorText)
+      errorMessage = errorJson.error || errorJson.message || errorMessage
+    } catch {
+      if (errorText) errorMessage = errorText
+    }
+    throw new Error(errorMessage)
+  }
+}

@@ -9,6 +9,9 @@ import QRPrint from './pages/QRPrint'
 import PrivacyPolicy from './pages/PrivacyPolicy'
 import Terms from './pages/Terms'
 import Landing from './pages/landing/Landing'
+import WebhookList from './pages/WebhookList'
+import WebhookDetail from './pages/WebhookDetail'
+import WebhookForm from './pages/WebhookForm'
 import CookieConsent from './components/CookieConsent'
 
 function PrivateRoute({ children }: { children: React.ReactNode }) {
@@ -59,6 +62,38 @@ function App() {
         element={
           <PrivateRoute>
             <BinForm />
+          </PrivateRoute>
+        }
+      />
+      <Route
+        path="/webhooks"
+        element={
+          <PrivateRoute>
+            <WebhookList />
+          </PrivateRoute>
+        }
+      />
+      <Route
+        path="/webhooks/new"
+        element={
+          <PrivateRoute>
+            <WebhookForm />
+          </PrivateRoute>
+        }
+      />
+      <Route
+        path="/webhooks/:id"
+        element={
+          <PrivateRoute>
+            <WebhookDetail />
+          </PrivateRoute>
+        }
+      />
+      <Route
+        path="/webhooks/:id/edit"
+        element={
+          <PrivateRoute>
+            <WebhookForm />
           </PrivateRoute>
         }
       />

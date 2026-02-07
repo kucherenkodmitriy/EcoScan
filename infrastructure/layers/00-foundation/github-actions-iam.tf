@@ -246,7 +246,6 @@ resource "aws_iam_policy" "github_actions_deployment_policy" {
           "iam:AttachRolePolicy",
           "iam:DetachRolePolicy",
           "iam:ListAttachedRolePolicies",
-          "iam:ListInstanceProfilesForRole",
           "iam:PassRole",
         ]
         Resource = [
@@ -445,6 +444,17 @@ resource "aws_iam_policy" "github_actions_extra_policy" {
           "arn:aws:apigateway:*::/apikeys",
           "arn:aws:apigateway:*::/apikeys/*",
           "arn:aws:apigateway:*::/account",
+        ]
+      },
+      # IAM Extended Permissions (for role cleanup during renames)
+      {
+        Sid    = "IAMExtended"
+        Effect = "Allow"
+        Action = [
+          "iam:ListInstanceProfilesForRole",
+        ]
+        Resource = [
+          "arn:aws:iam::*:role/${var.environment}-${var.project_name}-*",
         ]
       },
       # Lambda Extended Permissions

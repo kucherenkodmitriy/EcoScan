@@ -481,6 +481,30 @@ resource "aws_iam_policy" "github_actions_extra_policy" {
           "arn:aws:secretsmanager:*:*:secret:${var.environment}-${var.project_name}-*",
         ]
       },
+      # SNS Permissions (for status updates fan-out)
+      {
+        Sid    = "SNSManagement"
+        Effect = "Allow"
+        Action = [
+          "sns:CreateTopic",
+          "sns:DeleteTopic",
+          "sns:GetTopicAttributes",
+          "sns:SetTopicAttributes",
+          "sns:ListTopics",
+          "sns:TagResource",
+          "sns:UntagResource",
+          "sns:ListTagsForResource",
+          "sns:Subscribe",
+          "sns:Unsubscribe",
+          "sns:GetSubscriptionAttributes",
+          "sns:SetSubscriptionAttributes",
+          "sns:ListSubscriptions",
+          "sns:ListSubscriptionsByTopic",
+        ]
+        Resource = [
+          "arn:aws:sns:*:*:${var.environment}-${var.project_name}-*",
+        ]
+      },
       # CloudFront Permissions (for frontend CDN)
       {
         Sid    = "CloudFrontManagement"

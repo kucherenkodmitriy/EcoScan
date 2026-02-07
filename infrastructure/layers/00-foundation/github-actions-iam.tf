@@ -246,6 +246,7 @@ resource "aws_iam_policy" "github_actions_deployment_policy" {
           "iam:AttachRolePolicy",
           "iam:DetachRolePolicy",
           "iam:ListAttachedRolePolicies",
+          "iam:ListInstanceProfilesForRole",
           "iam:PassRole",
         ]
         Resource = [

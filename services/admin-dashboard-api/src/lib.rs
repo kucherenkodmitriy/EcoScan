@@ -13,9 +13,15 @@ use serde_json::json;
 use tracing::{error, info, instrument, warn};
 use uuid::Uuid;
 
-use crate::application::{create_bin, delete_bin, get_bin, handle_login, list_bins, update_bin};
+use crate::application::{
+    create_bin, create_webhook, delete_bin, delete_webhook, get_bin, get_webhook, handle_login,
+    list_bins, list_webhooks, update_bin, update_webhook,
+};
 use crate::config::Config;
-use crate::domain::{AppError, CreateBinRequest, LoginRequest, PublicBinInfo, UpdateBinRequest};
+use crate::domain::{
+    AppError, CreateBinRequest, CreateWebhookRequest, LoginRequest, PublicBinInfo,
+    UpdateBinRequest, UpdateWebhookRequest,
+};
 use crate::infrastructure::{DynamoDbRepository, JwtConfig};
 
 /// Shared application state initialized at cold start
@@ -78,7 +84,7 @@ fn error_response(status_code: i64, message: &str, cors_origin: &str) -> ApiGate
 fn error_to_status_code(error: &AppError) -> i64 {
     match error {
         AppError::InvalidCredentials | AppError::AuthenticationError(_) => 401,
-        AppError::UserNotFound(_) | AppError::BinNotFound(_) => 404,
+        AppError::UserNotFound(_) | AppError::BinNotFound(_) | AppError::WebhookNotFound(_) => 404,
         AppError::ValidationError(_) => 400,
         AppError::DatabaseError(_) | AppError::InternalError(_) | AppError::JwtError(_) => 500,
     }
@@ -225,6 +231,34 @@ async fn api_handler_inner(
         ("DELETE", p) if p.contains("/admin/bins/") => {
             let bin_id = get_path_param(&request, "bin_id");
             handle_delete_bin(&repo, bin_id, cors_origin).await
+        }
+
+        // List webhooks
+        ("GET", p) if p.ends_with("/admin/webhooks") => {
+            handle_list_webhooks(&repo, cors_origin).await
+        }
+
+        // Create webhook
+        ("POST", p) if p.ends_with("/admin/webhooks") => {
+            handle_create_webhook(&request, &repo, cors_origin).await
+        }
+
+        // Get single webhook
+        ("GET", p) if p.contains("/admin/webhooks/") => {
+            let webhook_id = extract_last_path_segment(p);
+            handle_get_webhook(&repo, webhook_id, cors_origin).await
+        }
+
+        // Update webhook
+        ("PUT", p) if p.contains("/admin/webhooks/") => {
+            let webhook_id = extract_last_path_segment(p);
+            handle_update_webhook(&request, &repo, webhook_id, cors_origin).await
+        }
+
+        // Delete webhook
+        ("DELETE", p) if p.contains("/admin/webhooks/") => {
+            let webhook_id = extract_last_path_segment(p);
+            handle_delete_webhook(&repo, webhook_id, cors_origin).await
         }
 
         // Not found
@@ -376,6 +410,130 @@ async fn handle_delete_bin(
         Ok(()) => success_response(
             200,
             json!({ "message": "Bin deleted successfully" }),
+            cors_origin,
+        ),
+        Err(e) => {
+            let status = error_to_status_code(&e);
+            error_response(status, &e.to_string(), cors_origin)
+        }
+    }
+}
+
+/// Extract the last path segment (e.g., webhook ID from /admin/webhooks/{id})
+fn extract_last_path_segment(path: &str) -> Option<String> {
+    path.split('/').next_back().map(|s| s.to_string())
+}
+
+// =============================================================================
+// Webhook Handlers
+// =============================================================================
+
+async fn handle_list_webhooks(
+    repo: &DynamoDbRepository,
+    cors_origin: &str,
+) -> ApiGatewayProxyResponse {
+    match list_webhooks(repo).await {
+        Ok(webhooks) => success_response(200, json!({ "webhooks": webhooks }), cors_origin),
+        Err(e) => {
+            let status = error_to_status_code(&e);
+            error_response(status, &e.to_string(), cors_origin)
+        }
+    }
+}
+
+async fn handle_get_webhook(
+    repo: &DynamoDbRepository,
+    webhook_id: Option<String>,
+    cors_origin: &str,
+) -> ApiGatewayProxyResponse {
+    let webhook_id = match webhook_id {
+        Some(id) if !id.is_empty() => id,
+        _ => return error_response(400, "Invalid webhook ID", cors_origin),
+    };
+
+    match get_webhook(repo, &webhook_id).await {
+        Ok(webhook) => success_response(200, serde_json::to_value(webhook).unwrap(), cors_origin),
+        Err(e) => {
+            let status = error_to_status_code(&e);
+            error_response(status, &e.to_string(), cors_origin)
+        }
+    }
+}
+
+async fn handle_create_webhook(
+    request: &ApiGatewayProxyRequest,
+    repo: &DynamoDbRepository,
+    cors_origin: &str,
+) -> ApiGatewayProxyResponse {
+    let body = match &request.body {
+        Some(b) => b,
+        None => return error_response(400, "Request body is required", cors_origin),
+    };
+
+    let create_request: CreateWebhookRequest = match serde_json::from_str(body) {
+        Ok(r) => r,
+        Err(e) => {
+            warn!(error = %e, "Failed to parse create webhook request");
+            return error_response(400, "Invalid request body", cors_origin);
+        }
+    };
+
+    match create_webhook(repo, create_request).await {
+        Ok(webhook) => success_response(201, serde_json::to_value(webhook).unwrap(), cors_origin),
+        Err(e) => {
+            let status = error_to_status_code(&e);
+            error_response(status, &e.to_string(), cors_origin)
+        }
+    }
+}
+
+async fn handle_update_webhook(
+    request: &ApiGatewayProxyRequest,
+    repo: &DynamoDbRepository,
+    webhook_id: Option<String>,
+    cors_origin: &str,
+) -> ApiGatewayProxyResponse {
+    let webhook_id = match webhook_id {
+        Some(id) if !id.is_empty() => id,
+        _ => return error_response(400, "Invalid webhook ID", cors_origin),
+    };
+
+    let body = match &request.body {
+        Some(b) => b,
+        None => return error_response(400, "Request body is required", cors_origin),
+    };
+
+    let update_request: UpdateWebhookRequest = match serde_json::from_str(body) {
+        Ok(r) => r,
+        Err(e) => {
+            warn!(error = %e, "Failed to parse update webhook request");
+            return error_response(400, "Invalid request body", cors_origin);
+        }
+    };
+
+    match update_webhook(repo, &webhook_id, update_request).await {
+        Ok(webhook) => success_response(200, serde_json::to_value(webhook).unwrap(), cors_origin),
+        Err(e) => {
+            let status = error_to_status_code(&e);
+            error_response(status, &e.to_string(), cors_origin)
+        }
+    }
+}
+
+async fn handle_delete_webhook(
+    repo: &DynamoDbRepository,
+    webhook_id: Option<String>,
+    cors_origin: &str,
+) -> ApiGatewayProxyResponse {
+    let webhook_id = match webhook_id {
+        Some(id) if !id.is_empty() => id,
+        _ => return error_response(400, "Invalid webhook ID", cors_origin),
+    };
+
+    match delete_webhook(repo, &webhook_id).await {
+        Ok(()) => success_response(
+            200,
+            json!({ "message": "Webhook deleted successfully" }),
             cors_origin,
         ),
         Err(e) => {

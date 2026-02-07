@@ -55,3 +55,14 @@ output "contact_form_invoke_arn" {
   description = "Invoke ARN of the Contact Form Handler Lambda function"
   value       = aws_lambda_function.contact_form_handler.invoke_arn
 }
+
+# Webhook Sender Lambda outputs
+output "webhook_sender_lambda_arn" {
+  description = "ARN of the Webhook Sender Lambda function"
+  value       = aws_lambda_function.webhook_sender.arn
+}
+
+output "webhook_sender_lambda_name" {
+  description = "Name of the Webhook Sender Lambda function"
+  value       = aws_lambda_function.webhook_sender.function_name
+}

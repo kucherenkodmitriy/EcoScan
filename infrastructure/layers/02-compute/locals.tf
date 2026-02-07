@@ -23,6 +23,12 @@ locals {
   sqs_queue_arn  = data.terraform_remote_state.data.outputs.sqs_queue_arn
   sqs_queue_name = data.terraform_remote_state.data.outputs.sqs_queue_name
 
+  # Webhook infrastructure from data layer
+  webhook_sqs_queue_arn      = data.terraform_remote_state.data.outputs.webhook_sqs_queue_arn
+  webhook_sqs_queue_name     = data.terraform_remote_state.data.outputs.webhook_sqs_queue_name
+  webhook_configs_table_name = data.terraform_remote_state.data.outputs.webhook_configs_table_name
+  webhook_configs_table_arn  = data.terraform_remote_state.data.outputs.webhook_configs_table_arn
+
   # Lambda environment-specific endpoint
   dynamodb_endpoint_url = var.use_localstack ? "http://localstack:4566" : ""
 }

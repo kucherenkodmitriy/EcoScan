@@ -357,6 +357,47 @@
       "copyright": "© 2026 EcoScan. Alle Rechte vorbehalten."
     }
   },
+  "webhooks": {
+    "title": "Webhooks",
+    "newWebhook": "+ Neuer Webhook",
+    "createTitle": "Webhook erstellen",
+    "editTitle": "Webhook bearbeiten",
+    "noWebhooks": "Keine Webhooks konfiguriert. Erstellen Sie Ihren ersten Webhook, um Statusaktualisierungen an externe Systeme zu senden.",
+    "noWebhookId": "Keine Webhook-ID angegeben",
+    "failedToLoad": "Webhooks konnten nicht geladen werden",
+    "failedToSave": "Webhook konnte nicht gespeichert werden",
+    "failedToDelete": "Webhook konnte nicht gelöscht werden",
+    "deleteConfirm": "Sind Sie sicher, dass Sie \"{{name}}\" löschen möchten? Der Webhook wird deaktiviert.",
+    "backToList": "Zurück zu Webhooks",
+    "nameRequired": "Webhook-Name ist erforderlich",
+    "urlRequired": "Webhook-URL ist erforderlich",
+    "deliveryStats": "Zustellungsstatistiken",
+    "successCount": "Erfolgreich",
+    "failureCount": "Fehlgeschlagen",
+    "allEvents": "Alle Ereignisse",
+    "createdAt": "Erstellt",
+    "updatedAt": "Aktualisiert",
+    "table": {
+      "name": "Name",
+      "url": "URL",
+      "status": "Status",
+      "deliveries": "Zustellungen",
+      "lastTriggered": "Zuletzt ausgelöst",
+      "actions": "Aktionen"
+    },
+    "form": {
+      "name": "Name",
+      "namePlaceholder": "z.B. Golemio-Integration",
+      "url": "URL",
+      "urlPlaceholder": "https://api.example.com/webhook",
+      "authType": "Authentifizierung",
+      "authHeader": "Auth-Header",
+      "authValue": "Auth-Wert",
+      "authValuePlaceholder": "Geheimwert eingeben",
+      "authValueEditHint": "Leer lassen, um aktuellen Wert beizubehalten",
+      "events": "Ereignisse"
+    }
+  },
   "demoModal": {
     "title": "Demo anfordern",
     "description": "Sehen Sie EcoScan in Aktion. Wir führen Sie durch die Plattform und besprechen, wie sie Ihren betrieblichen Anforderungen entsprechen könnte.",

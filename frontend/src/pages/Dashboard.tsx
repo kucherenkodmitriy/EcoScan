@@ -164,6 +164,9 @@ export default function Dashboard() {
         </div>
         <div className={styles.headerRight}>
           <LanguageSwitcher />
+          <Link to="/webhooks" className="btn btn-secondary" style={{ background: '#6a1b9a', border: 'none' }}>
+            {t('webhooks.title')}
+          </Link>
           <div className={styles.userInfo}>
             <strong>{user?.name}</strong>
             <span>{user?.role}</span>

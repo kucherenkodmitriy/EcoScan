@@ -357,6 +357,47 @@
       "copyright": "© 2026 EcoScan. Všechna práva vyhrazena."
     }
   },
+  "webhooks": {
+    "title": "Webhooky",
+    "newWebhook": "+ Nový Webhook",
+    "createTitle": "Vytvořit Webhook",
+    "editTitle": "Upravit Webhook",
+    "noWebhooks": "Žádné webhooky nakonfigurovány. Vytvořte první webhook pro odesílání aktualizací stavu do externích systémů.",
+    "noWebhookId": "Nebylo zadáno ID webhooku",
+    "failedToLoad": "Nepodařilo se načíst webhooky",
+    "failedToSave": "Nepodařilo se uložit webhook",
+    "failedToDelete": "Nepodařilo se smazat webhook",
+    "deleteConfirm": "Opravdu chcete smazat \"{{name}}\"? Tím se webhook deaktivuje.",
+    "backToList": "Zpět na webhooky",
+    "nameRequired": "Název webhooku je povinný",
+    "urlRequired": "URL webhooku je povinná",
+    "deliveryStats": "Statistiky doručení",
+    "successCount": "Úspěšné",
+    "failureCount": "Neúspěšné",
+    "allEvents": "Všechny události",
+    "createdAt": "Vytvořeno",
+    "updatedAt": "Aktualizováno",
+    "table": {
+      "name": "Název",
+      "url": "URL",
+      "status": "Stav",
+      "deliveries": "Doručení",
+      "lastTriggered": "Naposledy spuštěno",
+      "actions": "Akce"
+    },
+    "form": {
+      "name": "Název",
+      "namePlaceholder": "např. Golemio Integrace",
+      "url": "URL",
+      "urlPlaceholder": "https://api.example.com/webhook",
+      "authType": "Autentizace",
+      "authHeader": "Hlavička autentizace",
+      "authValue": "Hodnota autentizace",
+      "authValuePlaceholder": "Zadejte tajnou hodnotu",
+      "authValueEditHint": "Ponechte prázdné pro zachování aktuální hodnoty",
+      "events": "Události"
+    }
+  },
   "demoModal": {
     "title": "Požádat o demo",
     "description": "Podívejte se na EcoScan v akci. Provedeme vás platformou a probereme, jak by mohla vyhovovat vašim provozním potřebám.",

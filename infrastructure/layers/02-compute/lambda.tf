@@ -174,13 +174,14 @@ resource "aws_lambda_function" "admin_dashboard" {
   environment {
     variables = merge(
       {
-        ADMIN_USERS_TABLE_NAME    = local.admin_users_table_name
-        TRASH_BINS_TABLE_NAME     = local.trash_bins_table_name
-        STATUS_REPORTS_TABLE_NAME = local.status_reports_table_name
-        JWT_EXPIRY_HOURS          = var.jwt_expiry_hours
-        CORS_ALLOWED_ORIGINS      = var.cors_allowed_origins
-        AWS_XRAY_TRACING_NAME     = "${var.environment}-${var.project_name}-admin-dashboard"
-        AWS_XRAY_CONTEXT_MISSING  = "LOG_ERROR"
+        ADMIN_USERS_TABLE_NAME     = local.admin_users_table_name
+        TRASH_BINS_TABLE_NAME      = local.trash_bins_table_name
+        STATUS_REPORTS_TABLE_NAME  = local.status_reports_table_name
+        WEBHOOK_CONFIGS_TABLE_NAME = local.webhook_configs_table_name
+        JWT_EXPIRY_HOURS           = var.jwt_expiry_hours
+        CORS_ALLOWED_ORIGINS       = var.cors_allowed_origins
+        AWS_XRAY_TRACING_NAME      = "${var.environment}-${var.project_name}-admin-dashboard"
+        AWS_XRAY_CONTEXT_MISSING   = "LOG_ERROR"
       },
       var.use_localstack ? {
         # LocalStack: use env vars directly
@@ -254,7 +255,8 @@ resource "aws_iam_policy" "admin_dashboard_policy" {
         Resource = [
           local.admin_users_table_arn,
           local.trash_bins_table_arn,
-          local.status_reports_table_arn
+          local.status_reports_table_arn,
+          local.webhook_configs_table_arn
         ]
       },
       {
@@ -392,4 +394,136 @@ resource "aws_iam_policy" "contact_form_policy" {
 resource "aws_iam_role_policy_attachment" "contact_form_policy_attachment" {
   role       = aws_iam_role.contact_form_role.name
   policy_arn = aws_iam_policy.contact_form_policy.arn
+}
+
+# =============================================================================
+# Webhook Sender Lambda
+# =============================================================================
+
+resource "aws_lambda_function" "webhook_sender" {
+  function_name = "${var.environment}-${var.project_name}-webhook-sender"
+  role          = aws_iam_role.webhook_sender_role.arn
+  handler       = "bootstrap"
+  runtime       = "provided.al2"
+  architectures = [var.lambda_architecture]
+  memory_size   = var.lambda_memory_size
+  timeout       = 60
+
+  filename         = var.webhook_sender_zip_path
+  source_code_hash = filebase64sha256(var.webhook_sender_zip_path)
+
+  environment {
+    variables = merge(
+      {
+        WEBHOOK_CONFIGS_TABLE_NAME = local.webhook_configs_table_name
+        WEBHOOK_TIMEOUT_SECS       = "10"
+        AWS_XRAY_TRACING_NAME      = "${var.environment}-${var.project_name}-webhook-sender"
+        AWS_XRAY_CONTEXT_MISSING   = "LOG_ERROR"
+      },
+      var.use_localstack ? {
+        DYNAMODB_ENDPOINT_URL = local.dynamodb_endpoint_url
+      } : {}
+    )
+  }
+
+  tracing_config {
+    mode = "Active"
+  }
+
+  tags = merge(
+    local.common_tags,
+    {
+      Name = "${var.project_name}-webhook-sender"
+    }
+  )
+
+  depends_on = [
+    aws_iam_role_policy_attachment.webhook_sender_policy_attachment
+  ]
+}
+
+# SQS Event Source Mapping for webhook delivery
+resource "aws_lambda_event_source_mapping" "webhook_sqs_trigger" {
+  event_source_arn = local.webhook_sqs_queue_arn
+  function_name    = aws_lambda_function.webhook_sender.arn
+
+  batch_size                         = 1
+  maximum_batching_window_in_seconds = 0
+
+  function_response_types = ["ReportBatchItemFailures"]
+
+  enabled = true
+}
+
+# IAM role for Webhook Sender Lambda
+resource "aws_iam_role" "webhook_sender_role" {
+  name = "${var.environment}-${var.project_name}-webhook-sender-role"
+
+  assume_role_policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Action = "sts:AssumeRole"
+        Effect = "Allow"
+        Principal = {
+          Service = "lambda.amazonaws.com"
+        }
+      }
+    ]
+  })
+
+  tags = local.common_tags
+}
+
+# Policy for Webhook Sender Lambda
+resource "aws_iam_policy" "webhook_sender_policy" {
+  name = "${var.environment}-${var.project_name}-webhook-sender-policy"
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Effect = "Allow"
+        Action = [
+          "logs:CreateLogGroup",
+          "logs:CreateLogStream",
+          "logs:PutLogEvents"
+        ]
+        Resource = "arn:aws:logs:*:*:*"
+      },
+      {
+        Effect = "Allow"
+        Action = [
+          "dynamodb:Scan",
+          "dynamodb:GetItem",
+          "dynamodb:UpdateItem"
+        ]
+        Resource = local.webhook_configs_table_arn
+      },
+      {
+        Effect = "Allow"
+        Action = [
+          "sqs:ReceiveMessage",
+          "sqs:DeleteMessage",
+          "sqs:GetQueueAttributes"
+        ]
+        Resource = local.webhook_sqs_queue_arn
+      },
+      {
+        Effect = "Allow"
+        Action = [
+          "xray:PutTraceSegments",
+          "xray:PutTelemetryRecords"
+        ]
+        Resource = "*"
+      }
+    ]
+  })
+
+  tags = local.common_tags
+}
+
+resource "aws_iam_role_policy_attachment" "webhook_sender_policy_attachment" {
+  role       = aws_iam_role.webhook_sender_role.name
+  policy_arn = aws_iam_policy.webhook_sender_policy.arn
 }

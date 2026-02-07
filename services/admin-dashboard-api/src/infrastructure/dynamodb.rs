@@ -8,13 +8,15 @@ use uuid::Uuid;
 use crate::config::Config;
 use crate::domain::{
     AdminUser, AppError, BinInfo, BinRepository, BinType, Coordinates, CreateBinRequest, Result,
-    UpdateBinRequest, UserRepository, UserRole,
+    UpdateBinRequest, UpdateWebhookRequest, UserRepository, UserRole, WebhookAuthType,
+    WebhookConfig, WebhookRepository,
 };
 
 pub struct DynamoDbRepository {
     client: Client,
     users_table: String,
     bins_table: String,
+    webhooks_table: String,
 }
 
 impl DynamoDbRepository {
@@ -39,6 +41,7 @@ impl DynamoDbRepository {
             client,
             users_table: config.admin_users_table.clone(),
             bins_table: config.trash_bins_table.clone(),
+            webhooks_table: config.webhook_configs_table.clone(),
         })
     }
 
@@ -381,6 +384,273 @@ impl BinRepository for DynamoDbRepository {
             .map_err(|e| AppError::DatabaseError(e.to_string()))?;
 
         info!(bin_id = %bin_id, "Bin deactivated (soft delete)");
+        Ok(())
+    }
+}
+
+// =============================================================================
+// Webhook Repository Implementation
+// =============================================================================
+
+impl DynamoDbRepository {
+    fn parse_webhook_item(
+        item: &std::collections::HashMap<String, AttributeValue>,
+    ) -> Option<WebhookConfig> {
+        let webhook_id = item.get("webhookId").and_then(|v| v.as_s().ok()).cloned()?;
+
+        let events = item
+            .get("events")
+            .and_then(|v| v.as_l().ok())
+            .map(|list| list.iter().filter_map(|v| v.as_s().ok().cloned()).collect())
+            .unwrap_or_default();
+
+        Some(WebhookConfig {
+            webhook_id,
+            name: item
+                .get("name")
+                .and_then(|v| v.as_s().ok())
+                .cloned()
+                .unwrap_or_default(),
+            url: item
+                .get("url")
+                .and_then(|v| v.as_s().ok())
+                .cloned()
+                .unwrap_or_default(),
+            auth_type: item
+                .get("authType")
+                .and_then(|v| v.as_s().ok())
+                .map(|s| WebhookAuthType::parse(s))
+                .unwrap_or_default(),
+            auth_header: item.get("authHeader").and_then(|v| v.as_s().ok()).cloned(),
+            auth_value: item.get("authValue").and_then(|v| v.as_s().ok()).cloned(),
+            events,
+            is_active: item
+                .get("isActive")
+                .and_then(|v| v.as_bool().ok())
+                .copied()
+                .unwrap_or(true),
+            created_at: item
+                .get("createdAt")
+                .and_then(|v| v.as_s().ok())
+                .and_then(|s| DateTime::parse_from_rfc3339(s).ok())
+                .map(|dt| dt.with_timezone(&Utc)),
+            updated_at: item
+                .get("updatedAt")
+                .and_then(|v| v.as_s().ok())
+                .and_then(|s| DateTime::parse_from_rfc3339(s).ok())
+                .map(|dt| dt.with_timezone(&Utc)),
+            last_triggered_at: item
+                .get("lastTriggeredAt")
+                .and_then(|v| v.as_s().ok())
+                .and_then(|s| DateTime::parse_from_rfc3339(s).ok())
+                .map(|dt| dt.with_timezone(&Utc)),
+            success_count: item
+                .get("successCount")
+                .and_then(|v| v.as_n().ok())
+                .and_then(|s| s.parse().ok())
+                .unwrap_or(0),
+            failure_count: item
+                .get("failureCount")
+                .and_then(|v| v.as_n().ok())
+                .and_then(|s| s.parse().ok())
+                .unwrap_or(0),
+        })
+    }
+}
+
+#[async_trait]
+impl WebhookRepository for DynamoDbRepository {
+    #[instrument(skip(self), fields(table = %self.webhooks_table))]
+    async fn list_webhooks(&self) -> Result<Vec<WebhookConfig>> {
+        let result = self
+            .client
+            .scan()
+            .table_name(&self.webhooks_table)
+            .send()
+            .await
+            .map_err(|e| AppError::DatabaseError(e.to_string()))?;
+
+        let webhooks: Vec<WebhookConfig> = result
+            .items
+            .unwrap_or_default()
+            .iter()
+            .filter_map(Self::parse_webhook_item)
+            .collect();
+
+        info!(count = webhooks.len(), "Listed webhooks");
+        Ok(webhooks)
+    }
+
+    #[instrument(skip(self), fields(table = %self.webhooks_table))]
+    async fn get_webhook(&self, webhook_id: &str) -> Result<Option<WebhookConfig>> {
+        let result = self
+            .client
+            .get_item()
+            .table_name(&self.webhooks_table)
+            .key("webhookId", AttributeValue::S(webhook_id.to_string()))
+            .send()
+            .await
+            .map_err(|e| AppError::DatabaseError(e.to_string()))?;
+
+        Ok(result.item.as_ref().and_then(Self::parse_webhook_item))
+    }
+
+    #[instrument(skip(self, webhook), fields(table = %self.webhooks_table))]
+    async fn create_webhook(&self, webhook: &WebhookConfig) -> Result<()> {
+        let events_list: Vec<AttributeValue> = webhook
+            .events
+            .iter()
+            .map(|e| AttributeValue::S(e.clone()))
+            .collect();
+
+        let mut put_item = self
+            .client
+            .put_item()
+            .table_name(&self.webhooks_table)
+            .item("webhookId", AttributeValue::S(webhook.webhook_id.clone()))
+            .item("name", AttributeValue::S(webhook.name.clone()))
+            .item("url", AttributeValue::S(webhook.url.clone()))
+            .item("authType", AttributeValue::S(webhook.auth_type.to_string()))
+            .item("events", AttributeValue::L(events_list))
+            .item("isActive", AttributeValue::Bool(webhook.is_active))
+            .item(
+                "successCount",
+                AttributeValue::N(webhook.success_count.to_string()),
+            )
+            .item(
+                "failureCount",
+                AttributeValue::N(webhook.failure_count.to_string()),
+            );
+
+        if let Some(header) = &webhook.auth_header {
+            put_item = put_item.item("authHeader", AttributeValue::S(header.clone()));
+        }
+        if let Some(value) = &webhook.auth_value {
+            put_item = put_item.item("authValue", AttributeValue::S(value.clone()));
+        }
+        if let Some(created_at) = &webhook.created_at {
+            put_item = put_item.item("createdAt", AttributeValue::S(created_at.to_rfc3339()));
+        }
+        if let Some(updated_at) = &webhook.updated_at {
+            put_item = put_item.item("updatedAt", AttributeValue::S(updated_at.to_rfc3339()));
+        }
+
+        put_item
+            .send()
+            .await
+            .map_err(|e| AppError::DatabaseError(e.to_string()))?;
+
+        info!(webhook_id = %webhook.webhook_id, "Webhook created successfully");
+        Ok(())
+    }
+
+    #[instrument(skip(self, request), fields(table = %self.webhooks_table))]
+    async fn update_webhook(&self, webhook_id: &str, request: &UpdateWebhookRequest) -> Result<()> {
+        let mut update_parts = Vec::new();
+        let mut expression_values = std::collections::HashMap::new();
+
+        if let Some(name) = &request.name {
+            update_parts.push("#n = :name");
+            expression_values.insert(":name".to_string(), AttributeValue::S(name.clone()));
+        }
+
+        if let Some(url) = &request.url {
+            update_parts.push("url = :url");
+            expression_values.insert(":url".to_string(), AttributeValue::S(url.clone()));
+        }
+
+        if let Some(auth_type) = &request.auth_type {
+            update_parts.push("authType = :authType");
+            expression_values.insert(
+                ":authType".to_string(),
+                AttributeValue::S(auth_type.to_string()),
+            );
+        }
+
+        if let Some(auth_header) = &request.auth_header {
+            update_parts.push("authHeader = :authHeader");
+            expression_values.insert(
+                ":authHeader".to_string(),
+                AttributeValue::S(auth_header.clone()),
+            );
+        }
+
+        if let Some(auth_value) = &request.auth_value {
+            update_parts.push("authValue = :authValue");
+            expression_values.insert(
+                ":authValue".to_string(),
+                AttributeValue::S(auth_value.clone()),
+            );
+        }
+
+        if let Some(events) = &request.events {
+            update_parts.push("events = :events");
+            let events_list: Vec<AttributeValue> = events
+                .iter()
+                .map(|e| AttributeValue::S(e.clone()))
+                .collect();
+            expression_values.insert(":events".to_string(), AttributeValue::L(events_list));
+        }
+
+        if let Some(is_active) = request.is_active {
+            update_parts.push("isActive = :active");
+            expression_values.insert(":active".to_string(), AttributeValue::Bool(is_active));
+        }
+
+        // Always update updatedAt
+        update_parts.push("updatedAt = :updatedAt");
+        expression_values.insert(
+            ":updatedAt".to_string(),
+            AttributeValue::S(Utc::now().to_rfc3339()),
+        );
+
+        if update_parts.is_empty() {
+            return Ok(());
+        }
+
+        let update_expression = format!("SET {}", update_parts.join(", "));
+
+        let mut request_builder = self
+            .client
+            .update_item()
+            .table_name(&self.webhooks_table)
+            .key("webhookId", AttributeValue::S(webhook_id.to_string()))
+            .update_expression(update_expression);
+
+        // "name" is a reserved word in DynamoDB
+        if request.name.is_some() {
+            request_builder =
+                request_builder.expression_attribute_names("#n".to_string(), "name".to_string());
+        }
+
+        for (key, value) in expression_values {
+            request_builder = request_builder.expression_attribute_values(key, value);
+        }
+
+        request_builder
+            .send()
+            .await
+            .map_err(|e| AppError::DatabaseError(e.to_string()))?;
+
+        info!(webhook_id = %webhook_id, "Webhook updated successfully");
+        Ok(())
+    }
+
+    #[instrument(skip(self), fields(table = %self.webhooks_table))]
+    async fn delete_webhook(&self, webhook_id: &str) -> Result<()> {
+        // Soft delete - set isActive to false
+        self.client
+            .update_item()
+            .table_name(&self.webhooks_table)
+            .key("webhookId", AttributeValue::S(webhook_id.to_string()))
+            .update_expression("SET isActive = :active, updatedAt = :updatedAt")
+            .expression_attribute_values(":active", AttributeValue::Bool(false))
+            .expression_attribute_values(":updatedAt", AttributeValue::S(Utc::now().to_rfc3339()))
+            .send()
+            .await
+            .map_err(|e| AppError::DatabaseError(e.to_string()))?;
+
+        info!(webhook_id = %webhook_id, "Webhook deactivated (soft delete)");
         Ok(())
     }
 }

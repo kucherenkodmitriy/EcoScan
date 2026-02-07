@@ -8,7 +8,7 @@
 #   ARCHITECTURE - Optional. Either 'x86_64' (default) or 'arm64'
 #   SERVICE      - Optional. Which service to build:
 #                  'all' (default), 'bin-status-reporter', 'lambda-authorizer',
-#                  'admin-dashboard-api', 'contact-form-handler'
+#                  'admin-dashboard-api', 'contact-form-handler', 'webhook-sender'
 #
 # Examples:
 #   ./build-lambda.sh                          # Build all services for x86_64
@@ -71,7 +71,7 @@ package_service() {
 # Determine which packages to build
 case "$SERVICE" in
   all)
-    PACKAGES="-p bin-status-reporter -p lambda-authorizer -p admin-dashboard-api -p contact-form-handler"
+    PACKAGES="-p bin-status-reporter -p lambda-authorizer -p admin-dashboard-api -p contact-form-handler -p webhook-sender"
     ;;
   bin-status-reporter)
     PACKAGES="-p bin-status-reporter"
@@ -84,6 +84,9 @@ case "$SERVICE" in
     ;;
   contact-form-handler)
     PACKAGES="-p contact-form-handler"
+    ;;
+  webhook-sender)
+    PACKAGES="-p webhook-sender"
     ;;
   *)
     echo "Error: Unknown service '$SERVICE'" >&2
@@ -117,6 +120,7 @@ case "$SERVICE" in
     package_service "authorizer-bootstrap" "authorizer.zip"
     package_service "admin-bootstrap" "admin-dashboard.zip"
     package_service "contact-form-handler" "contact-form-handler.zip"
+    package_service "webhook-bootstrap" "webhook-sender.zip"
     ;;
   bin-status-reporter)
     package_service "bootstrap" "lambda.zip"
@@ -130,6 +134,9 @@ case "$SERVICE" in
   contact-form-handler)
     package_service "contact-form-handler" "contact-form-handler.zip"
     ;;
+  webhook-sender)
+    package_service "webhook-bootstrap" "webhook-sender.zip"
+    ;;
 esac
 
 echo ""
@@ -140,4 +147,5 @@ echo "Artifacts:"
 [ -f "$TARGET_DIR/authorizer.zip" ] && echo "  - authorizer.zip: $(ls -lh "$TARGET_DIR/authorizer.zip" | awk '{print $5}')"
 [ -f "$TARGET_DIR/admin-dashboard.zip" ] && echo "  - admin-dashboard.zip: $(ls -lh "$TARGET_DIR/admin-dashboard.zip" | awk '{print $5}')"
 [ -f "$TARGET_DIR/contact-form-handler.zip" ] && echo "  - contact-form-handler.zip: $(ls -lh "$TARGET_DIR/contact-form-handler.zip" | awk '{print $5}')"
+[ -f "$TARGET_DIR/webhook-sender.zip" ] && echo "  - webhook-sender.zip: $(ls -lh "$TARGET_DIR/webhook-sender.zip" | awk '{print $5}')"
 echo -e "\n✅ Build successful!"

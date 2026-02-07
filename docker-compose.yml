@@ -9,7 +9,7 @@ services:
       - DOCKER_HOST=unix:///var/run/docker.sock
       - LAMBDA_EXECUTOR=docker-reuse
       - AWS_DEFAULT_REGION=${AWS_DEFAULT_REGION:-eu-central-1}
-      - SERVICES=dynamodb,s3,lambda,cloudformation,apigateway,iam,logs,sqs,secretsmanager
+      - SERVICES=dynamodb,s3,lambda,cloudformation,apigateway,iam,logs,sqs,secretsmanager,sns
       - MAIN_CONTAINER_NAME=ecoscan-localstack
       - LAMBDA_DOCKER_NETWORK=ecoscan-net
 

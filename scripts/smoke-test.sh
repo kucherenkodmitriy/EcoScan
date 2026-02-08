@@ -178,6 +178,47 @@ else
 fi
 echo ""
 
+# Test 7: Frontend SPA Routing (if CloudFront is configured)
+if [ "$ENVIRONMENT" != "local" ]; then
+    echo "🔍 Test 7: Frontend SPA Routing"
+
+    # Get CloudFront domain
+    cd "$PROJECT_ROOT/infrastructure/layers/04-frontend"
+    FRONTEND_URL=$(terraform output -raw frontend_url 2>/dev/null || echo "")
+
+    if [ -n "$FRONTEND_URL" ] && [ "$FRONTEND_URL" != "http://localhost:3000" ]; then
+        echo "   Testing CloudFront URL: $FRONTEND_URL"
+
+        # Test root path
+        ROOT_STATUS=$(curl -s -o /dev/null -w "%{http_code}" "$FRONTEND_URL/" || echo "000")
+        if [ "$ROOT_STATUS" != "200" ]; then
+            echo -e "${RED}❌ Frontend root returned HTTP $ROOT_STATUS${NC}"
+            exit 1
+        fi
+        echo -e "${GREEN}✓${NC} Root path (/) returns 200"
+
+        # Test SPA route - this will fail if 403 error response is not configured
+        LOGIN_STATUS=$(curl -s -o /dev/null -w "%{http_code}" "$FRONTEND_URL/login" || echo "000")
+        if [ "$LOGIN_STATUS" != "200" ]; then
+            echo -e "${RED}❌ Frontend /login returned HTTP $LOGIN_STATUS${NC}"
+            echo -e "${RED}❌ SPA routing not working - CloudFront custom error response for 403 may be missing${NC}"
+            exit 1
+        fi
+        echo -e "${GREEN}✓${NC} SPA route (/login) returns 200"
+
+        # Test another SPA route
+        DASHBOARD_STATUS=$(curl -s -o /dev/null -w "%{http_code}" "$FRONTEND_URL/dashboard" || echo "000")
+        if [ "$DASHBOARD_STATUS" != "200" ]; then
+            echo -e "${YELLOW}⚠${NC}  Frontend /dashboard returned HTTP $DASHBOARD_STATUS"
+        else
+            echo -e "${GREEN}✓${NC} SPA route (/dashboard) returns 200"
+        fi
+    else
+        echo "   Skipping frontend tests (CloudFront not configured)"
+    fi
+    echo ""
+fi
+
 # Summary
 echo -e "${GREEN}========================================${NC}"
 echo -e "${GREEN}✅ Smoke Tests Passed!${NC}"
@@ -186,6 +227,9 @@ echo ""
 echo "Summary:"
 echo "  Environment: $ENVIRONMENT"
 echo "  API Endpoint: $API_ENDPOINT"
+if [ -n "$FRONTEND_URL" ] && [ "$FRONTEND_URL" != "http://localhost:3000" ]; then
+    echo "  Frontend URL: $FRONTEND_URL"
+fi
 echo "  Test Bin ID: $TEST_BIN_ID"
 echo "  Last Test Status: $TEST_STATUS%"
 if [ -n "$BIN_DATA" ] && [ "$BIN_DATA" != "None" ]; then

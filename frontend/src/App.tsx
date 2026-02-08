@@ -9,12 +9,11 @@ import QRPrint from './pages/QRPrint'
 import PrivacyPolicy from './pages/PrivacyPolicy'
 import Terms from './pages/Terms'
 import Landing from './pages/landing/Landing'
-import WebhookList from './pages/WebhookList'
 import WebhookDetail from './pages/WebhookDetail'
 import WebhookForm from './pages/WebhookForm'
-import ApiKeyList from './pages/ApiKeyList'
 import ApiKeyCreate from './pages/ApiKeyCreate'
 import ApiKeyDetail from './pages/ApiKeyDetail'
+import Settings from './pages/Settings'
 import CookieConsent from './components/CookieConsent'
 
 function PrivateRoute({ children }: { children: React.ReactNode }) {
@@ -69,10 +68,22 @@ function App() {
         }
       />
       <Route
-        path="/webhooks"
+        path="/settings"
+        element={<Navigate to="/settings/api-keys" />}
+      />
+      <Route
+        path="/settings/api-keys"
         element={
           <PrivateRoute>
-            <WebhookList />
+            <Settings />
+          </PrivateRoute>
+        }
+      />
+      <Route
+        path="/settings/webhooks"
+        element={
+          <PrivateRoute>
+            <Settings />
           </PrivateRoute>
         }
       />
@@ -97,14 +108,6 @@ function App() {
         element={
           <PrivateRoute>
             <WebhookForm />
-          </PrivateRoute>
-        }
-      />
-      <Route
-        path="/api-keys"
-        element={
-          <PrivateRoute>
-            <ApiKeyList />
           </PrivateRoute>
         }
       />

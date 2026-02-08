@@ -782,6 +782,8 @@ impl ApiKeyRepository for DynamoDbRepository {
             .client
             .scan()
             .table_name(&self.api_keys_table)
+            .filter_expression("isActive = :active")
+            .expression_attribute_values(":active", AttributeValue::Bool(true))
             .send()
             .await
             .map_err(|e| AppError::DatabaseError(e.to_string()))?;

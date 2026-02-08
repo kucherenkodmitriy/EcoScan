@@ -357,6 +357,11 @@
       "copyright": "© 2026 EcoScan. Alle Rechte vorbehalten."
     }
   },
+  "settings": {
+    "title": "Einstellungen",
+    "apiKeys": "API-Schlüssel",
+    "webhooks": "Webhooks"
+  },
   "webhooks": {
     "title": "Webhooks",
     "newWebhook": "+ Neuer Webhook",

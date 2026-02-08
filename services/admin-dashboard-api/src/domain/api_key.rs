@@ -80,7 +80,7 @@ impl From<&ApiKeyRecord> for ApiKeyInfo {
 /// Response when creating an API key - includes the raw key (shown only once)
 #[derive(Debug, Serialize)]
 pub struct ApiKeyCreatedResponse {
-    pub key: String,
+    pub api_key: String,
     pub key_id: String,
     pub key_prefix: String,
     pub name: String,

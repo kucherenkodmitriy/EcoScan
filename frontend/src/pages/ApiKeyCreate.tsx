@@ -94,7 +94,7 @@ export default function ApiKeyCreate() {
       <div className={styles.page}>
         <header className={styles.header}>
           <div className={styles.headerLeft}>
-            <Link to="/api-keys" className={styles.backLink}>&larr; {t('apiKeys.backToList')}</Link>
+            <Link to="/settings/api-keys" className={styles.backLink}>&larr; {t('apiKeys.backToList')}</Link>
             <h1>{t('common.appName')}</h1>
           </div>
           <div className={styles.headerRight}>
@@ -138,7 +138,7 @@ export default function ApiKeyCreate() {
             </div>
 
             <div className={styles.formActions}>
-              <button className="btn btn-primary" onClick={() => navigate('/api-keys')}>
+              <button className="btn btn-primary" onClick={() => navigate('/settings/api-keys')}>
                 {t('apiKeys.done')}
               </button>
             </div>
@@ -152,7 +152,7 @@ export default function ApiKeyCreate() {
     <div className={styles.page}>
       <header className={styles.header}>
         <div className={styles.headerLeft}>
-          <Link to="/api-keys" className={styles.backLink}>&larr; {t('common.cancel')}</Link>
+          <Link to="/settings/api-keys" className={styles.backLink}>&larr; {t('common.cancel')}</Link>
           <h1>{t('common.appName')}</h1>
         </div>
         <div className={styles.headerRight}>
@@ -219,7 +219,7 @@ export default function ApiKeyCreate() {
             </div>
 
             <div className={styles.formActions}>
-              <Link to="/api-keys" className={`btn ${styles.btnCancel}`}>
+              <Link to="/settings/api-keys" className={`btn ${styles.btnCancel}`}>
                 {t('common.cancel')}
               </Link>
               <button type="submit" className="btn btn-primary" disabled={saving}>

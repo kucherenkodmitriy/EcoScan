@@ -12,9 +12,8 @@ function formatDate(dateStr: string | null, neverText: string): string {
   return date.toLocaleDateString() + ' ' + date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
 }
 
-export default function WebhookList() {
+export function WebhooksContent() {
   const { t } = useTranslation()
-  const { user, logout } = useAuth()
   const [webhooks, setWebhooks] = useState<WebhookInfo[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
@@ -52,6 +51,98 @@ export default function WebhookList() {
   }
 
   return (
+    <>
+      <div className={styles.toolbar}>
+        <h2>{t('webhooks.title')}</h2>
+        <div style={{ display: 'flex', gap: '8px' }}>
+          <button className="btn btn-secondary" onClick={loadWebhooks} disabled={loading} style={{ background: '#666', border: 'none' }}>
+            {loading ? t('common.loading') : t('common.refresh')}
+          </button>
+          <Link to="/webhooks/new" className="btn btn-primary">
+            {t('webhooks.newWebhook')}
+          </Link>
+        </div>
+      </div>
+
+      {error && <div className="error-message">{error}</div>}
+
+      {loading && webhooks.length === 0 ? (
+        <div className={styles.loadingState}>
+          <div className="spinner"></div>
+          <p>{t('common.loading')}</p>
+        </div>
+      ) : webhooks.length === 0 ? (
+        <div className={styles.emptyState}>
+          <p>{t('webhooks.noWebhooks')}</p>
+        </div>
+      ) : (
+        <div className={styles.tableContainer}>
+          <table className={styles.table}>
+            <thead>
+              <tr>
+                <th>{t('webhooks.table.name')}</th>
+                <th>{t('webhooks.table.url')}</th>
+                <th>{t('webhooks.table.status')}</th>
+                <th>{t('webhooks.table.deliveries')}</th>
+                <th>{t('webhooks.table.lastTriggered')}</th>
+                <th>{t('webhooks.table.actions')}</th>
+              </tr>
+            </thead>
+            <tbody>
+              {webhooks.map((webhook) => (
+                <tr key={webhook.webhook_id}>
+                  <td>
+                    <Link to={`/webhooks/${webhook.webhook_id}`} className={styles.webhookLink}>
+                      <strong>{webhook.name}</strong>
+                    </Link>
+                  </td>
+                  <td>
+                    <div className={styles.urlCell}>{webhook.url}</div>
+                  </td>
+                  <td>
+                    <span className={`badge ${webhook.is_active ? 'badge-active' : 'badge-inactive'}`}>
+                      {webhook.is_active ? t('common.active') : t('common.inactive')}
+                    </span>
+                  </td>
+                  <td>
+                    <div className={styles.stats}>
+                      <span className={styles.successCount}>{webhook.success_count} ok</span>
+                      <span className={styles.failureCount}>{webhook.failure_count} fail</span>
+                    </div>
+                  </td>
+                  <td>{formatDate(webhook.last_triggered_at, t('common.never'))}</td>
+                  <td>
+                    <div className={styles.actions}>
+                      <Link to={`/webhooks/${webhook.webhook_id}`} className={styles.actionBtn}>
+                        {t('common.view')}
+                      </Link>
+                      <Link to={`/webhooks/${webhook.webhook_id}/edit`} className={styles.actionBtn}>
+                        {t('common.edit')}
+                      </Link>
+                      <button
+                        className={`${styles.actionBtn} ${styles.deleteBtn}`}
+                        onClick={() => handleDelete(webhook)}
+                        disabled={deletingId === webhook.webhook_id}
+                      >
+                        {deletingId === webhook.webhook_id ? '...' : t('common.delete')}
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+    </>
+  )
+}
+
+export default function WebhookList() {
+  const { t } = useTranslation()
+  const { user, logout } = useAuth()
+
+  return (
     <div className={styles.page}>
       <header className={styles.header}>
         <div className={styles.headerLeft}>
@@ -71,88 +162,7 @@ export default function WebhookList() {
       </header>
 
       <main className={styles.main}>
-        <div className={styles.toolbar}>
-          <h2>{t('webhooks.title')}</h2>
-          <div style={{ display: 'flex', gap: '8px' }}>
-            <button className="btn btn-secondary" onClick={loadWebhooks} disabled={loading} style={{ background: '#666', border: 'none' }}>
-              {loading ? t('common.loading') : t('common.refresh')}
-            </button>
-            <Link to="/webhooks/new" className="btn btn-primary">
-              {t('webhooks.newWebhook')}
-            </Link>
-          </div>
-        </div>
-
-        {error && <div className="error-message">{error}</div>}
-
-        {loading && webhooks.length === 0 ? (
-          <div className={styles.loadingState}>
-            <div className="spinner"></div>
-            <p>{t('common.loading')}</p>
-          </div>
-        ) : webhooks.length === 0 ? (
-          <div className={styles.emptyState}>
-            <p>{t('webhooks.noWebhooks')}</p>
-          </div>
-        ) : (
-          <div className={styles.tableContainer}>
-            <table className={styles.table}>
-              <thead>
-                <tr>
-                  <th>{t('webhooks.table.name')}</th>
-                  <th>{t('webhooks.table.url')}</th>
-                  <th>{t('webhooks.table.status')}</th>
-                  <th>{t('webhooks.table.deliveries')}</th>
-                  <th>{t('webhooks.table.lastTriggered')}</th>
-                  <th>{t('webhooks.table.actions')}</th>
-                </tr>
-              </thead>
-              <tbody>
-                {webhooks.map((webhook) => (
-                  <tr key={webhook.webhook_id}>
-                    <td>
-                      <Link to={`/webhooks/${webhook.webhook_id}`} className={styles.webhookLink}>
-                        <strong>{webhook.name}</strong>
-                      </Link>
-                    </td>
-                    <td>
-                      <div className={styles.urlCell}>{webhook.url}</div>
-                    </td>
-                    <td>
-                      <span className={`badge ${webhook.is_active ? 'badge-active' : 'badge-inactive'}`}>
-                        {webhook.is_active ? t('common.active') : t('common.inactive')}
-                      </span>
-                    </td>
-                    <td>
-                      <div className={styles.stats}>
-                        <span className={styles.successCount}>{webhook.success_count} ok</span>
-                        <span className={styles.failureCount}>{webhook.failure_count} fail</span>
-                      </div>
-                    </td>
-                    <td>{formatDate(webhook.last_triggered_at, t('common.never'))}</td>
-                    <td>
-                      <div className={styles.actions}>
-                        <Link to={`/webhooks/${webhook.webhook_id}`} className={styles.actionBtn}>
-                          {t('common.view')}
-                        </Link>
-                        <Link to={`/webhooks/${webhook.webhook_id}/edit`} className={styles.actionBtn}>
-                          {t('common.edit')}
-                        </Link>
-                        <button
-                          className={`${styles.actionBtn} ${styles.deleteBtn}`}
-                          onClick={() => handleDelete(webhook)}
-                          disabled={deletingId === webhook.webhook_id}
-                        >
-                          {deletingId === webhook.webhook_id ? '...' : t('common.delete')}
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        )}
+        <WebhooksContent />
       </main>
     </div>
   )

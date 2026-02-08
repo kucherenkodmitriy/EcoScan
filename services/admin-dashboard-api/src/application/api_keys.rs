@@ -63,7 +63,7 @@ pub async fn create_api_key(
     info!(key_id = %key_id, name = %request.name, "API key created");
 
     Ok(ApiKeyCreatedResponse {
-        key: raw_key,
+        api_key: raw_key,
         key_id,
         key_prefix,
         name: request.name,
@@ -207,7 +207,7 @@ mod tests {
             .await
             .unwrap();
 
-        assert!(result.key.starts_with("ek_live_"));
+        assert!(result.api_key.starts_with("ek_live_"));
         assert_eq!(result.name, "Test Key");
         assert_eq!(result.scopes, vec!["bins:read"]);
         assert!(!result.key_id.is_empty());
@@ -261,7 +261,7 @@ mod tests {
         // Verify the stored hash matches what we'd compute
         let stored = repo.keys.lock().unwrap();
         let record = &stored[0];
-        assert_eq!(record.key_hash, hash_api_key(&result.key));
+        assert_eq!(record.key_hash, hash_api_key(&result.api_key));
         assert_eq!(record.key_hash.len(), 64); // SHA-256 hex
     }
 

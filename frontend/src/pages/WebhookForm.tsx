@@ -112,7 +112,7 @@ export default function WebhookForm() {
     <div className={styles.page}>
       <header className={styles.header}>
         <div className={styles.headerLeft}>
-          <Link to={isEdit ? `/webhooks/${id}` : '/webhooks'} className={styles.backLink}>
+          <Link to={isEdit ? `/webhooks/${id}` : '/settings/webhooks'} className={styles.backLink}>
             &larr; {t('common.cancel')}
           </Link>
           <h1>{t('common.appName')}</h1>
@@ -242,7 +242,7 @@ export default function WebhookForm() {
 
               <div className={styles.formActions}>
                 <Link
-                  to={isEdit ? `/webhooks/${id}` : '/webhooks'}
+                  to={isEdit ? `/webhooks/${id}` : '/settings/webhooks'}
                   className={`btn ${styles.btnCancel}`}
                 >
                   {t('common.cancel')}

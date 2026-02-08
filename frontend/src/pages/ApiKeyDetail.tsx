@@ -51,7 +51,7 @@ export default function ApiKeyDetail() {
     setDeleting(true)
     try {
       await deleteApiKey(id)
-      navigate('/api-keys')
+      navigate('/settings/api-keys')
     } catch (err) {
       setError(err instanceof Error ? err.message : t('apiKeys.failedToDelete'))
       setDeleting(false)
@@ -62,7 +62,7 @@ export default function ApiKeyDetail() {
     <div className={styles.page}>
       <header className={styles.header}>
         <div className={styles.headerLeft}>
-          <Link to="/api-keys" className={styles.backLink}>&larr; {t('apiKeys.backToList')}</Link>
+          <Link to="/settings/api-keys" className={styles.backLink}>&larr; {t('apiKeys.backToList')}</Link>
           <h1>{t('common.appName')}</h1>
         </div>
         <div className={styles.headerRight}>

@@ -12,9 +12,8 @@ function formatDate(dateStr: string | null, neverText: string): string {
   return date.toLocaleDateString() + ' ' + date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
 }
 
-export default function ApiKeyList() {
+export function ApiKeysContent() {
   const { t } = useTranslation()
-  const { user, logout } = useAuth()
   const [apiKeys, setApiKeys] = useState<ApiKeyInfo[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
@@ -52,6 +51,98 @@ export default function ApiKeyList() {
   }
 
   return (
+    <>
+      <div className={styles.toolbar}>
+        <h2>{t('apiKeys.title')}</h2>
+        <div style={{ display: 'flex', gap: '8px' }}>
+          <button className="btn btn-secondary" onClick={loadApiKeys} disabled={loading} style={{ background: '#666', border: 'none' }}>
+            {loading ? t('common.loading') : t('common.refresh')}
+          </button>
+          <Link to="/api-keys/new" className="btn btn-primary">
+            {t('apiKeys.newApiKey')}
+          </Link>
+        </div>
+      </div>
+
+      {error && <div className="error-message">{error}</div>}
+
+      {loading && apiKeys.length === 0 ? (
+        <div className={styles.loadingState}>
+          <div className="spinner"></div>
+          <p>{t('common.loading')}</p>
+        </div>
+      ) : apiKeys.length === 0 ? (
+        <div className={styles.emptyState}>
+          <p>{t('apiKeys.noApiKeys')}</p>
+        </div>
+      ) : (
+        <div className={styles.tableContainer}>
+          <table className={styles.table}>
+            <thead>
+              <tr>
+                <th>{t('apiKeys.table.name')}</th>
+                <th>{t('apiKeys.table.prefix')}</th>
+                <th>{t('apiKeys.table.scopes')}</th>
+                <th>{t('apiKeys.table.status')}</th>
+                <th>{t('apiKeys.table.createdBy')}</th>
+                <th>{t('apiKeys.table.lastUsed')}</th>
+                <th>{t('apiKeys.table.actions')}</th>
+              </tr>
+            </thead>
+            <tbody>
+              {apiKeys.map((apiKey) => (
+                <tr key={apiKey.key_id}>
+                  <td>
+                    <Link to={`/api-keys/${apiKey.key_id}`} className={styles.keyLink}>
+                      <strong>{apiKey.name}</strong>
+                    </Link>
+                  </td>
+                  <td>
+                    <code className={styles.prefix}>{apiKey.key_prefix}...</code>
+                  </td>
+                  <td>
+                    <div className={styles.scopes}>
+                      {apiKey.scopes.map((s) => (
+                        <span key={s} className={styles.scopeTag}>{s}</span>
+                      ))}
+                    </div>
+                  </td>
+                  <td>
+                    <span className={`badge ${apiKey.is_active ? 'badge-active' : 'badge-inactive'}`}>
+                      {apiKey.is_active ? t('common.active') : t('common.inactive')}
+                    </span>
+                  </td>
+                  <td>{apiKey.created_by}</td>
+                  <td>{formatDate(apiKey.last_used_at, t('common.never'))}</td>
+                  <td>
+                    <div className={styles.actions}>
+                      <Link to={`/api-keys/${apiKey.key_id}`} className={styles.actionBtn}>
+                        {t('common.view')}
+                      </Link>
+                      <button
+                        className={`${styles.actionBtn} ${styles.deleteBtn}`}
+                        onClick={() => handleDelete(apiKey)}
+                        disabled={deletingId === apiKey.key_id}
+                      >
+                        {deletingId === apiKey.key_id ? '...' : t('common.delete')}
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+    </>
+  )
+}
+
+export default function ApiKeyList() {
+  const { t } = useTranslation()
+  const { user, logout } = useAuth()
+
+  return (
     <div className={styles.page}>
       <header className={styles.header}>
         <div className={styles.headerLeft}>
@@ -71,88 +162,7 @@ export default function ApiKeyList() {
       </header>
 
       <main className={styles.main}>
-        <div className={styles.toolbar}>
-          <h2>{t('apiKeys.title')}</h2>
-          <div style={{ display: 'flex', gap: '8px' }}>
-            <button className="btn btn-secondary" onClick={loadApiKeys} disabled={loading} style={{ background: '#666', border: 'none' }}>
-              {loading ? t('common.loading') : t('common.refresh')}
-            </button>
-            <Link to="/api-keys/new" className="btn btn-primary">
-              {t('apiKeys.newApiKey')}
-            </Link>
-          </div>
-        </div>
-
-        {error && <div className="error-message">{error}</div>}
-
-        {loading && apiKeys.length === 0 ? (
-          <div className={styles.loadingState}>
-            <div className="spinner"></div>
-            <p>{t('common.loading')}</p>
-          </div>
-        ) : apiKeys.length === 0 ? (
-          <div className={styles.emptyState}>
-            <p>{t('apiKeys.noApiKeys')}</p>
-          </div>
-        ) : (
-          <div className={styles.tableContainer}>
-            <table className={styles.table}>
-              <thead>
-                <tr>
-                  <th>{t('apiKeys.table.name')}</th>
-                  <th>{t('apiKeys.table.prefix')}</th>
-                  <th>{t('apiKeys.table.scopes')}</th>
-                  <th>{t('apiKeys.table.status')}</th>
-                  <th>{t('apiKeys.table.createdBy')}</th>
-                  <th>{t('apiKeys.table.lastUsed')}</th>
-                  <th>{t('apiKeys.table.actions')}</th>
-                </tr>
-              </thead>
-              <tbody>
-                {apiKeys.map((apiKey) => (
-                  <tr key={apiKey.key_id}>
-                    <td>
-                      <Link to={`/api-keys/${apiKey.key_id}`} className={styles.keyLink}>
-                        <strong>{apiKey.name}</strong>
-                      </Link>
-                    </td>
-                    <td>
-                      <code className={styles.prefix}>{apiKey.key_prefix}...</code>
-                    </td>
-                    <td>
-                      <div className={styles.scopes}>
-                        {apiKey.scopes.map((s) => (
-                          <span key={s} className={styles.scopeTag}>{s}</span>
-                        ))}
-                      </div>
-                    </td>
-                    <td>
-                      <span className={`badge ${apiKey.is_active ? 'badge-active' : 'badge-inactive'}`}>
-                        {apiKey.is_active ? t('common.active') : t('common.inactive')}
-                      </span>
-                    </td>
-                    <td>{apiKey.created_by}</td>
-                    <td>{formatDate(apiKey.last_used_at, t('common.never'))}</td>
-                    <td>
-                      <div className={styles.actions}>
-                        <Link to={`/api-keys/${apiKey.key_id}`} className={styles.actionBtn}>
-                          {t('common.view')}
-                        </Link>
-                        <button
-                          className={`${styles.actionBtn} ${styles.deleteBtn}`}
-                          onClick={() => handleDelete(apiKey)}
-                          disabled={deletingId === apiKey.key_id}
-                        >
-                          {deletingId === apiKey.key_id ? '...' : t('common.delete')}
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        )}
+        <ApiKeysContent />
       </main>
     </div>
   )

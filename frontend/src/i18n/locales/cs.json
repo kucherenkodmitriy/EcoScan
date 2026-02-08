@@ -357,6 +357,11 @@
       "copyright": "© 2026 EcoScan. Všechna práva vyhrazena."
     }
   },
+  "settings": {
+    "title": "Nastavení",
+    "apiKeys": "API klíče",
+    "webhooks": "Webhooky"
+  },
   "webhooks": {
     "title": "Webhooky",
     "newWebhook": "+ Nový Webhook",

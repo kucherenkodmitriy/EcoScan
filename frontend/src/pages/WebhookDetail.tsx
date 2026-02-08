@@ -51,7 +51,7 @@ export default function WebhookDetail() {
     setDeleting(true)
     try {
       await deleteWebhook(id)
-      navigate('/webhooks')
+      navigate('/settings/webhooks')
     } catch (err) {
       setError(err instanceof Error ? err.message : t('webhooks.failedToDelete'))
       setDeleting(false)
@@ -62,7 +62,7 @@ export default function WebhookDetail() {
     <div className={styles.page}>
       <header className={styles.header}>
         <div className={styles.headerLeft}>
-          <Link to="/webhooks" className={styles.backLink}>&larr; {t('webhooks.backToList')}</Link>
+          <Link to="/settings/webhooks" className={styles.backLink}>&larr; {t('webhooks.backToList')}</Link>
           <h1>{t('common.appName')}</h1>
         </div>
         <div className={styles.headerRight}>

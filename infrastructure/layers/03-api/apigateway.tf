@@ -262,6 +262,29 @@ resource "aws_api_gateway_deployment" "api_deployment" {
       aws_api_gateway_integration.options_admin_webhooks_integration.id,
       aws_api_gateway_method.options_admin_webhook.id,
       aws_api_gateway_integration.options_admin_webhook_integration.id,
+      # External API endpoints (/api/bins)
+      aws_api_gateway_authorizer.api_key_authorizer.id,
+      aws_api_gateway_resource.api.id,
+      aws_api_gateway_resource.api_bins.id,
+      aws_api_gateway_resource.api_bin_id.id,
+      aws_api_gateway_method.options_api_bins.id,
+      aws_api_gateway_integration.options_api_bins_integration.id,
+      aws_api_gateway_method.get_api_bins.id,
+      aws_api_gateway_method.options_api_bin.id,
+      aws_api_gateway_integration.options_api_bin_integration.id,
+      aws_api_gateway_method.get_api_bin.id,
+      # Admin API key management endpoints
+      aws_api_gateway_resource.admin_api_keys.id,
+      aws_api_gateway_resource.admin_api_key_id.id,
+      aws_api_gateway_method.get_admin_api_keys.id,
+      aws_api_gateway_method.post_admin_api_keys.id,
+      aws_api_gateway_method.get_admin_api_key.id,
+      aws_api_gateway_method.put_admin_api_key.id,
+      aws_api_gateway_method.delete_admin_api_key.id,
+      aws_api_gateway_method.options_admin_api_keys.id,
+      aws_api_gateway_integration.options_admin_api_keys_integration.id,
+      aws_api_gateway_method.options_admin_api_key.id,
+      aws_api_gateway_integration.options_admin_api_key_integration.id,
     ]))
   }
 
@@ -449,7 +472,8 @@ resource "aws_iam_role_policy" "apigateway_lambda_policy" {
         Resource = [
           local.lambda_authorizer_arn,
           local.admin_dashboard_arn,
-          local.contact_form_arn
+          local.contact_form_arn,
+          local.api_key_authorizer_arn
         ]
       }
     ]
@@ -1010,6 +1034,281 @@ resource "aws_api_gateway_integration" "delete_admin_webhook_integration" {
   rest_api_id             = aws_api_gateway_rest_api.api.id
   resource_id             = aws_api_gateway_resource.admin_webhook_id.id
   http_method             = aws_api_gateway_method.delete_admin_webhook.http_method
+  integration_http_method = "POST"
+  type                    = "AWS_PROXY"
+  uri                     = "arn:aws:apigateway:${var.aws_region}:lambda:path/2015-03-31/functions/${local.admin_dashboard_arn}/invocations"
+  credentials             = aws_iam_role.apigateway_lambda_role.arn
+}
+
+# =============================================================================
+# API Key Authorizer (REQUEST type for X-API-Key header)
+# =============================================================================
+
+resource "aws_api_gateway_authorizer" "api_key_authorizer" {
+  name                   = "${var.environment}-${var.project_name}-apikey-authorizer"
+  rest_api_id            = aws_api_gateway_rest_api.api.id
+  authorizer_uri         = "arn:aws:apigateway:${var.aws_region}:lambda:path/2015-03-31/functions/${local.api_key_authorizer_arn}/invocations"
+  authorizer_credentials = aws_iam_role.apigateway_lambda_role.arn
+  type                   = "REQUEST"
+  identity_source        = "method.request.header.X-API-Key"
+
+  # Cache authorization for 5 minutes
+  authorizer_result_ttl_in_seconds = var.environment == "local" ? 0 : 300
+}
+
+# =============================================================================
+# External API Resources (/api/bins) - Protected by API Key
+# =============================================================================
+
+resource "aws_api_gateway_resource" "api" {
+  rest_api_id = aws_api_gateway_rest_api.api.id
+  parent_id   = aws_api_gateway_rest_api.api.root_resource_id
+  path_part   = "api"
+}
+
+resource "aws_api_gateway_resource" "api_bins" {
+  rest_api_id = aws_api_gateway_rest_api.api.id
+  parent_id   = aws_api_gateway_resource.api.id
+  path_part   = "bins"
+}
+
+resource "aws_api_gateway_resource" "api_bin_id" {
+  rest_api_id = aws_api_gateway_rest_api.api.id
+  parent_id   = aws_api_gateway_resource.api_bins.id
+  path_part   = "{bin_id}"
+}
+
+# OPTIONS /api/bins - CORS preflight
+resource "aws_api_gateway_method" "options_api_bins" {
+  rest_api_id   = aws_api_gateway_rest_api.api.id
+  resource_id   = aws_api_gateway_resource.api_bins.id
+  http_method   = "OPTIONS"
+  authorization = "NONE"
+}
+
+resource "aws_api_gateway_integration" "options_api_bins_integration" {
+  rest_api_id             = aws_api_gateway_rest_api.api.id
+  resource_id             = aws_api_gateway_resource.api_bins.id
+  http_method             = aws_api_gateway_method.options_api_bins.http_method
+  integration_http_method = "POST"
+  type                    = "AWS_PROXY"
+  uri                     = "arn:aws:apigateway:${var.aws_region}:lambda:path/2015-03-31/functions/${local.admin_dashboard_arn}/invocations"
+  credentials             = aws_iam_role.apigateway_lambda_role.arn
+}
+
+# GET /api/bins - List bins (requires API key)
+resource "aws_api_gateway_method" "get_api_bins" {
+  rest_api_id   = aws_api_gateway_rest_api.api.id
+  resource_id   = aws_api_gateway_resource.api_bins.id
+  http_method   = "GET"
+  authorization = "CUSTOM"
+  authorizer_id = aws_api_gateway_authorizer.api_key_authorizer.id
+}
+
+resource "aws_api_gateway_integration" "get_api_bins_integration" {
+  rest_api_id             = aws_api_gateway_rest_api.api.id
+  resource_id             = aws_api_gateway_resource.api_bins.id
+  http_method             = aws_api_gateway_method.get_api_bins.http_method
+  integration_http_method = "POST"
+  type                    = "AWS_PROXY"
+  uri                     = "arn:aws:apigateway:${var.aws_region}:lambda:path/2015-03-31/functions/${local.admin_dashboard_arn}/invocations"
+  credentials             = aws_iam_role.apigateway_lambda_role.arn
+}
+
+# OPTIONS /api/bins/{bin_id} - CORS preflight
+resource "aws_api_gateway_method" "options_api_bin" {
+  rest_api_id   = aws_api_gateway_rest_api.api.id
+  resource_id   = aws_api_gateway_resource.api_bin_id.id
+  http_method   = "OPTIONS"
+  authorization = "NONE"
+}
+
+resource "aws_api_gateway_integration" "options_api_bin_integration" {
+  rest_api_id             = aws_api_gateway_rest_api.api.id
+  resource_id             = aws_api_gateway_resource.api_bin_id.id
+  http_method             = aws_api_gateway_method.options_api_bin.http_method
+  integration_http_method = "POST"
+  type                    = "AWS_PROXY"
+  uri                     = "arn:aws:apigateway:${var.aws_region}:lambda:path/2015-03-31/functions/${local.admin_dashboard_arn}/invocations"
+  credentials             = aws_iam_role.apigateway_lambda_role.arn
+}
+
+# GET /api/bins/{bin_id} - Get single bin (requires API key)
+resource "aws_api_gateway_method" "get_api_bin" {
+  rest_api_id   = aws_api_gateway_rest_api.api.id
+  resource_id   = aws_api_gateway_resource.api_bin_id.id
+  http_method   = "GET"
+  authorization = "CUSTOM"
+  authorizer_id = aws_api_gateway_authorizer.api_key_authorizer.id
+
+  request_parameters = {
+    "method.request.path.bin_id" = true
+  }
+}
+
+resource "aws_api_gateway_integration" "get_api_bin_integration" {
+  rest_api_id             = aws_api_gateway_rest_api.api.id
+  resource_id             = aws_api_gateway_resource.api_bin_id.id
+  http_method             = aws_api_gateway_method.get_api_bin.http_method
+  integration_http_method = "POST"
+  type                    = "AWS_PROXY"
+  uri                     = "arn:aws:apigateway:${var.aws_region}:lambda:path/2015-03-31/functions/${local.admin_dashboard_arn}/invocations"
+  credentials             = aws_iam_role.apigateway_lambda_role.arn
+}
+
+# =============================================================================
+# Admin API Key Management Resources (/admin/api-keys)
+# =============================================================================
+
+resource "aws_api_gateway_resource" "admin_api_keys" {
+  rest_api_id = aws_api_gateway_rest_api.api.id
+  parent_id   = aws_api_gateway_resource.admin.id
+  path_part   = "api-keys"
+}
+
+resource "aws_api_gateway_resource" "admin_api_key_id" {
+  rest_api_id = aws_api_gateway_rest_api.api.id
+  parent_id   = aws_api_gateway_resource.admin_api_keys.id
+  path_part   = "{key_id}"
+}
+
+# OPTIONS /admin/api-keys - CORS preflight
+resource "aws_api_gateway_method" "options_admin_api_keys" {
+  rest_api_id   = aws_api_gateway_rest_api.api.id
+  resource_id   = aws_api_gateway_resource.admin_api_keys.id
+  http_method   = "OPTIONS"
+  authorization = "NONE"
+}
+
+resource "aws_api_gateway_integration" "options_admin_api_keys_integration" {
+  rest_api_id             = aws_api_gateway_rest_api.api.id
+  resource_id             = aws_api_gateway_resource.admin_api_keys.id
+  http_method             = aws_api_gateway_method.options_admin_api_keys.http_method
+  integration_http_method = "POST"
+  type                    = "AWS_PROXY"
+  uri                     = "arn:aws:apigateway:${var.aws_region}:lambda:path/2015-03-31/functions/${local.admin_dashboard_arn}/invocations"
+  credentials             = aws_iam_role.apigateway_lambda_role.arn
+}
+
+# GET /admin/api-keys - List all API keys (requires JWT)
+resource "aws_api_gateway_method" "get_admin_api_keys" {
+  rest_api_id   = aws_api_gateway_rest_api.api.id
+  resource_id   = aws_api_gateway_resource.admin_api_keys.id
+  http_method   = "GET"
+  authorization = "CUSTOM"
+  authorizer_id = aws_api_gateway_authorizer.jwt_authorizer.id
+}
+
+resource "aws_api_gateway_integration" "get_admin_api_keys_integration" {
+  rest_api_id             = aws_api_gateway_rest_api.api.id
+  resource_id             = aws_api_gateway_resource.admin_api_keys.id
+  http_method             = aws_api_gateway_method.get_admin_api_keys.http_method
+  integration_http_method = "POST"
+  type                    = "AWS_PROXY"
+  uri                     = "arn:aws:apigateway:${var.aws_region}:lambda:path/2015-03-31/functions/${local.admin_dashboard_arn}/invocations"
+  credentials             = aws_iam_role.apigateway_lambda_role.arn
+}
+
+# POST /admin/api-keys - Create new API key (requires JWT)
+resource "aws_api_gateway_method" "post_admin_api_keys" {
+  rest_api_id   = aws_api_gateway_rest_api.api.id
+  resource_id   = aws_api_gateway_resource.admin_api_keys.id
+  http_method   = "POST"
+  authorization = "CUSTOM"
+  authorizer_id = aws_api_gateway_authorizer.jwt_authorizer.id
+}
+
+resource "aws_api_gateway_integration" "post_admin_api_keys_integration" {
+  rest_api_id             = aws_api_gateway_rest_api.api.id
+  resource_id             = aws_api_gateway_resource.admin_api_keys.id
+  http_method             = aws_api_gateway_method.post_admin_api_keys.http_method
+  integration_http_method = "POST"
+  type                    = "AWS_PROXY"
+  uri                     = "arn:aws:apigateway:${var.aws_region}:lambda:path/2015-03-31/functions/${local.admin_dashboard_arn}/invocations"
+  credentials             = aws_iam_role.apigateway_lambda_role.arn
+}
+
+# OPTIONS /admin/api-keys/{key_id} - CORS preflight
+resource "aws_api_gateway_method" "options_admin_api_key" {
+  rest_api_id   = aws_api_gateway_rest_api.api.id
+  resource_id   = aws_api_gateway_resource.admin_api_key_id.id
+  http_method   = "OPTIONS"
+  authorization = "NONE"
+}
+
+resource "aws_api_gateway_integration" "options_admin_api_key_integration" {
+  rest_api_id             = aws_api_gateway_rest_api.api.id
+  resource_id             = aws_api_gateway_resource.admin_api_key_id.id
+  http_method             = aws_api_gateway_method.options_admin_api_key.http_method
+  integration_http_method = "POST"
+  type                    = "AWS_PROXY"
+  uri                     = "arn:aws:apigateway:${var.aws_region}:lambda:path/2015-03-31/functions/${local.admin_dashboard_arn}/invocations"
+  credentials             = aws_iam_role.apigateway_lambda_role.arn
+}
+
+# GET /admin/api-keys/{key_id} - Get single API key (requires JWT)
+resource "aws_api_gateway_method" "get_admin_api_key" {
+  rest_api_id   = aws_api_gateway_rest_api.api.id
+  resource_id   = aws_api_gateway_resource.admin_api_key_id.id
+  http_method   = "GET"
+  authorization = "CUSTOM"
+  authorizer_id = aws_api_gateway_authorizer.jwt_authorizer.id
+
+  request_parameters = {
+    "method.request.path.key_id" = true
+  }
+}
+
+resource "aws_api_gateway_integration" "get_admin_api_key_integration" {
+  rest_api_id             = aws_api_gateway_rest_api.api.id
+  resource_id             = aws_api_gateway_resource.admin_api_key_id.id
+  http_method             = aws_api_gateway_method.get_admin_api_key.http_method
+  integration_http_method = "POST"
+  type                    = "AWS_PROXY"
+  uri                     = "arn:aws:apigateway:${var.aws_region}:lambda:path/2015-03-31/functions/${local.admin_dashboard_arn}/invocations"
+  credentials             = aws_iam_role.apigateway_lambda_role.arn
+}
+
+# PUT /admin/api-keys/{key_id} - Update API key (requires JWT)
+resource "aws_api_gateway_method" "put_admin_api_key" {
+  rest_api_id   = aws_api_gateway_rest_api.api.id
+  resource_id   = aws_api_gateway_resource.admin_api_key_id.id
+  http_method   = "PUT"
+  authorization = "CUSTOM"
+  authorizer_id = aws_api_gateway_authorizer.jwt_authorizer.id
+
+  request_parameters = {
+    "method.request.path.key_id" = true
+  }
+}
+
+resource "aws_api_gateway_integration" "put_admin_api_key_integration" {
+  rest_api_id             = aws_api_gateway_rest_api.api.id
+  resource_id             = aws_api_gateway_resource.admin_api_key_id.id
+  http_method             = aws_api_gateway_method.put_admin_api_key.http_method
+  integration_http_method = "POST"
+  type                    = "AWS_PROXY"
+  uri                     = "arn:aws:apigateway:${var.aws_region}:lambda:path/2015-03-31/functions/${local.admin_dashboard_arn}/invocations"
+  credentials             = aws_iam_role.apigateway_lambda_role.arn
+}
+
+# DELETE /admin/api-keys/{key_id} - Delete API key (requires JWT)
+resource "aws_api_gateway_method" "delete_admin_api_key" {
+  rest_api_id   = aws_api_gateway_rest_api.api.id
+  resource_id   = aws_api_gateway_resource.admin_api_key_id.id
+  http_method   = "DELETE"
+  authorization = "CUSTOM"
+  authorizer_id = aws_api_gateway_authorizer.jwt_authorizer.id
+
+  request_parameters = {
+    "method.request.path.key_id" = true
+  }
+}
+
+resource "aws_api_gateway_integration" "delete_admin_api_key_integration" {
+  rest_api_id             = aws_api_gateway_rest_api.api.id
+  resource_id             = aws_api_gateway_resource.admin_api_key_id.id
+  http_method             = aws_api_gateway_method.delete_admin_api_key.http_method
   integration_http_method = "POST"
   type                    = "AWS_PROXY"
   uri                     = "arn:aws:apigateway:${var.aws_region}:lambda:path/2015-03-31/functions/${local.admin_dashboard_arn}/invocations"

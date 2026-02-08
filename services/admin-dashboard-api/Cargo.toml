@@ -29,3 +29,6 @@ bcrypt = "0.15"
 async-trait = "0.1"
 aws_lambda_events = "0.11"
 anyhow = "1.0"
+sha2 = { workspace = true }
+hex = { workspace = true }
+rand = "0.8"

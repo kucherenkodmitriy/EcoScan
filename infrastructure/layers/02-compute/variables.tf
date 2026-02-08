@@ -73,6 +73,12 @@ variable "webhook_sender_zip_path" {
   default     = "../../../services/target/webhook-sender.zip"
 }
 
+variable "apikey_authorizer_zip_path" {
+  description = "Path to API Key Authorizer deployment package"
+  type        = string
+  default     = "../../../services/target/apikey-authorizer.zip"
+}
+
 variable "recaptcha_secret_key" {
   description = "Google reCAPTCHA v3 secret key"
   type        = string

@@ -156,6 +156,110 @@ resource "aws_iam_role_policy_attachment" "authorizer_secrets_attachment" {
 }
 
 # =============================================================================
+# API Key Authorizer Lambda
+# =============================================================================
+
+resource "aws_lambda_function" "api_key_authorizer" {
+  function_name = "${var.environment}-${var.project_name}-apikey-authorizer"
+  role          = aws_iam_role.api_key_authorizer_role.arn
+  handler       = "bootstrap"
+  runtime       = "provided.al2"
+  architectures = [var.lambda_architecture]
+  memory_size   = 128
+  timeout       = 10
+
+  filename         = var.apikey_authorizer_zip_path
+  source_code_hash = filebase64sha256(var.apikey_authorizer_zip_path)
+
+  environment {
+    variables = merge(
+      {
+        API_KEYS_TABLE_NAME = local.api_keys_table_name
+      },
+      var.use_localstack ? {
+        DYNAMODB_ENDPOINT_URL = local.dynamodb_endpoint_url
+      } : {}
+    )
+  }
+
+  tracing_config {
+    mode = "Active"
+  }
+
+  tags = merge(
+    local.common_tags,
+    {
+      Name = "${var.project_name}-apikey-authorizer"
+    }
+  )
+}
+
+# IAM role for API Key Authorizer Lambda
+resource "aws_iam_role" "api_key_authorizer_role" {
+  name = "${var.environment}-${var.project_name}-apikey-authorizer-role"
+
+  assume_role_policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Action = "sts:AssumeRole"
+        Effect = "Allow"
+        Principal = {
+          Service = "lambda.amazonaws.com"
+        }
+      }
+    ]
+  })
+
+  tags = local.common_tags
+}
+
+# Policy for API Key Authorizer Lambda
+resource "aws_iam_policy" "api_key_authorizer_policy" {
+  name = "${var.environment}-${var.project_name}-apikey-authorizer-policy"
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Effect = "Allow"
+        Action = [
+          "logs:CreateLogGroup",
+          "logs:CreateLogStream",
+          "logs:PutLogEvents"
+        ]
+        Resource = "arn:aws:logs:*:*:*"
+      },
+      {
+        Effect = "Allow"
+        Action = [
+          "dynamodb:GetItem",
+          "dynamodb:Query",
+          "dynamodb:UpdateItem"
+        ]
+        Resource = [
+          local.api_keys_table_arn,
+          "${local.api_keys_table_arn}/index/*"
+        ]
+      },
+      {
+        Effect = "Allow"
+        Action = [
+          "xray:PutTraceSegments",
+          "xray:PutTelemetryRecords"
+        ]
+        Resource = "*"
+      }
+    ]
+  })
+}
+
+resource "aws_iam_role_policy_attachment" "api_key_authorizer_policy_attachment" {
+  role       = aws_iam_role.api_key_authorizer_role.name
+  policy_arn = aws_iam_policy.api_key_authorizer_policy.arn
+}
+
+# =============================================================================
 # Admin Dashboard API Lambda
 # =============================================================================
 
@@ -178,6 +282,7 @@ resource "aws_lambda_function" "admin_dashboard" {
         TRASH_BINS_TABLE_NAME      = local.trash_bins_table_name
         STATUS_REPORTS_TABLE_NAME  = local.status_reports_table_name
         WEBHOOK_CONFIGS_TABLE_NAME = local.webhook_configs_table_name
+        API_KEYS_TABLE_NAME        = local.api_keys_table_name
         JWT_EXPIRY_HOURS           = var.jwt_expiry_hours
         CORS_ALLOWED_ORIGINS       = var.cors_allowed_origins
         AWS_XRAY_TRACING_NAME      = "${var.environment}-${var.project_name}-admin-dashboard"
@@ -256,7 +361,9 @@ resource "aws_iam_policy" "admin_dashboard_policy" {
           local.admin_users_table_arn,
           local.trash_bins_table_arn,
           local.status_reports_table_arn,
-          local.webhook_configs_table_arn
+          local.webhook_configs_table_arn,
+          local.api_keys_table_arn,
+          "${local.api_keys_table_arn}/index/*"
         ]
       },
       {

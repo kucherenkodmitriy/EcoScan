@@ -71,13 +71,16 @@ package_service() {
 # Determine which packages to build
 case "$SERVICE" in
   all)
-    PACKAGES="-p bin-status-reporter -p lambda-authorizer -p admin-dashboard-api -p contact-form-handler -p webhook-sender"
+    PACKAGES="-p bin-status-reporter -p lambda-authorizer -p api-key-authorizer -p admin-dashboard-api -p contact-form-handler -p webhook-sender"
     ;;
   bin-status-reporter)
     PACKAGES="-p bin-status-reporter"
     ;;
   lambda-authorizer)
     PACKAGES="-p lambda-authorizer"
+    ;;
+  api-key-authorizer)
+    PACKAGES="-p api-key-authorizer"
     ;;
   admin-dashboard-api)
     PACKAGES="-p admin-dashboard-api"
@@ -118,6 +121,7 @@ case "$SERVICE" in
   all)
     package_service "bootstrap" "lambda.zip"
     package_service "authorizer-bootstrap" "authorizer.zip"
+    package_service "apikey-authorizer-bootstrap" "apikey-authorizer.zip"
     package_service "admin-bootstrap" "admin-dashboard.zip"
     package_service "contact-form-handler" "contact-form-handler.zip"
     package_service "webhook-bootstrap" "webhook-sender.zip"
@@ -127,6 +131,9 @@ case "$SERVICE" in
     ;;
   lambda-authorizer)
     package_service "authorizer-bootstrap" "authorizer.zip"
+    ;;
+  api-key-authorizer)
+    package_service "apikey-authorizer-bootstrap" "apikey-authorizer.zip"
     ;;
   admin-dashboard-api)
     package_service "admin-bootstrap" "admin-dashboard.zip"
@@ -148,4 +155,5 @@ echo "Artifacts:"
 [ -f "$TARGET_DIR/admin-dashboard.zip" ] && echo "  - admin-dashboard.zip: $(ls -lh "$TARGET_DIR/admin-dashboard.zip" | awk '{print $5}')"
 [ -f "$TARGET_DIR/contact-form-handler.zip" ] && echo "  - contact-form-handler.zip: $(ls -lh "$TARGET_DIR/contact-form-handler.zip" | awk '{print $5}')"
 [ -f "$TARGET_DIR/webhook-sender.zip" ] && echo "  - webhook-sender.zip: $(ls -lh "$TARGET_DIR/webhook-sender.zip" | awk '{print $5}')"
+[ -f "$TARGET_DIR/apikey-authorizer.zip" ] && echo "  - apikey-authorizer.zip: $(ls -lh "$TARGET_DIR/apikey-authorizer.zip" | awk '{print $5}')"
 echo -e "\n✅ Build successful!"

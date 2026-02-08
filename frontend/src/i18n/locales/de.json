@@ -357,6 +357,11 @@
       "copyright": "© 2026 EcoScan. Alle Rechte vorbehalten."
     }
   },
+  "settings": {
+    "title": "Einstellungen",
+    "apiKeys": "API-Schlüssel",
+    "webhooks": "Webhooks"
+  },
   "webhooks": {
     "title": "Webhooks",
     "newWebhook": "+ Neuer Webhook",
@@ -396,6 +401,47 @@
       "authValuePlaceholder": "Geheimwert eingeben",
       "authValueEditHint": "Leer lassen, um aktuellen Wert beizubehalten",
       "events": "Ereignisse"
+    }
+  },
+  "apiKeys": {
+    "title": "API-Schlüssel",
+    "newApiKey": "+ Neuer API-Schlüssel",
+    "createTitle": "API-Schlüssel erstellen",
+    "createdTitle": "API-Schlüssel erstellt",
+    "noApiKeys": "Keine API-Schlüssel konfiguriert. Erstellen Sie einen API-Schlüssel, um externen Systemen Zugriff auf Behälterdaten zu gewähren.",
+    "noKeyId": "Keine API-Schlüssel-ID angegeben",
+    "failedToLoad": "API-Schlüssel konnten nicht geladen werden",
+    "failedToCreate": "API-Schlüssel konnte nicht erstellt werden",
+    "failedToDelete": "API-Schlüssel konnte nicht gelöscht werden",
+    "deleteConfirm": "Möchten Sie \"{{name}}\" wirklich löschen? Der API-Schlüssel wird damit widerrufen.",
+    "backToList": "Zurück zu API-Schlüssel",
+    "nameRequired": "Name des API-Schlüssels ist erforderlich",
+    "scopeRequired": "Mindestens ein Bereich ist erforderlich",
+    "createdAt": "Erstellt",
+    "expires": "Läuft ab",
+    "generate": "API-Schlüssel generieren",
+    "done": "Fertig",
+    "keyWarningTitle": "Speichern Sie diesen Schlüssel jetzt!",
+    "keyWarningMessage": "Dies ist das einzige Mal, dass Sie den vollständigen API-Schlüssel sehen. Kopieren Sie ihn und bewahren Sie ihn sicher auf.",
+    "yourKey": "Ihr API-Schlüssel",
+    "copy": "Kopieren",
+    "copied": "Kopiert!",
+    "table": {
+      "name": "Name",
+      "prefix": "Schlüssel-Präfix",
+      "scopes": "Bereiche",
+      "status": "Status",
+      "createdBy": "Erstellt von",
+      "lastUsed": "Zuletzt verwendet",
+      "actions": "Aktionen"
+    },
+    "form": {
+      "name": "Name",
+      "namePlaceholder": "z.B. Golemio Integrations-Schlüssel",
+      "scopes": "Bereiche",
+      "expiry": "Ablaufdatum",
+      "noExpiry": "Kein Ablaufdatum",
+      "days": "Tage"
     }
   },
   "demoModal": {

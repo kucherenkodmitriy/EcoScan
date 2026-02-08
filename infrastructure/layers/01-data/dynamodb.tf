@@ -145,6 +145,54 @@ resource "aws_dynamodb_table" "webhook_configs" {
   )
 }
 
+resource "aws_dynamodb_table" "api_keys" {
+  name         = "${var.environment}-${var.project_name}-api-keys"
+  billing_mode = var.dynamodb_billing_mode
+  hash_key     = "keyId"
+
+  read_capacity  = var.dynamodb_billing_mode == "PROVISIONED" ? var.dynamodb_read_capacity : null
+  write_capacity = var.dynamodb_billing_mode == "PROVISIONED" ? var.dynamodb_write_capacity : null
+
+  attribute {
+    name = "keyId"
+    type = "S"
+  }
+
+  attribute {
+    name = "keyHash"
+    type = "S"
+  }
+
+  global_secondary_index {
+    name            = "keyHash-index"
+    hash_key        = "keyHash"
+    projection_type = "ALL"
+    read_capacity   = var.dynamodb_billing_mode == "PROVISIONED" ? var.dynamodb_read_capacity : null
+    write_capacity  = var.dynamodb_billing_mode == "PROVISIONED" ? var.dynamodb_write_capacity : null
+  }
+
+  # Enable point-in-time recovery for production
+  point_in_time_recovery {
+    enabled = var.environment == "prod"
+  }
+
+  # Enable encryption for non-local environments
+  dynamic "server_side_encryption" {
+    for_each = var.use_localstack ? [] : [1]
+    content {
+      enabled = true
+    }
+  }
+
+  tags = merge(
+    local.common_tags,
+    {
+      Name    = "${var.project_name}-api-keys"
+      Purpose = "Store external API key configurations"
+    }
+  )
+}
+
 resource "aws_dynamodb_table" "demo_requests" {
   name         = "${var.environment}-${var.project_name}-demo-requests"
   billing_mode = var.dynamodb_billing_mode

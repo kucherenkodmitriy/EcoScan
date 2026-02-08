@@ -357,6 +357,11 @@
       "copyright": "© 2026 EcoScan. All rights reserved."
     }
   },
+  "settings": {
+    "title": "Settings",
+    "apiKeys": "API Keys",
+    "webhooks": "Webhooks"
+  },
   "webhooks": {
     "title": "Webhooks",
     "newWebhook": "+ New Webhook",
@@ -396,6 +401,47 @@
       "authValuePlaceholder": "Enter secret value",
       "authValueEditHint": "Leave blank to keep current value",
       "events": "Events"
+    }
+  },
+  "apiKeys": {
+    "title": "API Keys",
+    "newApiKey": "+ New API Key",
+    "createTitle": "Create API Key",
+    "createdTitle": "API Key Created",
+    "noApiKeys": "No API keys configured. Create an API key to allow external systems to access bin data.",
+    "noKeyId": "No API key ID provided",
+    "failedToLoad": "Failed to load API keys",
+    "failedToCreate": "Failed to create API key",
+    "failedToDelete": "Failed to delete API key",
+    "deleteConfirm": "Are you sure you want to delete \"{{name}}\"? This will revoke the API key.",
+    "backToList": "Back to API Keys",
+    "nameRequired": "API key name is required",
+    "scopeRequired": "At least one scope is required",
+    "createdAt": "Created",
+    "expires": "Expires",
+    "generate": "Generate API Key",
+    "done": "Done",
+    "keyWarningTitle": "Save this key now!",
+    "keyWarningMessage": "This is the only time you will see the full API key. Copy it and store it securely.",
+    "yourKey": "Your API Key",
+    "copy": "Copy",
+    "copied": "Copied!",
+    "table": {
+      "name": "Name",
+      "prefix": "Key Prefix",
+      "scopes": "Scopes",
+      "status": "Status",
+      "createdBy": "Created By",
+      "lastUsed": "Last Used",
+      "actions": "Actions"
+    },
+    "form": {
+      "name": "Name",
+      "namePlaceholder": "e.g. Golemio Integration Key",
+      "scopes": "Scopes",
+      "expiry": "Expiration",
+      "noExpiry": "No expiration",
+      "days": "days"
     }
   },
   "demoModal": {

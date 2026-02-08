@@ -203,6 +203,116 @@ export async function deleteBin(binId: string): Promise<void> {
 }
 
 // =============================================================================
+// API Key API
+// =============================================================================
+
+export interface ApiKeyInfo {
+  key_id: string
+  name: string
+  key_prefix: string
+  scopes: string[]
+  is_active: boolean
+  created_by: string
+  created_at: string | null
+  last_used_at: string | null
+  expires_at: string | null
+}
+
+export interface ApiKeyCreatedResponse {
+  key_id: string
+  name: string
+  api_key: string
+  key_prefix: string
+  scopes: string[]
+  created_at: string
+  expires_at: string | null
+}
+
+export interface CreateApiKeyInput {
+  name: string
+  scopes?: string[]
+  expires_at?: string
+}
+
+export interface UpdateApiKeyInput {
+  name?: string
+  scopes?: string[]
+  is_active?: boolean
+  expires_at?: string | null
+}
+
+export async function getApiKeys(): Promise<ApiKeyInfo[]> {
+  const response = await fetchWithAuth('/admin/api-keys')
+  if (!response.ok) throw new Error('Failed to fetch API keys')
+  const data = await response.json()
+  return data.api_keys || []
+}
+
+export async function getApiKey(keyId: string): Promise<ApiKeyInfo> {
+  const response = await fetchWithAuth(`/admin/api-keys/${keyId}`)
+  if (!response.ok) {
+    const error = await response.json()
+    throw new Error(error.error || 'Failed to fetch API key')
+  }
+  return response.json()
+}
+
+export async function createApiKey(input: CreateApiKeyInput): Promise<ApiKeyCreatedResponse> {
+  const response = await fetchWithAuth('/admin/api-keys', {
+    method: 'POST',
+    body: JSON.stringify(input),
+  })
+  if (!response.ok) {
+    const errorText = await response.text()
+    let errorMessage = 'Failed to create API key'
+    try {
+      const errorJson = JSON.parse(errorText)
+      errorMessage = errorJson.error || errorJson.message || errorMessage
+    } catch {
+      if (errorText) errorMessage = errorText
+    }
+    throw new Error(errorMessage)
+  }
+  return response.json()
+}
+
+export async function updateApiKey(keyId: string, input: UpdateApiKeyInput): Promise<ApiKeyInfo> {
+  const response = await fetchWithAuth(`/admin/api-keys/${keyId}`, {
+    method: 'PUT',
+    body: JSON.stringify(input),
+  })
+  if (!response.ok) {
+    const errorText = await response.text()
+    let errorMessage = 'Failed to update API key'
+    try {
+      const errorJson = JSON.parse(errorText)
+      errorMessage = errorJson.error || errorJson.message || errorMessage
+    } catch {
+      if (errorText) errorMessage = errorText
+    }
+    throw new Error(errorMessage)
+  }
+  return response.json()
+}
+
+export async function deleteApiKey(keyId: string): Promise<void> {
+  const response = await fetchWithAuth(`/admin/api-keys/${keyId}`, {
+    method: 'DELETE',
+  })
+  if (!response.ok) {
+    const errorText = await response.text()
+    let errorMessage = 'Failed to delete API key'
+    try {
+      const errorJson = JSON.parse(errorText)
+      errorMessage = errorJson.error || errorJson.message || errorMessage
+    } catch {
+      if (errorText) errorMessage = errorText
+    }
+    throw new Error(errorMessage)
+  }
+}
+
+// =============================================================================
 // Webhook API
 // =============================================================================
 

@@ -1,3 +1,14 @@
+# Model Usage Guidelines
+- Context Handling: For reading entire directories, large files (>100KB), or complex architectural analysis, use the gemini MCP tool.
+- Token Efficiency: Prefer Gemini for "map-making" (understanding where things are) and Claude for "precision surgery" (writing the specific fix).
+- Tool Preference:
+    - Use gemini-mcp for: grep, find, and read_file on large modules.
+    - Use internal read_file for: Small files (<50 lines) you are currently editing.
+
+# Example Workflow
+1. Use Gemini to scan the repo: "Ask Gemini to find all instances of the Auth pattern in ..."
+2. Use Claude to implement: "Now that we found the files, Claude, please refactor the login function in ..."
+
 # EcoScan Project Context
 
 This file provides context for Claude Code sessions to quickly understand the project without expensive codebase scanning.

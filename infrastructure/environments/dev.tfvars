@@ -13,11 +13,11 @@ dynamodb_read_capacity  = null
 dynamodb_write_capacity = null
 
 # Lambda settings
-lambda_memory_size  = 256
-lambda_timeout      = 60
-lambda_architecture = "x86_64"
-lambda_zip_path          = "../../../services/target/lambda.zip"
-webhook_sender_zip_path  = "../../../services/target/webhook-sender.zip"
+lambda_memory_size      = 256
+lambda_timeout          = 60
+lambda_architecture     = "x86_64"
+lambda_zip_path         = "../../../services/target/lambda.zip"
+webhook_sender_zip_path = "../../../services/target/webhook-sender.zip"
 
 # S3 bucket settings (AWS requires unique global names)
 health_bucket_name             = "ecoscan-dev-health-bucket"

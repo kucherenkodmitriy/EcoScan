@@ -4,6 +4,7 @@ import { useAuth } from '../context/AuthContext'
 import LanguageSwitcher from '../components/LanguageSwitcher'
 import { ApiKeysContent } from './ApiKeyList'
 import { WebhooksContent } from './WebhookList'
+import { ExportContent } from './Export'
 import styles from './Settings.module.css'
 
 export default function Settings() {
@@ -11,7 +12,13 @@ export default function Settings() {
   const { user, logout } = useAuth()
   const location = useLocation()
 
-  const activeSection = location.pathname.includes('/settings/webhooks') ? 'webhooks' : 'api-keys'
+  const getActiveSection = () => {
+    if (location.pathname.includes('/settings/webhooks')) return 'webhooks'
+    if (location.pathname.includes('/settings/export')) return 'export'
+    return 'api-keys'
+  }
+
+  const activeSection = getActiveSection()
 
   return (
     <div className={styles.page}>
@@ -47,10 +54,18 @@ export default function Settings() {
           >
             {t('settings.webhooks')}
           </Link>
+          <Link
+            to="/settings/export"
+            className={activeSection === 'export' ? styles.navItemActive : styles.navItem}
+          >
+            {t('settings.dataExport')}
+          </Link>
         </nav>
 
         <main className={styles.content}>
-          {activeSection === 'api-keys' ? <ApiKeysContent /> : <WebhooksContent />}
+          {activeSection === 'api-keys' && <ApiKeysContent />}
+          {activeSection === 'webhooks' && <WebhooksContent />}
+          {activeSection === 'export' && <ExportContent />}
         </main>
       </div>
     </div>

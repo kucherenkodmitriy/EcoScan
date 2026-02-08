@@ -1,7 +1,12 @@
+pub mod api_key;
 pub mod error;
 pub mod user;
 pub mod webhook;
 
+pub use api_key::{
+    ApiKeyCreatedResponse, ApiKeyInfo, ApiKeyRecord, ApiKeyScope, CreateApiKeyRequest,
+    ExternalBinInfo, PaginatedResponse, UpdateApiKeyRequest,
+};
 pub use error::{AppError, Result};
 pub use user::{AdminUser, LoginRequest, LoginResponse, UserInfo, UserRole};
 pub use webhook::{
@@ -123,6 +128,11 @@ pub trait BinRepository: Send + Sync {
     async fn create_bin(&self, bin_id: &Uuid, request: &CreateBinRequest) -> Result<()>;
     async fn update_bin(&self, bin_id: &Uuid, request: &UpdateBinRequest) -> Result<()>;
     async fn delete_bin(&self, bin_id: &Uuid) -> Result<()>;
+    async fn list_bins_paginated(
+        &self,
+        limit: i32,
+        cursor: Option<String>,
+    ) -> Result<(Vec<BinInfo>, Option<String>)>;
 }
 
 /// Repository trait for webhook operations
@@ -133,4 +143,14 @@ pub trait WebhookRepository: Send + Sync {
     async fn create_webhook(&self, webhook: &WebhookConfig) -> Result<()>;
     async fn update_webhook(&self, webhook_id: &str, request: &UpdateWebhookRequest) -> Result<()>;
     async fn delete_webhook(&self, webhook_id: &str) -> Result<()>;
+}
+
+/// Repository trait for API key operations
+#[async_trait]
+pub trait ApiKeyRepository: Send + Sync {
+    async fn list_api_keys(&self) -> Result<Vec<ApiKeyRecord>>;
+    async fn get_api_key(&self, key_id: &str) -> Result<Option<ApiKeyRecord>>;
+    async fn create_api_key(&self, record: &ApiKeyRecord) -> Result<()>;
+    async fn update_api_key(&self, key_id: &str, request: &UpdateApiKeyRequest) -> Result<()>;
+    async fn delete_api_key(&self, key_id: &str) -> Result<()>;
 }

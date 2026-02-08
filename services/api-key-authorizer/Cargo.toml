@@ -1,0 +1,21 @@
+[package]
+name = "api-key-authorizer"
+version = "0.1.0"
+edition = "2021"
+
+[[bin]]
+name = "apikey-authorizer-bootstrap"
+path = "src/main.rs"
+
+[dependencies]
+lambda_runtime = { workspace = true }
+tokio = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
+tracing = { workspace = true }
+tracing-subscriber = { workspace = true }
+aws-sdk-dynamodb = { workspace = true }
+aws-config = { workspace = true }
+chrono = { workspace = true }
+sha2 = "0.10"
+hex = "0.4"

@@ -66,3 +66,14 @@ output "webhook_sender_lambda_name" {
   description = "Name of the Webhook Sender Lambda function"
   value       = aws_lambda_function.webhook_sender.function_name
 }
+
+# API Key Authorizer Lambda outputs
+output "api_key_authorizer_arn" {
+  description = "ARN of the API Key Authorizer Lambda function"
+  value       = aws_lambda_function.api_key_authorizer.arn
+}
+
+output "api_key_authorizer_name" {
+  description = "Name of the API Key Authorizer Lambda function"
+  value       = aws_lambda_function.api_key_authorizer.function_name
+}

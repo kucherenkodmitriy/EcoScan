@@ -5,11 +5,14 @@ use chrono::{DateTime, Utc};
 use tracing::{info, instrument};
 use uuid::Uuid;
 
+use base64::{engine::general_purpose::STANDARD as BASE64, Engine as _};
+
 use crate::config::Config;
 use crate::domain::{
-    AdminUser, AppError, BinInfo, BinRepository, BinType, Coordinates, CreateBinRequest, Result,
-    UpdateBinRequest, UpdateWebhookRequest, UserRepository, UserRole, WebhookAuthType,
-    WebhookConfig, WebhookRepository,
+    AdminUser, ApiKeyRecord, ApiKeyRepository, AppError, BinInfo, BinRepository, BinType,
+    Coordinates, CreateBinRequest, Result, UpdateApiKeyRequest, UpdateBinRequest,
+    UpdateWebhookRequest, UserRepository, UserRole, WebhookAuthType, WebhookConfig,
+    WebhookRepository,
 };
 
 pub struct DynamoDbRepository {
@@ -17,6 +20,7 @@ pub struct DynamoDbRepository {
     users_table: String,
     bins_table: String,
     webhooks_table: String,
+    api_keys_table: String,
 }
 
 impl DynamoDbRepository {
@@ -42,6 +46,7 @@ impl DynamoDbRepository {
             users_table: config.admin_users_table.clone(),
             bins_table: config.trash_bins_table.clone(),
             webhooks_table: config.webhook_configs_table.clone(),
+            api_keys_table: config.api_keys_table.clone(),
         })
     }
 
@@ -386,6 +391,56 @@ impl BinRepository for DynamoDbRepository {
         info!(bin_id = %bin_id, "Bin deactivated (soft delete)");
         Ok(())
     }
+
+    #[instrument(skip(self), fields(table = %self.bins_table))]
+    async fn list_bins_paginated(
+        &self,
+        limit: i32,
+        cursor: Option<String>,
+    ) -> Result<(Vec<BinInfo>, Option<String>)> {
+        let mut scan = self
+            .client
+            .scan()
+            .table_name(&self.bins_table)
+            .filter_expression("isActive = :active")
+            .expression_attribute_values(":active", AttributeValue::Bool(true))
+            .limit(limit);
+
+        // Decode cursor to exclusive_start_key
+        if let Some(cursor_str) = cursor {
+            if let Ok(decoded) = BASE64.decode(&cursor_str) {
+                if let Ok(bin_id) = String::from_utf8(decoded) {
+                    scan = scan.exclusive_start_key("binId", AttributeValue::S(bin_id));
+                }
+            }
+        }
+
+        let result = scan
+            .send()
+            .await
+            .map_err(|e| AppError::DatabaseError(e.to_string()))?;
+
+        let bins: Vec<BinInfo> = result
+            .items
+            .unwrap_or_default()
+            .iter()
+            .filter_map(Self::parse_bin_item)
+            .collect();
+
+        // Encode next cursor from LastEvaluatedKey
+        let next_cursor = result.last_evaluated_key.and_then(|key| {
+            key.get("binId")
+                .and_then(|v| v.as_s().ok())
+                .map(|bin_id| BASE64.encode(bin_id.as_bytes()))
+        });
+
+        info!(
+            count = bins.len(),
+            has_more = next_cursor.is_some(),
+            "Listed bins (paginated)"
+        );
+        Ok((bins, next_cursor))
+    }
 }
 
 // =============================================================================
@@ -651,6 +706,218 @@ impl WebhookRepository for DynamoDbRepository {
             .map_err(|e| AppError::DatabaseError(e.to_string()))?;
 
         info!(webhook_id = %webhook_id, "Webhook deactivated (soft delete)");
+        Ok(())
+    }
+}
+
+// =============================================================================
+// API Key Repository Implementation
+// =============================================================================
+
+impl DynamoDbRepository {
+    fn parse_api_key_item(
+        item: &std::collections::HashMap<String, AttributeValue>,
+    ) -> Option<ApiKeyRecord> {
+        let key_id = item.get("keyId").and_then(|v| v.as_s().ok()).cloned()?;
+
+        let scopes = item
+            .get("scopes")
+            .and_then(|v| v.as_l().ok())
+            .map(|list| list.iter().filter_map(|v| v.as_s().ok().cloned()).collect())
+            .unwrap_or_default();
+
+        Some(ApiKeyRecord {
+            key_id,
+            key_hash: item
+                .get("keyHash")
+                .and_then(|v| v.as_s().ok())
+                .cloned()
+                .unwrap_or_default(),
+            key_prefix: item
+                .get("keyPrefix")
+                .and_then(|v| v.as_s().ok())
+                .cloned()
+                .unwrap_or_default(),
+            name: item
+                .get("name")
+                .and_then(|v| v.as_s().ok())
+                .cloned()
+                .unwrap_or_default(),
+            scopes,
+            created_by: item
+                .get("createdBy")
+                .and_then(|v| v.as_s().ok())
+                .cloned()
+                .unwrap_or_default(),
+            created_at: item
+                .get("createdAt")
+                .and_then(|v| v.as_s().ok())
+                .and_then(|s| DateTime::parse_from_rfc3339(s).ok())
+                .map(|dt| dt.with_timezone(&Utc))
+                .unwrap_or_else(Utc::now),
+            last_used_at: item
+                .get("lastUsedAt")
+                .and_then(|v| v.as_s().ok())
+                .and_then(|s| DateTime::parse_from_rfc3339(s).ok())
+                .map(|dt| dt.with_timezone(&Utc)),
+            is_active: item
+                .get("isActive")
+                .and_then(|v| v.as_bool().ok())
+                .copied()
+                .unwrap_or(true),
+            expires_at: item
+                .get("expiresAt")
+                .and_then(|v| v.as_s().ok())
+                .and_then(|s| DateTime::parse_from_rfc3339(s).ok())
+                .map(|dt| dt.with_timezone(&Utc)),
+        })
+    }
+}
+
+#[async_trait]
+impl ApiKeyRepository for DynamoDbRepository {
+    #[instrument(skip(self), fields(table = %self.api_keys_table))]
+    async fn list_api_keys(&self) -> Result<Vec<ApiKeyRecord>> {
+        let result = self
+            .client
+            .scan()
+            .table_name(&self.api_keys_table)
+            .send()
+            .await
+            .map_err(|e| AppError::DatabaseError(e.to_string()))?;
+
+        let keys: Vec<ApiKeyRecord> = result
+            .items
+            .unwrap_or_default()
+            .iter()
+            .filter_map(Self::parse_api_key_item)
+            .collect();
+
+        info!(count = keys.len(), "Listed API keys");
+        Ok(keys)
+    }
+
+    #[instrument(skip(self), fields(table = %self.api_keys_table))]
+    async fn get_api_key(&self, key_id: &str) -> Result<Option<ApiKeyRecord>> {
+        let result = self
+            .client
+            .get_item()
+            .table_name(&self.api_keys_table)
+            .key("keyId", AttributeValue::S(key_id.to_string()))
+            .send()
+            .await
+            .map_err(|e| AppError::DatabaseError(e.to_string()))?;
+
+        Ok(result.item.as_ref().and_then(Self::parse_api_key_item))
+    }
+
+    #[instrument(skip(self, record), fields(table = %self.api_keys_table))]
+    async fn create_api_key(&self, record: &ApiKeyRecord) -> Result<()> {
+        let scopes_list: Vec<AttributeValue> = record
+            .scopes
+            .iter()
+            .map(|s| AttributeValue::S(s.clone()))
+            .collect();
+
+        let mut put_item = self
+            .client
+            .put_item()
+            .table_name(&self.api_keys_table)
+            .item("keyId", AttributeValue::S(record.key_id.clone()))
+            .item("keyHash", AttributeValue::S(record.key_hash.clone()))
+            .item("keyPrefix", AttributeValue::S(record.key_prefix.clone()))
+            .item("name", AttributeValue::S(record.name.clone()))
+            .item("scopes", AttributeValue::L(scopes_list))
+            .item("createdBy", AttributeValue::S(record.created_by.clone()))
+            .item(
+                "createdAt",
+                AttributeValue::S(record.created_at.to_rfc3339()),
+            )
+            .item("isActive", AttributeValue::Bool(record.is_active));
+
+        if let Some(expires_at) = &record.expires_at {
+            put_item = put_item.item("expiresAt", AttributeValue::S(expires_at.to_rfc3339()));
+        }
+
+        put_item
+            .send()
+            .await
+            .map_err(|e| AppError::DatabaseError(e.to_string()))?;
+
+        info!(key_id = %record.key_id, "API key created successfully");
+        Ok(())
+    }
+
+    #[instrument(skip(self, request), fields(table = %self.api_keys_table))]
+    async fn update_api_key(&self, key_id: &str, request: &UpdateApiKeyRequest) -> Result<()> {
+        let mut update_parts = Vec::new();
+        let mut expression_values = std::collections::HashMap::new();
+
+        if let Some(name) = &request.name {
+            update_parts.push("#n = :name");
+            expression_values.insert(":name".to_string(), AttributeValue::S(name.clone()));
+        }
+
+        if let Some(scopes) = &request.scopes {
+            update_parts.push("scopes = :scopes");
+            let scopes_list: Vec<AttributeValue> = scopes
+                .iter()
+                .map(|s| AttributeValue::S(s.clone()))
+                .collect();
+            expression_values.insert(":scopes".to_string(), AttributeValue::L(scopes_list));
+        }
+
+        if let Some(is_active) = request.is_active {
+            update_parts.push("isActive = :active");
+            expression_values.insert(":active".to_string(), AttributeValue::Bool(is_active));
+        }
+
+        if update_parts.is_empty() {
+            return Ok(());
+        }
+
+        let update_expression = format!("SET {}", update_parts.join(", "));
+
+        let mut request_builder = self
+            .client
+            .update_item()
+            .table_name(&self.api_keys_table)
+            .key("keyId", AttributeValue::S(key_id.to_string()))
+            .update_expression(update_expression);
+
+        // "name" is a reserved word in DynamoDB
+        if request.name.is_some() {
+            request_builder =
+                request_builder.expression_attribute_names("#n".to_string(), "name".to_string());
+        }
+
+        for (key, value) in expression_values {
+            request_builder = request_builder.expression_attribute_values(key, value);
+        }
+
+        request_builder
+            .send()
+            .await
+            .map_err(|e| AppError::DatabaseError(e.to_string()))?;
+
+        info!(key_id = %key_id, "API key updated successfully");
+        Ok(())
+    }
+
+    #[instrument(skip(self), fields(table = %self.api_keys_table))]
+    async fn delete_api_key(&self, key_id: &str) -> Result<()> {
+        // Soft delete
+        self.client
+            .update_item()
+            .table_name(&self.api_keys_table)
+            .key("keyId", AttributeValue::S(key_id.to_string()))
+            .update_expression("SET isActive = :active")
+            .expression_attribute_values(":active", AttributeValue::Bool(false))
+            .send()
+            .await
+            .map_err(|e| AppError::DatabaseError(e.to_string()))?;
+
+        info!(key_id = %key_id, "API key deactivated (soft delete)");
         Ok(())
     }
 }

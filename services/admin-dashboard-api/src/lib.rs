@@ -14,13 +14,14 @@ use tracing::{error, info, instrument, warn};
 use uuid::Uuid;
 
 use crate::application::{
-    create_bin, create_webhook, delete_bin, delete_webhook, get_bin, get_webhook, handle_login,
-    list_bins, list_webhooks, update_bin, update_webhook,
+    create_api_key, create_bin, create_webhook, delete_api_key, delete_bin, delete_webhook,
+    get_api_key, get_bin, get_bin_external, get_webhook, handle_login, list_api_keys, list_bins,
+    list_bins_external, list_webhooks, update_api_key, update_bin, update_webhook,
 };
 use crate::config::Config;
 use crate::domain::{
-    AppError, CreateBinRequest, CreateWebhookRequest, LoginRequest, PublicBinInfo,
-    UpdateBinRequest, UpdateWebhookRequest,
+    AppError, CreateApiKeyRequest, CreateBinRequest, CreateWebhookRequest, LoginRequest,
+    PublicBinInfo, UpdateApiKeyRequest, UpdateBinRequest, UpdateWebhookRequest,
 };
 use crate::infrastructure::{DynamoDbRepository, JwtConfig};
 
@@ -41,7 +42,7 @@ fn success_response(
     headers.insert("Access-Control-Allow-Origin", cors_origin.parse().unwrap());
     headers.insert(
         "Access-Control-Allow-Headers",
-        "Content-Type, Authorization".parse().unwrap(),
+        "Content-Type, Authorization, X-API-Key".parse().unwrap(),
     );
     headers.insert(
         "Access-Control-Allow-Methods",
@@ -64,7 +65,7 @@ fn error_response(status_code: i64, message: &str, cors_origin: &str) -> ApiGate
     headers.insert("Access-Control-Allow-Origin", cors_origin.parse().unwrap());
     headers.insert(
         "Access-Control-Allow-Headers",
-        "Content-Type, Authorization".parse().unwrap(),
+        "Content-Type, Authorization, X-API-Key".parse().unwrap(),
     );
     headers.insert(
         "Access-Control-Allow-Methods",
@@ -84,7 +85,10 @@ fn error_response(status_code: i64, message: &str, cors_origin: &str) -> ApiGate
 fn error_to_status_code(error: &AppError) -> i64 {
     match error {
         AppError::InvalidCredentials | AppError::AuthenticationError(_) => 401,
-        AppError::UserNotFound(_) | AppError::BinNotFound(_) | AppError::WebhookNotFound(_) => 404,
+        AppError::UserNotFound(_)
+        | AppError::BinNotFound(_)
+        | AppError::WebhookNotFound(_)
+        | AppError::ApiKeyNotFound(_) => 404,
         AppError::ValidationError(_) => 400,
         AppError::DatabaseError(_) | AppError::InternalError(_) | AppError::JwtError(_) => 500,
     }
@@ -96,7 +100,7 @@ fn cors_preflight_response(cors_origin: &str) -> ApiGatewayProxyResponse {
     headers.insert("Access-Control-Allow-Origin", cors_origin.parse().unwrap());
     headers.insert(
         "Access-Control-Allow-Headers",
-        "Content-Type, Authorization".parse().unwrap(),
+        "Content-Type, Authorization, X-API-Key".parse().unwrap(),
     );
     headers.insert(
         "Access-Control-Allow-Methods",
@@ -259,6 +263,57 @@ async fn api_handler_inner(
         ("DELETE", p) if p.contains("/admin/webhooks/") => {
             let webhook_id = extract_last_path_segment(p);
             handle_delete_webhook(&repo, webhook_id, cors_origin).await
+        }
+
+        // =================================================================
+        // External API endpoints (protected by API key authorizer)
+        // =================================================================
+
+        // List bins (external API with pagination)
+        ("GET", p) if p.ends_with("/api/bins") => {
+            let limit = extract_query_param(&request, "limit").and_then(|v| v.parse::<i32>().ok());
+            let cursor = extract_query_param(&request, "cursor");
+            handle_list_bins_external(&repo, limit, cursor, cors_origin).await
+        }
+
+        // Get single bin (external API)
+        ("GET", p) if p.contains("/api/bins/") => {
+            let bin_id = get_path_param(&request, "bin_id");
+            handle_get_bin_external(&repo, bin_id, cors_origin).await
+        }
+
+        // =================================================================
+        // Admin API key management endpoints
+        // =================================================================
+
+        // List API keys
+        ("GET", p) if p.ends_with("/admin/api-keys") => {
+            handle_list_api_keys(&repo, cors_origin).await
+        }
+
+        // Create API key
+        ("POST", p) if p.ends_with("/admin/api-keys") => {
+            let created_by = extract_authorizer_context(&request, "email")
+                .unwrap_or_else(|| "unknown".to_string());
+            handle_create_api_key(&request, &repo, &created_by, cors_origin).await
+        }
+
+        // Get single API key
+        ("GET", p) if p.contains("/admin/api-keys/") => {
+            let key_id = extract_last_path_segment(p);
+            handle_get_api_key(&repo, key_id, cors_origin).await
+        }
+
+        // Update API key
+        ("PUT", p) if p.contains("/admin/api-keys/") => {
+            let key_id = extract_last_path_segment(p);
+            handle_update_api_key(&request, &repo, key_id, cors_origin).await
+        }
+
+        // Delete API key
+        ("DELETE", p) if p.contains("/admin/api-keys/") => {
+            let key_id = extract_last_path_segment(p);
+            handle_delete_api_key(&repo, key_id, cors_origin).await
         }
 
         // Not found
@@ -534,6 +589,183 @@ async fn handle_delete_webhook(
         Ok(()) => success_response(
             200,
             json!({ "message": "Webhook deleted successfully" }),
+            cors_origin,
+        ),
+        Err(e) => {
+            let status = error_to_status_code(&e);
+            error_response(status, &e.to_string(), cors_origin)
+        }
+    }
+}
+
+/// Extract a query string parameter from the API Gateway request
+fn extract_query_param(event: &ApiGatewayProxyRequest, name: &str) -> Option<String> {
+    event
+        .query_string_parameters
+        .iter()
+        .find(|(k, _)| *k == name)
+        .map(|(_, v)| v.to_string())
+}
+
+/// Extract value from API Gateway authorizer context
+fn extract_authorizer_context(event: &ApiGatewayProxyRequest, key: &str) -> Option<String> {
+    event
+        .request_context
+        .authorizer
+        .get(key)
+        .and_then(|v| v.as_str())
+        .map(|s| s.to_string())
+}
+
+// =============================================================================
+// External API Handlers
+// =============================================================================
+
+async fn handle_list_bins_external(
+    repo: &DynamoDbRepository,
+    limit: Option<i32>,
+    cursor: Option<String>,
+    cors_origin: &str,
+) -> ApiGatewayProxyResponse {
+    match list_bins_external(repo, limit, cursor).await {
+        Ok(response) => success_response(200, serde_json::to_value(response).unwrap(), cors_origin),
+        Err(e) => {
+            let status = error_to_status_code(&e);
+            error_response(status, &e.to_string(), cors_origin)
+        }
+    }
+}
+
+async fn handle_get_bin_external(
+    repo: &DynamoDbRepository,
+    bin_id: Option<String>,
+    cors_origin: &str,
+) -> ApiGatewayProxyResponse {
+    let bin_id = match bin_id.and_then(|s| Uuid::parse_str(&s).ok()) {
+        Some(id) => id,
+        None => return error_response(400, "Invalid bin ID", cors_origin),
+    };
+
+    match get_bin_external(repo, &bin_id).await {
+        Ok(bin) => success_response(200, serde_json::to_value(bin).unwrap(), cors_origin),
+        Err(e) => {
+            let status = error_to_status_code(&e);
+            error_response(status, &e.to_string(), cors_origin)
+        }
+    }
+}
+
+// =============================================================================
+// API Key Admin Handlers
+// =============================================================================
+
+async fn handle_list_api_keys(
+    repo: &DynamoDbRepository,
+    cors_origin: &str,
+) -> ApiGatewayProxyResponse {
+    match list_api_keys(repo).await {
+        Ok(keys) => success_response(200, json!({ "api_keys": keys }), cors_origin),
+        Err(e) => {
+            let status = error_to_status_code(&e);
+            error_response(status, &e.to_string(), cors_origin)
+        }
+    }
+}
+
+async fn handle_create_api_key(
+    request: &ApiGatewayProxyRequest,
+    repo: &DynamoDbRepository,
+    created_by: &str,
+    cors_origin: &str,
+) -> ApiGatewayProxyResponse {
+    let body = match &request.body {
+        Some(b) => b,
+        None => return error_response(400, "Request body is required", cors_origin),
+    };
+
+    let create_request: CreateApiKeyRequest = match serde_json::from_str(body) {
+        Ok(r) => r,
+        Err(e) => {
+            warn!(error = %e, "Failed to parse create API key request");
+            return error_response(400, "Invalid request body", cors_origin);
+        }
+    };
+
+    match create_api_key(repo, create_request, created_by).await {
+        Ok(response) => success_response(201, serde_json::to_value(response).unwrap(), cors_origin),
+        Err(e) => {
+            let status = error_to_status_code(&e);
+            error_response(status, &e.to_string(), cors_origin)
+        }
+    }
+}
+
+async fn handle_get_api_key(
+    repo: &DynamoDbRepository,
+    key_id: Option<String>,
+    cors_origin: &str,
+) -> ApiGatewayProxyResponse {
+    let key_id = match key_id {
+        Some(id) if !id.is_empty() => id,
+        _ => return error_response(400, "Invalid API key ID", cors_origin),
+    };
+
+    match get_api_key(repo, &key_id).await {
+        Ok(key) => success_response(200, serde_json::to_value(key).unwrap(), cors_origin),
+        Err(e) => {
+            let status = error_to_status_code(&e);
+            error_response(status, &e.to_string(), cors_origin)
+        }
+    }
+}
+
+async fn handle_update_api_key(
+    request: &ApiGatewayProxyRequest,
+    repo: &DynamoDbRepository,
+    key_id: Option<String>,
+    cors_origin: &str,
+) -> ApiGatewayProxyResponse {
+    let key_id = match key_id {
+        Some(id) if !id.is_empty() => id,
+        _ => return error_response(400, "Invalid API key ID", cors_origin),
+    };
+
+    let body = match &request.body {
+        Some(b) => b,
+        None => return error_response(400, "Request body is required", cors_origin),
+    };
+
+    let update_request: UpdateApiKeyRequest = match serde_json::from_str(body) {
+        Ok(r) => r,
+        Err(e) => {
+            warn!(error = %e, "Failed to parse update API key request");
+            return error_response(400, "Invalid request body", cors_origin);
+        }
+    };
+
+    match update_api_key(repo, &key_id, update_request).await {
+        Ok(key) => success_response(200, serde_json::to_value(key).unwrap(), cors_origin),
+        Err(e) => {
+            let status = error_to_status_code(&e);
+            error_response(status, &e.to_string(), cors_origin)
+        }
+    }
+}
+
+async fn handle_delete_api_key(
+    repo: &DynamoDbRepository,
+    key_id: Option<String>,
+    cors_origin: &str,
+) -> ApiGatewayProxyResponse {
+    let key_id = match key_id {
+        Some(id) if !id.is_empty() => id,
+        _ => return error_response(400, "Invalid API key ID", cors_origin),
+    };
+
+    match delete_api_key(repo, &key_id).await {
+        Ok(()) => success_response(
+            200,
+            json!({ "message": "API key deleted successfully" }),
             cors_origin,
         ),
         Err(e) => {

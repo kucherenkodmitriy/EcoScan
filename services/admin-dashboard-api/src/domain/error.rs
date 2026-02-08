@@ -17,6 +17,9 @@ pub enum AppError {
     #[error("Webhook not found: {0}")]
     WebhookNotFound(String),
 
+    #[error("API key not found: {0}")]
+    ApiKeyNotFound(String),
+
     #[error("Validation error: {0}")]
     ValidationError(String),
 

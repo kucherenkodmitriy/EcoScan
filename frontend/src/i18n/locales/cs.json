@@ -398,6 +398,47 @@
       "events": "Události"
     }
   },
+  "apiKeys": {
+    "title": "API klíče",
+    "newApiKey": "+ Nový API klíč",
+    "createTitle": "Vytvořit API klíč",
+    "createdTitle": "API klíč vytvořen",
+    "noApiKeys": "Žádné API klíče nejsou nakonfigurovány. Vytvořte API klíč pro přístup externích systémů k datům kontejnerů.",
+    "noKeyId": "Nebylo zadáno ID API klíče",
+    "failedToLoad": "Nepodařilo se načíst API klíče",
+    "failedToCreate": "Nepodařilo se vytvořit API klíč",
+    "failedToDelete": "Nepodařilo se smazat API klíč",
+    "deleteConfirm": "Opravdu chcete smazat \"{{name}}\"? Tím se API klíč zneplatní.",
+    "backToList": "Zpět na API klíče",
+    "nameRequired": "Název API klíče je povinný",
+    "scopeRequired": "Je vyžadován alespoň jeden rozsah",
+    "createdAt": "Vytvořeno",
+    "expires": "Vyprší",
+    "generate": "Vygenerovat API klíč",
+    "done": "Hotovo",
+    "keyWarningTitle": "Uložte si tento klíč nyní!",
+    "keyWarningMessage": "Toto je jediný okamžik, kdy uvidíte celý API klíč. Zkopírujte si ho a bezpečně uložte.",
+    "yourKey": "Váš API klíč",
+    "copy": "Kopírovat",
+    "copied": "Zkopírováno!",
+    "table": {
+      "name": "Název",
+      "prefix": "Prefix klíče",
+      "scopes": "Rozsahy",
+      "status": "Stav",
+      "createdBy": "Vytvořil",
+      "lastUsed": "Naposledy použit",
+      "actions": "Akce"
+    },
+    "form": {
+      "name": "Název",
+      "namePlaceholder": "např. Golemio integrační klíč",
+      "scopes": "Rozsahy",
+      "expiry": "Platnost",
+      "noExpiry": "Bez expirace",
+      "days": "dní"
+    }
+  },
   "demoModal": {
     "title": "Požádat o demo",
     "description": "Podívejte se na EcoScan v akci. Provedeme vás platformou a probereme, jak by mohla vyhovovat vašim provozním potřebám.",

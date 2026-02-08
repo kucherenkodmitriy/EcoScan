@@ -172,6 +172,16 @@ mod tests {
             }
             Ok(())
         }
+
+        async fn list_bins_paginated(
+            &self,
+            limit: i32,
+            _cursor: Option<String>,
+        ) -> Result<(Vec<BinInfo>, Option<String>)> {
+            let bins = self.bins.lock().unwrap();
+            let take = (limit as usize).min(bins.len());
+            Ok((bins[..take].to_vec(), None))
+        }
     }
 
     #[tokio::test]

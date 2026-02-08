@@ -12,6 +12,9 @@ import Landing from './pages/landing/Landing'
 import WebhookList from './pages/WebhookList'
 import WebhookDetail from './pages/WebhookDetail'
 import WebhookForm from './pages/WebhookForm'
+import ApiKeyList from './pages/ApiKeyList'
+import ApiKeyCreate from './pages/ApiKeyCreate'
+import ApiKeyDetail from './pages/ApiKeyDetail'
 import CookieConsent from './components/CookieConsent'
 
 function PrivateRoute({ children }: { children: React.ReactNode }) {
@@ -94,6 +97,30 @@ function App() {
         element={
           <PrivateRoute>
             <WebhookForm />
+          </PrivateRoute>
+        }
+      />
+      <Route
+        path="/api-keys"
+        element={
+          <PrivateRoute>
+            <ApiKeyList />
+          </PrivateRoute>
+        }
+      />
+      <Route
+        path="/api-keys/new"
+        element={
+          <PrivateRoute>
+            <ApiKeyCreate />
+          </PrivateRoute>
+        }
+      />
+      <Route
+        path="/api-keys/:id"
+        element={
+          <PrivateRoute>
+            <ApiKeyDetail />
           </PrivateRoute>
         }
       />

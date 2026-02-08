@@ -167,6 +167,9 @@ export default function Dashboard() {
           <Link to="/webhooks" className="btn btn-secondary" style={{ background: '#6a1b9a', border: 'none' }}>
             {t('webhooks.title')}
           </Link>
+          <Link to="/api-keys" className="btn btn-secondary" style={{ background: '#1565c0', border: 'none' }}>
+            {t('apiKeys.title')}
+          </Link>
           <div className={styles.userInfo}>
             <strong>{user?.name}</strong>
             <span>{user?.role}</span>

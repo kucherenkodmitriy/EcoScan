@@ -360,7 +360,23 @@
   "settings": {
     "title": "Einstellungen",
     "apiKeys": "API-Schlüssel",
-    "webhooks": "Webhooks"
+    "webhooks": "Webhooks",
+    "dataExport": "Datenexport"
+  },
+  "export": {
+    "title": "Datenexport",
+    "description": "Laden Sie eine CSV-Datei mit allen Behälterdaten herunter. Dieser Export umfasst:",
+    "includes": {
+      "bins": "Alle Behälterdetails (Name, Typ, Adresse)",
+      "status": "Aktueller Füllstand und Anzahl der Meldungen",
+      "location": "GPS-Koordinaten (falls verfügbar)",
+      "history": "Zeitstempel der letzten Aktualisierung"
+    },
+    "downloadCSV": "CSV herunterladen",
+    "exporting": "Exportiere...",
+    "success": "CSV-Datei erfolgreich heruntergeladen!",
+    "failed": "Datenexport fehlgeschlagen. Bitte versuchen Sie es erneut.",
+    "noData": "Keine Behälter zum Exportieren. Erstellen Sie zuerst einige Behälter."
   },
   "webhooks": {
     "title": "Webhooks",

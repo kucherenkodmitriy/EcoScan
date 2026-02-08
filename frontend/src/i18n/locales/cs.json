@@ -360,7 +360,23 @@
   "settings": {
     "title": "Nastavení",
     "apiKeys": "API klíče",
-    "webhooks": "Webhooky"
+    "webhooks": "Webhooky",
+    "dataExport": "Export dat"
+  },
+  "export": {
+    "title": "Export dat",
+    "description": "Stáhněte si soubor CSV obsahující všechna data o koších. Tento export zahrnuje:",
+    "includes": {
+      "bins": "Všechny detaily koše (název, typ, adresa)",
+      "status": "Aktuální stav naplnění a počet hlášení",
+      "location": "GPS souřadnice (pokud jsou k dispozici)",
+      "history": "Časové značky poslední aktualizace"
+    },
+    "downloadCSV": "Stáhnout CSV",
+    "exporting": "Exportuji...",
+    "success": "Soubor CSV byl úspěšně stažen!",
+    "failed": "Export dat se nezdařil. Zkuste to prosím znovu.",
+    "noData": "Žádné koše k exportu. Nejprve vytvořte nějaké koše."
   },
   "webhooks": {
     "title": "Webhooky",

@@ -88,6 +88,14 @@ function App() {
         }
       />
       <Route
+        path="/settings/export"
+        element={
+          <PrivateRoute>
+            <Settings />
+          </PrivateRoute>
+        }
+      />
+      <Route
         path="/webhooks/new"
         element={
           <PrivateRoute>

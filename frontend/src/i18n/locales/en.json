@@ -360,7 +360,23 @@
   "settings": {
     "title": "Settings",
     "apiKeys": "API Keys",
-    "webhooks": "Webhooks"
+    "webhooks": "Webhooks",
+    "dataExport": "Data Export"
+  },
+  "export": {
+    "title": "Data Export",
+    "description": "Download a CSV file containing all your bin data. This export includes:",
+    "includes": {
+      "bins": "All bin details (name, type, address)",
+      "status": "Current fullness status and report counts",
+      "location": "GPS coordinates (if available)",
+      "history": "Last updated timestamps"
+    },
+    "downloadCSV": "Download CSV",
+    "exporting": "Exporting...",
+    "success": "CSV file downloaded successfully!",
+    "failed": "Failed to export data. Please try again.",
+    "noData": "No bins to export. Create some bins first."
   },
   "webhooks": {
     "title": "Webhooks",

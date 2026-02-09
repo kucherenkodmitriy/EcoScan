@@ -37,7 +37,32 @@
     "signIn": "Přihlásit se",
     "signingIn": "Přihlašuji...",
     "errorBothRequired": "Zadejte prosím e-mail i heslo",
-    "errorFailed": "Přihlášení se nezdařilo"
+    "errorFailed": "Přihlášení se nezdařilo",
+    "forgotPassword": "Zapomněli jste heslo?"
+  },
+  "forgotPassword": {
+    "title": "Obnovení hesla",
+    "description": "Zadejte svou e-mailovou adresu a my vám zašleme odkaz pro obnovení hesla.",
+    "emailRequired": "Zadejte prosím svou e-mailovou adresu",
+    "sendLink": "Odeslat odkaz",
+    "sending": "Odesílám...",
+    "successMessage": "Pokud existuje účet s tímto e-mailem, byl odeslán odkaz pro obnovení hesla. Zkontrolujte prosím svou schránku.",
+    "backToLogin": "Zpět na přihlášení"
+  },
+  "resetPassword": {
+    "title": "Nastavení nového hesla",
+    "newPassword": "Nové heslo",
+    "newPasswordPlaceholder": "Zadejte nové heslo",
+    "confirmPassword": "Potvrzení hesla",
+    "confirmPasswordPlaceholder": "Potvrďte nové heslo",
+    "resetPassword": "Obnovit heslo",
+    "resetting": "Obnovuji...",
+    "minLength": "Heslo musí mít alespoň 8 znaků",
+    "passwordsMismatch": "Hesla se neshodují",
+    "successMessage": "Vaše heslo bylo úspěšně obnoveno.",
+    "signIn": "Přihlásit se",
+    "invalidLink": "Tento odkaz pro obnovení hesla je neplatný nebo vypršel.",
+    "failed": "Obnovení hesla se nezdařilo. Odkaz mohl vypršet."
   },
   "dashboard": {
     "totalBins": "Celkem košů",

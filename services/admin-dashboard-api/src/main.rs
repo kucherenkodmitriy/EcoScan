@@ -5,6 +5,7 @@ use tracing::{error, info};
 use tracing_subscriber::fmt;
 
 use admin_dashboard_api::config::Config;
+use admin_dashboard_api::infrastructure::EmailService;
 use admin_dashboard_api::{create_handler, AppState};
 
 #[tokio::main]
@@ -32,9 +33,24 @@ async fn main() -> Result<(), Error> {
 
     info!("Configuration loaded successfully");
 
+    // Initialize email service for password reset emails
+    let email_service = match EmailService::new(
+        config.from_email.clone().unwrap_or_default(),
+        config.dynamodb_endpoint.as_deref(),
+    )
+    .await
+    {
+        Ok(svc) => svc,
+        Err(e) => {
+            error!(error = %e, "Failed to initialize email service");
+            return Err(Error::from(e.to_string()));
+        }
+    };
+
     // Create shared application state
     let state = AppState {
         config: Arc::new(config),
+        email_service: Arc::new(email_service),
     };
 
     // Run Lambda with the handler that has access to shared state

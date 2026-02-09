@@ -31,6 +31,9 @@ pub enum AppError {
 
     #[error("Internal error: {0}")]
     InternalError(String),
+
+    #[error("Reset token is invalid or expired")]
+    ResetTokenInvalid,
 }
 
 impl From<aws_sdk_dynamodb::Error> for AppError {

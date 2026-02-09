@@ -772,13 +772,14 @@ jobs:
   smoke-tests:
     name: Smoke Tests (AWS)
     runs-on: ubuntu-latest
-    needs: [detect-changes, deploy-compute, deploy-api, deploy-data]
+    needs: [detect-changes, deploy-compute, deploy-api, deploy-data, deploy-frontend]
     if: |
       always() &&
       github.ref == 'refs/heads/dev' &&
       (needs.deploy-compute.result == 'success' || needs.deploy-compute.result == 'skipped') &&
       (needs.deploy-api.result == 'success' || needs.deploy-api.result == 'skipped') &&
       (needs.deploy-data.result == 'success' || needs.deploy-data.result == 'skipped') &&
+      (needs.deploy-frontend.result == 'success' || needs.deploy-frontend.result == 'skipped') &&
       (needs.detect-changes.outputs.rust == 'true' || needs.detect-changes.outputs.any_infra == 'true')
     steps:
       - uses: actions/checkout@v4
@@ -787,6 +788,7 @@ jobs:
         uses: hashicorp/setup-terraform@v3
         with:
           terraform_version: ${{ env.TERRAFORM_VERSION }}
+          terraform_wrapper: false
 
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v4
@@ -796,11 +798,19 @@ jobs:
           role-session-name: GitHubActions-SmokeTests
 
       - name: Initialize Terraform (for outputs)
-        working-directory: infrastructure/layers/03-api
         run: |
+          cd infrastructure/layers/01-data
+          terraform init \
+            -backend-config="../../backend/dev.tfbackend" \
+            -backend-config="key=layers/01-data/terraform.tfstate"
+          cd ../03-api
           terraform init \
             -backend-config="../../backend/dev.tfbackend" \
             -backend-config="key=layers/03-api/terraform.tfstate"
+          cd ../04-frontend
+          terraform init \
+            -backend-config="../../backend/dev.tfbackend" \
+            -backend-config="key=layers/04-frontend/terraform.tfstate"
 
       - name: Run Smoke Tests
         run: |
@@ -851,6 +861,7 @@ jobs:
         uses: hashicorp/setup-terraform@v3
         with:
           terraform_version: ${{ env.TERRAFORM_VERSION }}
+          terraform_wrapper: false
 
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v4

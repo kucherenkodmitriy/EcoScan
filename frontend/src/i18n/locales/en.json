@@ -37,7 +37,32 @@
     "signIn": "Sign In",
     "signingIn": "Signing in...",
     "errorBothRequired": "Please enter both email and password",
-    "errorFailed": "Login failed"
+    "errorFailed": "Login failed",
+    "forgotPassword": "Forgot password?"
+  },
+  "forgotPassword": {
+    "title": "Reset Password",
+    "description": "Enter your email address and we'll send you a link to reset your password.",
+    "emailRequired": "Please enter your email address",
+    "sendLink": "Send Reset Link",
+    "sending": "Sending...",
+    "successMessage": "If an account with that email exists, a password reset link has been sent. Please check your inbox.",
+    "backToLogin": "Back to Login"
+  },
+  "resetPassword": {
+    "title": "Set New Password",
+    "newPassword": "New Password",
+    "newPasswordPlaceholder": "Enter new password",
+    "confirmPassword": "Confirm Password",
+    "confirmPasswordPlaceholder": "Confirm new password",
+    "resetPassword": "Reset Password",
+    "resetting": "Resetting...",
+    "minLength": "Password must be at least 8 characters",
+    "passwordsMismatch": "Passwords do not match",
+    "successMessage": "Your password has been reset successfully.",
+    "signIn": "Sign In",
+    "invalidLink": "This password reset link is invalid or has expired.",
+    "failed": "Password reset failed. The link may have expired."
   },
   "dashboard": {
     "totalBins": "Total Bins",

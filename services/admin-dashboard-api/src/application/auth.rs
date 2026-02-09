@@ -1,10 +1,15 @@
-use chrono::Utc;
+use chrono::{Duration, Utc};
+use rand::Rng;
+use sha2::{Digest, Sha256};
 use tracing::{info, instrument, warn};
 
 use crate::domain::{
-    AdminUser, AppError, LoginRequest, LoginResponse, Result, UserInfo, UserRepository, UserRole,
+    AdminUser, AppError, ForgotPasswordRequest, LoginRequest, LoginResponse, MessageResponse,
+    ResetPasswordRequest, Result, UserInfo, UserRepository, UserRole,
 };
-use crate::infrastructure::{generate_token, hash_password, verify_password, JwtConfig};
+use crate::infrastructure::{
+    generate_token, hash_password, verify_password, EmailService, JwtConfig,
+};
 
 /// Handle user login
 #[instrument(skip(repo, request, jwt_config), fields(email = %request.email))]
@@ -94,6 +99,129 @@ pub async fn create_user(
     Ok(())
 }
 
+/// Handle forgot password request
+///
+/// Always returns success to prevent email enumeration.
+#[instrument(skip(repo, email_service, request), fields(email = %request.email))]
+pub async fn handle_forgot_password(
+    repo: &dyn UserRepository,
+    email_service: &EmailService,
+    request: ForgotPasswordRequest,
+    frontend_url: &str,
+) -> Result<MessageResponse> {
+    let email = request.email.trim().to_lowercase();
+
+    // Always return success message regardless of whether user exists
+    let success = MessageResponse {
+        message: "If an account with that email exists, a password reset link has been sent."
+            .to_string(),
+    };
+
+    if email.is_empty() {
+        return Ok(success);
+    }
+
+    // Check if user exists
+    let user = match repo.get_user(&email).await? {
+        Some(u) => u,
+        None => {
+            info!(email = %email, "Forgot password for non-existent user (returning success)");
+            return Ok(success);
+        }
+    };
+
+    if !user.is_active {
+        info!(email = %email, "Forgot password for inactive user (returning success)");
+        return Ok(success);
+    }
+
+    // Generate random token (32 bytes -> 64 hex chars)
+    let token_bytes: [u8; 32] = rand::thread_rng().gen();
+    let token = hex::encode(token_bytes);
+
+    // Hash token before storing (SHA-256)
+    let mut hasher = Sha256::new();
+    hasher.update(token.as_bytes());
+    let token_hash = hex::encode(hasher.finalize());
+
+    // Store hashed token with 1-hour expiry
+    let expiry = Utc::now() + Duration::hours(1);
+    repo.store_reset_token(&email, &token_hash, expiry).await?;
+
+    // Build reset link with raw token (not hash)
+    let reset_link = format!(
+        "{}/reset-password?token={}&email={}",
+        frontend_url.trim_end_matches('/'),
+        token,
+        urlencoding::encode(&email)
+    );
+
+    // Send email - log errors but don't fail the request
+    if email_service.is_configured() {
+        if let Err(e) = email_service
+            .send_password_reset_email(&email, &reset_link)
+            .await
+        {
+            warn!(error = %e, email = %email, "Failed to send password reset email");
+        }
+    } else {
+        info!(email = %email, reset_link = %reset_link, "Email service not configured, logging reset link");
+    }
+
+    Ok(success)
+}
+
+/// Handle reset password request
+#[instrument(skip(repo, request), fields(email = %request.email))]
+pub async fn handle_reset_password(
+    repo: &dyn UserRepository,
+    request: ResetPasswordRequest,
+) -> Result<MessageResponse> {
+    let email = request.email.trim().to_lowercase();
+
+    // Validate new password
+    if request.new_password.len() < 8 {
+        return Err(AppError::ValidationError(
+            "Password must be at least 8 characters".to_string(),
+        ));
+    }
+
+    // Hash the incoming token
+    let mut hasher = Sha256::new();
+    hasher.update(request.token.as_bytes());
+    let incoming_hash = hex::encode(hasher.finalize());
+
+    // Get stored token
+    let (stored_hash, expiry) = repo
+        .get_reset_token(&email)
+        .await?
+        .ok_or(AppError::ResetTokenInvalid)?;
+
+    // Compare hashes (constant-time not critical since hashed, but check correctness)
+    if incoming_hash != stored_hash {
+        warn!(email = %email, "Invalid reset token");
+        return Err(AppError::ResetTokenInvalid);
+    }
+
+    // Check expiry
+    if Utc::now() > expiry {
+        // Clean up expired token
+        let _ = repo.clear_reset_token(&email).await;
+        warn!(email = %email, "Expired reset token");
+        return Err(AppError::ResetTokenInvalid);
+    }
+
+    // Hash new password and update
+    let new_password_hash = hash_password(&request.new_password)?;
+    repo.update_password(&email, &new_password_hash).await?;
+
+    info!(email = %email, "Password reset successful");
+
+    Ok(MessageResponse {
+        message: "Password has been reset successfully.".to_string(),
+    })
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -132,6 +260,31 @@ mod tests {
         }
 
         async fn update_last_login(&self, _email: &str, _timestamp: DateTime<Utc>) -> Result<()> {
+            Ok(())
+        }
+
+        async fn store_reset_token(
+            &self,
+            _email: &str,
+            _token_hash: &str,
+            _expiry: DateTime<Utc>,
+        ) -> Result<()> {
+            Ok(())
+        }
+
+        async fn get_reset_token(&self, _email: &str) -> Result<Option<(String, DateTime<Utc>)>> {
+            Ok(None)
+        }
+
+        async fn clear_reset_token(&self, _email: &str) -> Result<()> {
+            Ok(())
+        }
+
+        async fn update_password(&self, email: &str, password_hash: &str) -> Result<()> {
+            let mut users = self.users.lock().unwrap();
+            if let Some(user) = users.iter_mut().find(|u| u.email == email) {
+                user.password_hash = password_hash.to_string();
+            }
             Ok(())
         }
     }

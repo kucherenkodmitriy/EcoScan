@@ -123,6 +123,12 @@ variable "cors_allowed_origins" {
   default     = "*"
 }
 
+variable "frontend_url" {
+  description = "Frontend URL for building password reset links"
+  type        = string
+  default     = "http://localhost:3000"
+}
+
 variable "lambda_sqs_batch_size" {
   description = "Maximum number of SQS messages to process in a single Lambda invocation"
   type        = number

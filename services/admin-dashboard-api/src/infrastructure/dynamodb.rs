@@ -215,6 +215,92 @@ impl UserRepository for DynamoDbRepository {
 
         Ok(())
     }
+
+    #[instrument(skip(self, token_hash), fields(table = %self.users_table))]
+    async fn store_reset_token(
+        &self,
+        email: &str,
+        token_hash: &str,
+        expiry: DateTime<Utc>,
+    ) -> Result<()> {
+        self.client
+            .update_item()
+            .table_name(&self.users_table)
+            .key("email", AttributeValue::S(email.to_string()))
+            .update_expression("SET resetTokenHash = :hash, resetTokenExpiry = :expiry")
+            .expression_attribute_values(":hash", AttributeValue::S(token_hash.to_string()))
+            .expression_attribute_values(":expiry", AttributeValue::S(expiry.to_rfc3339()))
+            .send()
+            .await
+            .map_err(|e| AppError::DatabaseError(e.to_string()))?;
+
+        info!(email = %email, "Reset token stored");
+        Ok(())
+    }
+
+    #[instrument(skip(self), fields(table = %self.users_table))]
+    async fn get_reset_token(&self, email: &str) -> Result<Option<(String, DateTime<Utc>)>> {
+        let result = self
+            .client
+            .get_item()
+            .table_name(&self.users_table)
+            .key("email", AttributeValue::S(email.to_string()))
+            .projection_expression("resetTokenHash, resetTokenExpiry")
+            .send()
+            .await
+            .map_err(|e| AppError::DatabaseError(e.to_string()))?;
+
+        match result.item {
+            Some(item) => {
+                let hash = item
+                    .get("resetTokenHash")
+                    .and_then(|v| v.as_s().ok())
+                    .cloned();
+                let expiry = item
+                    .get("resetTokenExpiry")
+                    .and_then(|v| v.as_s().ok())
+                    .and_then(|s| DateTime::parse_from_rfc3339(s).ok())
+                    .map(|dt| dt.with_timezone(&Utc));
+
+                match (hash, expiry) {
+                    (Some(h), Some(e)) => Ok(Some((h, e))),
+                    _ => Ok(None),
+                }
+            }
+            None => Ok(None),
+        }
+    }
+
+    #[instrument(skip(self), fields(table = %self.users_table))]
+    async fn clear_reset_token(&self, email: &str) -> Result<()> {
+        self.client
+            .update_item()
+            .table_name(&self.users_table)
+            .key("email", AttributeValue::S(email.to_string()))
+            .update_expression("REMOVE resetTokenHash, resetTokenExpiry")
+            .send()
+            .await
+            .map_err(|e| AppError::DatabaseError(e.to_string()))?;
+
+        info!(email = %email, "Reset token cleared");
+        Ok(())
+    }
+
+    #[instrument(skip(self, password_hash), fields(table = %self.users_table))]
+    async fn update_password(&self, email: &str, password_hash: &str) -> Result<()> {
+        self.client
+            .update_item()
+            .table_name(&self.users_table)
+            .key("email", AttributeValue::S(email.to_string()))
+            .update_expression("SET passwordHash = :pw REMOVE resetTokenHash, resetTokenExpiry")
+            .expression_attribute_values(":pw", AttributeValue::S(password_hash.to_string()))
+            .send()
+            .await
+            .map_err(|e| AppError::DatabaseError(e.to_string()))?;
+
+        info!(email = %email, "Password updated and reset token cleared");
+        Ok(())
+    }
 }
 
 #[async_trait]

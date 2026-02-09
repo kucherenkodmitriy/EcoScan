@@ -92,3 +92,18 @@
     transform: rotate(360deg);
   }
 }
+
+.forgotPasswordLink {
+  display: block;
+  text-align: center;
+  margin-top: 16px;
+  color: #2e7d32;
+  font-size: 14px;
+  text-decoration: none;
+  transition: color 0.2s;
+}
+
+.forgotPasswordLink:hover {
+  color: #1b5e20;
+  text-decoration: underline;
+}

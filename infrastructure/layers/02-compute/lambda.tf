@@ -285,6 +285,8 @@ resource "aws_lambda_function" "admin_dashboard" {
         API_KEYS_TABLE_NAME        = local.api_keys_table_name
         JWT_EXPIRY_HOURS           = var.jwt_expiry_hours
         CORS_ALLOWED_ORIGINS       = var.cors_allowed_origins
+        FROM_EMAIL                 = var.from_email
+        FRONTEND_URL               = var.frontend_url
         AWS_XRAY_TRACING_NAME      = "${var.environment}-${var.project_name}-admin-dashboard"
         AWS_XRAY_CONTEXT_MISSING   = "LOG_ERROR"
       },
@@ -372,6 +374,14 @@ resource "aws_iam_policy" "admin_dashboard_policy" {
           "secretsmanager:GetSecretValue"
         ]
         Resource = local.jwt_secret_arn
+      },
+      {
+        Effect = "Allow"
+        Action = [
+          "ses:SendEmail",
+          "ses:SendRawEmail"
+        ]
+        Resource = "*"
       },
       {
         Effect = "Allow"

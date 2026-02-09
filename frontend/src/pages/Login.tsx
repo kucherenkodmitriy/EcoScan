@@ -1,5 +1,5 @@
 import { useState, FormEvent, useEffect } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { useAuth } from '../context/AuthContext'
 import LanguageSwitcher from '../components/LanguageSwitcher'
@@ -97,6 +97,10 @@ export default function Login() {
             )}
           </button>
         </form>
+
+        <Link to="/forgot-password" className={styles.forgotPasswordLink}>
+          {t('login.forgotPassword')}
+        </Link>
       </div>
       <Footer variant="light" />
     </div>

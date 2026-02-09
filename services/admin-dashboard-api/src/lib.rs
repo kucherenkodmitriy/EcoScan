@@ -15,20 +15,23 @@ use uuid::Uuid;
 
 use crate::application::{
     create_api_key, create_bin, create_webhook, delete_api_key, delete_bin, delete_webhook,
-    get_api_key, get_bin, get_bin_external, get_webhook, handle_login, list_api_keys, list_bins,
-    list_bins_external, list_webhooks, update_api_key, update_bin, update_webhook,
+    get_api_key, get_bin, get_bin_external, get_webhook, handle_forgot_password, handle_login,
+    handle_reset_password, list_api_keys, list_bins, list_bins_external, list_webhooks,
+    update_api_key, update_bin, update_webhook,
 };
 use crate::config::Config;
 use crate::domain::{
-    AppError, CreateApiKeyRequest, CreateBinRequest, CreateWebhookRequest, LoginRequest,
-    PublicBinInfo, UpdateApiKeyRequest, UpdateBinRequest, UpdateWebhookRequest,
+    AppError, CreateApiKeyRequest, CreateBinRequest, CreateWebhookRequest, ForgotPasswordRequest,
+    LoginRequest, PublicBinInfo, ResetPasswordRequest, UpdateApiKeyRequest, UpdateBinRequest,
+    UpdateWebhookRequest,
 };
-use crate::infrastructure::{DynamoDbRepository, JwtConfig};
+use crate::infrastructure::{DynamoDbRepository, EmailService, JwtConfig};
 
 /// Shared application state initialized at cold start
 #[derive(Clone)]
 pub struct AppState {
     pub config: Arc<Config>,
+    pub email_service: Arc<EmailService>,
 }
 
 /// Build a successful JSON response with CORS headers
@@ -89,7 +92,7 @@ fn error_to_status_code(error: &AppError) -> i64 {
         | AppError::BinNotFound(_)
         | AppError::WebhookNotFound(_)
         | AppError::ApiKeyNotFound(_) => 404,
-        AppError::ValidationError(_) => 400,
+        AppError::ValidationError(_) | AppError::ResetTokenInvalid => 400,
         AppError::DatabaseError(_) | AppError::InternalError(_) | AppError::JwtError(_) => 500,
     }
 }
@@ -203,6 +206,23 @@ async fn api_handler_inner(
         // Login endpoint (no auth required)
         ("POST", p) if p.ends_with("/auth/login") => {
             handle_login_request(&request, &repo, config, cors_origin).await
+        }
+
+        // Forgot password (no auth required)
+        ("POST", p) if p.ends_with("/auth/forgot-password") => {
+            handle_forgot_password_request(
+                &request,
+                &repo,
+                &state.email_service,
+                config,
+                cors_origin,
+            )
+            .await
+        }
+
+        // Reset password (no auth required)
+        ("POST", p) if p.ends_with("/auth/reset-password") => {
+            handle_reset_password_request(&request, &repo, cors_origin).await
         }
 
         // Public bin info for QR report page (no auth required)
@@ -354,6 +374,62 @@ async fn handle_login_request(
 
     // Handle login
     match handle_login(repo, login_request, &jwt_config).await {
+        Ok(response) => success_response(200, serde_json::to_value(response).unwrap(), cors_origin),
+        Err(e) => {
+            let status = error_to_status_code(&e);
+            error_response(status, &e.to_string(), cors_origin)
+        }
+    }
+}
+
+async fn handle_forgot_password_request(
+    request: &ApiGatewayProxyRequest,
+    repo: &DynamoDbRepository,
+    email_service: &EmailService,
+    config: &Config,
+    cors_origin: &str,
+) -> ApiGatewayProxyResponse {
+    let body = match &request.body {
+        Some(b) => b,
+        None => return error_response(400, "Request body is required", cors_origin),
+    };
+
+    let forgot_request: ForgotPasswordRequest = match serde_json::from_str(body) {
+        Ok(r) => r,
+        Err(e) => {
+            warn!(error = %e, "Failed to parse forgot password request");
+            return error_response(400, "Invalid request body", cors_origin);
+        }
+    };
+
+    match handle_forgot_password(repo, email_service, forgot_request, &config.frontend_url).await {
+        Ok(response) => success_response(200, serde_json::to_value(response).unwrap(), cors_origin),
+        Err(e) => {
+            let status = error_to_status_code(&e);
+            error_response(status, &e.to_string(), cors_origin)
+        }
+    }
+}
+
+async fn handle_reset_password_request(
+    request: &ApiGatewayProxyRequest,
+    repo: &DynamoDbRepository,
+    cors_origin: &str,
+) -> ApiGatewayProxyResponse {
+    let body = match &request.body {
+        Some(b) => b,
+        None => return error_response(400, "Request body is required", cors_origin),
+    };
+
+    let reset_request: ResetPasswordRequest = match serde_json::from_str(body) {
+        Ok(r) => r,
+        Err(e) => {
+            warn!(error = %e, "Failed to parse reset password request");
+            return error_response(400, "Invalid request body", cors_origin);
+        }
+    };
+
+    match handle_reset_password(repo, reset_request).await {
         Ok(response) => success_response(200, serde_json::to_value(response).unwrap(), cors_origin),
         Err(e) => {
             let status = error_to_status_code(&e);

@@ -22,6 +22,36 @@ export async function fetchWithAuth(path: string, options: RequestInit = {}) {
   return response
 }
 
+// =============================================================================
+// Forgot/Reset Password API (no auth required)
+// =============================================================================
+
+export async function forgotPassword(email: string): Promise<{ message: string }> {
+  const response = await fetch(`${API_BASE}/auth/forgot-password`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ email }),
+  })
+  if (!response.ok) {
+    const error = await response.json().catch(() => ({ error: 'Request failed' }))
+    throw new Error(error.error || 'Request failed')
+  }
+  return response.json()
+}
+
+export async function resetPassword(email: string, token: string, newPassword: string): Promise<{ message: string }> {
+  const response = await fetch(`${API_BASE}/auth/reset-password`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ email, token, new_password: newPassword }),
+  })
+  if (!response.ok) {
+    const error = await response.json().catch(() => ({ error: 'Request failed' }))
+    throw new Error(error.error || 'Request failed')
+  }
+  return response.json()
+}
+
 export interface Bin {
   bin_id: string
   name: string

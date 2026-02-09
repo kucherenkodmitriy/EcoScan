@@ -79,3 +79,23 @@ impl From<&AdminUser> for UserInfo {
         }
     }
 }
+
+/// Forgot password request
+#[derive(Debug, Deserialize)]
+pub struct ForgotPasswordRequest {
+    pub email: String,
+}
+
+/// Reset password request
+#[derive(Debug, Deserialize)]
+pub struct ResetPasswordRequest {
+    pub email: String,
+    pub token: String,
+    pub new_password: String,
+}
+
+/// Generic message response
+#[derive(Debug, Serialize)]
+pub struct MessageResponse {
+    pub message: String,
+}

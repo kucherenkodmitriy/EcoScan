@@ -15,6 +15,10 @@ pub struct Config {
     pub log_level: String,
     /// Allowed CORS origins (comma-separated for multiple). Use "*" for any origin.
     pub cors_allowed_origins: String,
+    /// Email address to send password reset emails from (must be verified in SES)
+    pub from_email: Option<String>,
+    /// Frontend URL for building password reset links
+    pub frontend_url: String,
 }
 
 impl Config {
@@ -45,6 +49,9 @@ impl Config {
             log_level: std::env::var("LOG_LEVEL").unwrap_or_else(|_| "INFO".to_string()),
             cors_allowed_origins: std::env::var("CORS_ALLOWED_ORIGINS")
                 .unwrap_or_else(|_| "*".to_string()),
+            from_email: std::env::var("FROM_EMAIL").ok().filter(|s| !s.is_empty()),
+            frontend_url: std::env::var("FRONTEND_URL")
+                .unwrap_or_else(|_| "http://localhost:3000".to_string()),
         }
     }
 
@@ -79,6 +86,9 @@ impl Config {
             log_level: std::env::var("LOG_LEVEL").unwrap_or_else(|_| "INFO".to_string()),
             cors_allowed_origins: std::env::var("CORS_ALLOWED_ORIGINS")
                 .unwrap_or_else(|_| "*".to_string()),
+            from_email: std::env::var("FROM_EMAIL").ok().filter(|s| !s.is_empty()),
+            frontend_url: std::env::var("FRONTEND_URL")
+                .unwrap_or_else(|_| "http://localhost:3000".to_string()),
         })
     }
 

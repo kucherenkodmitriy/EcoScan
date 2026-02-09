@@ -27,6 +27,9 @@ lambda_deployments_bucket_name = "lambda-deployments"
 lambda_sqs_batch_size  = 10 # Process up to 10 messages per invocation
 lambda_max_concurrency = 5  # Max 5 concurrent executions for local testing
 
+# Frontend URL for password reset links
+frontend_url = "http://localhost:3000"
+
 # reCAPTCHA settings (skip for local testing)
 skip_recaptcha       = true
 recaptcha_secret_key = ""

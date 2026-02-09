@@ -213,6 +213,17 @@ resource "aws_api_gateway_deployment" "api_deployment" {
       aws_api_gateway_integration.auth_login_integration.id,
       aws_api_gateway_method.options_auth_login.id,
       aws_api_gateway_integration.options_auth_login_integration.id,
+      # Forgot/Reset password endpoints
+      aws_api_gateway_resource.auth_forgot_password.id,
+      aws_api_gateway_method.post_auth_forgot_password.id,
+      aws_api_gateway_integration.auth_forgot_password_integration.id,
+      aws_api_gateway_method.options_auth_forgot_password.id,
+      aws_api_gateway_integration.options_auth_forgot_password_integration.id,
+      aws_api_gateway_resource.auth_reset_password.id,
+      aws_api_gateway_method.post_auth_reset_password.id,
+      aws_api_gateway_integration.auth_reset_password_integration.id,
+      aws_api_gateway_method.options_auth_reset_password.id,
+      aws_api_gateway_integration.options_auth_reset_password_integration.id,
       # Admin endpoints
       aws_api_gateway_resource.admin_bins.id,
       aws_api_gateway_resource.admin_bin_id.id,
@@ -526,6 +537,98 @@ resource "aws_api_gateway_integration" "auth_login_integration" {
   rest_api_id             = aws_api_gateway_rest_api.api.id
   resource_id             = aws_api_gateway_resource.auth_login.id
   http_method             = aws_api_gateway_method.post_auth_login.http_method
+  integration_http_method = "POST"
+  type                    = "AWS_PROXY"
+  uri                     = "arn:aws:apigateway:${var.aws_region}:lambda:path/2015-03-31/functions/${local.admin_dashboard_arn}/invocations"
+  credentials             = aws_iam_role.apigateway_lambda_role.arn
+}
+
+# =============================================================================
+# Auth Resources (/auth/forgot-password)
+# =============================================================================
+
+resource "aws_api_gateway_resource" "auth_forgot_password" {
+  rest_api_id = aws_api_gateway_rest_api.api.id
+  parent_id   = aws_api_gateway_resource.auth.id
+  path_part   = "forgot-password"
+}
+
+# POST /auth/forgot-password - No authorization required
+resource "aws_api_gateway_method" "post_auth_forgot_password" {
+  rest_api_id   = aws_api_gateway_rest_api.api.id
+  resource_id   = aws_api_gateway_resource.auth_forgot_password.id
+  http_method   = "POST"
+  authorization = "NONE"
+}
+
+# OPTIONS /auth/forgot-password - CORS preflight
+resource "aws_api_gateway_method" "options_auth_forgot_password" {
+  rest_api_id   = aws_api_gateway_rest_api.api.id
+  resource_id   = aws_api_gateway_resource.auth_forgot_password.id
+  http_method   = "OPTIONS"
+  authorization = "NONE"
+}
+
+resource "aws_api_gateway_integration" "options_auth_forgot_password_integration" {
+  rest_api_id             = aws_api_gateway_rest_api.api.id
+  resource_id             = aws_api_gateway_resource.auth_forgot_password.id
+  http_method             = aws_api_gateway_method.options_auth_forgot_password.http_method
+  integration_http_method = "POST"
+  type                    = "AWS_PROXY"
+  uri                     = "arn:aws:apigateway:${var.aws_region}:lambda:path/2015-03-31/functions/${local.admin_dashboard_arn}/invocations"
+  credentials             = aws_iam_role.apigateway_lambda_role.arn
+}
+
+resource "aws_api_gateway_integration" "auth_forgot_password_integration" {
+  rest_api_id             = aws_api_gateway_rest_api.api.id
+  resource_id             = aws_api_gateway_resource.auth_forgot_password.id
+  http_method             = aws_api_gateway_method.post_auth_forgot_password.http_method
+  integration_http_method = "POST"
+  type                    = "AWS_PROXY"
+  uri                     = "arn:aws:apigateway:${var.aws_region}:lambda:path/2015-03-31/functions/${local.admin_dashboard_arn}/invocations"
+  credentials             = aws_iam_role.apigateway_lambda_role.arn
+}
+
+# =============================================================================
+# Auth Resources (/auth/reset-password)
+# =============================================================================
+
+resource "aws_api_gateway_resource" "auth_reset_password" {
+  rest_api_id = aws_api_gateway_rest_api.api.id
+  parent_id   = aws_api_gateway_resource.auth.id
+  path_part   = "reset-password"
+}
+
+# POST /auth/reset-password - No authorization required
+resource "aws_api_gateway_method" "post_auth_reset_password" {
+  rest_api_id   = aws_api_gateway_rest_api.api.id
+  resource_id   = aws_api_gateway_resource.auth_reset_password.id
+  http_method   = "POST"
+  authorization = "NONE"
+}
+
+# OPTIONS /auth/reset-password - CORS preflight
+resource "aws_api_gateway_method" "options_auth_reset_password" {
+  rest_api_id   = aws_api_gateway_rest_api.api.id
+  resource_id   = aws_api_gateway_resource.auth_reset_password.id
+  http_method   = "OPTIONS"
+  authorization = "NONE"
+}
+
+resource "aws_api_gateway_integration" "options_auth_reset_password_integration" {
+  rest_api_id             = aws_api_gateway_rest_api.api.id
+  resource_id             = aws_api_gateway_resource.auth_reset_password.id
+  http_method             = aws_api_gateway_method.options_auth_reset_password.http_method
+  integration_http_method = "POST"
+  type                    = "AWS_PROXY"
+  uri                     = "arn:aws:apigateway:${var.aws_region}:lambda:path/2015-03-31/functions/${local.admin_dashboard_arn}/invocations"
+  credentials             = aws_iam_role.apigateway_lambda_role.arn
+}
+
+resource "aws_api_gateway_integration" "auth_reset_password_integration" {
+  rest_api_id             = aws_api_gateway_rest_api.api.id
+  resource_id             = aws_api_gateway_resource.auth_reset_password.id
+  http_method             = aws_api_gateway_method.post_auth_reset_password.http_method
   integration_http_method = "POST"
   type                    = "AWS_PROXY"
   uri                     = "arn:aws:apigateway:${var.aws_region}:lambda:path/2015-03-31/functions/${local.admin_dashboard_arn}/invocations"

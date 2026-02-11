@@ -9,6 +9,16 @@ EcoScan has multiple layers of tests:
 - **Integration Tests** - Test DynamoDB repository layer
 - **Smoke Tests** - Quick validation after deployment (`./scripts/smoke-test.sh`)
 - **E2E Tests** - Full end-to-end flow testing (`./scripts/run-e2e-tests.sh`)
+- **Frontend Tests** - React component and integration tests (`npm test`)
+
+**Tested Components:**
+- Bin status updates (IoT/QR reporting)
+- Admin authentication (login, forgot/reset password)
+- API keys management (create, list, update, delete)
+- Webhooks (create, list, update, delete, delivery)
+- CSV data export
+- Map integration and route planning
+- Multi-language support
 
 For CI/CD testing automation, see [Testing Automation Guide](docs/TESTING_AUTOMATION.md).
 
@@ -418,6 +428,152 @@ awslocal sqs receive-message \
 - DynamoDB shows weighted average calculation
 - CloudWatch logs show request details
 - No messages in Dead Letter Queue
+
+---
+
+## Testing New Features
+
+### API Keys Management
+
+```bash
+# Login to get JWT token
+TOKEN=$(curl -s -X POST "${BASE_URL}/auth/login" \
+  -H "Content-Type: application/json" \
+  -d '{"email":"admin@ecoscan.local","password":"admin123"}' | jq -r '.token')
+
+# Create API key
+API_KEY_RESPONSE=$(curl -s -X POST "${BASE_URL}/admin/api-keys" \
+  -H "Authorization: Bearer ${TOKEN}" \
+  -H "Content-Type: application/json" \
+  -d '{"name":"Test Integration","scopes":["bins:read"]}')
+
+echo "$API_KEY_RESPONSE" | jq
+
+# Extract API key
+API_KEY=$(echo "$API_KEY_RESPONSE" | jq -r '.apiKey')
+
+# Use API key to list bins (external API)
+curl "${BASE_URL}/api/external/bins" -H "X-API-Key: ${API_KEY}"
+
+# List all API keys
+curl "${BASE_URL}/admin/api-keys" -H "Authorization: Bearer ${TOKEN}"
+
+# Delete API key
+KEY_ID=$(echo "$API_KEY_RESPONSE" | jq -r '.keyId')
+curl -X DELETE "${BASE_URL}/admin/api-keys/${KEY_ID}" \
+  -H "Authorization: Bearer ${TOKEN}"
+```
+
+### Webhooks
+
+```bash
+# Create webhook
+WEBHOOK_RESPONSE=$(curl -s -X POST "${BASE_URL}/admin/webhooks" \
+  -H "Authorization: Bearer ${TOKEN}" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "url": "https://webhook.site/your-unique-url",
+    "eventTypes": ["bin.status.changed"],
+    "authType": "bearer",
+    "authValue": "test_secret",
+    "isActive": true
+  }')
+
+echo "$WEBHOOK_RESPONSE" | jq
+
+# List webhooks
+curl "${BASE_URL}/admin/webhooks" -H "Authorization: Bearer ${TOKEN}"
+
+# Trigger webhook by updating bin status
+curl -X POST "${BASE_URL}/bins/${BIN_ID}/status" \
+  -H "Content-Type: application/json" \
+  -d '{"status": 85}'
+
+# Wait a few seconds, then check webhook delivery stats
+WEBHOOK_ID=$(echo "$WEBHOOK_RESPONSE" | jq -r '.webhookId')
+curl "${BASE_URL}/admin/webhooks/${WEBHOOK_ID}" \
+  -H "Authorization: Bearer ${TOKEN}"
+```
+
+### Password Reset Flow
+
+```bash
+# Request password reset
+curl -X POST "${BASE_URL}/auth/forgot-password" \
+  -H "Content-Type: application/json" \
+  -d '{"email":"admin@ecoscan.local"}'
+# Response: {"message":"If an account with that email exists..."}
+
+# Check DynamoDB for reset token (for testing only)
+awslocal dynamodb get-item \
+  --table-name local-ecoscan-admin-users \
+  --key '{"email":{"S":"admin@ecoscan.local"}}' \
+  | jq '.Item | {resetToken, resetTokenExpiry}'
+
+# In production, user would receive email with reset link
+# Reset password with token (token from email/DynamoDB)
+RESET_TOKEN="..." # from email or DynamoDB
+curl -X POST "${BASE_URL}/auth/reset-password" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "email":"admin@ecoscan.local",
+    "token":"'"$RESET_TOKEN"'",
+    "newPassword":"newpassword123"
+  }'
+
+# Try logging in with new password
+curl -X POST "${BASE_URL}/auth/login" \
+  -H "Content-Type: application/json" \
+  -d '{"email":"admin@ecoscan.local","password":"newpassword123"}'
+```
+
+### Contact Form
+
+```bash
+# Submit contact form (requires reCAPTCHA token in production)
+curl -X POST "${BASE_URL}/api/contact" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name": "Test User",
+    "email": "test@example.com",
+    "organization": "Test Org",
+    "message": "Testing contact form",
+    "recaptchaToken": "test_token_local",
+    "requestType": "contact"
+  }'
+
+# Check submissions in DynamoDB
+awslocal dynamodb scan \
+  --table-name local-ecoscan-demo-requests \
+  | jq '.Items[] | {name: .name.S, email: .email.S, requestType: .requestType.S}'
+```
+
+### Frontend Features
+
+**Map View:**
+1. Navigate to Dashboard
+2. Toggle "Map View" button
+3. Verify bins appear as markers with correct colors
+4. Click "Create Route" and select multiple bins
+5. Verify route appears on map
+
+**QR Printing:**
+1. Navigate to `/qr-print`
+2. Apply filters (type, status, active)
+3. Select multiple bins
+4. Click "Print" and verify print layout
+
+**Multi-Language:**
+1. Click language selector (top right)
+2. Switch between EN, CS, DE
+3. Verify all UI text updates
+4. Verify URL parameter updates
+
+**Data Export:**
+1. Navigate to Settings > Data Export
+2. Click "Download CSV"
+3. Verify CSV file downloads with timestamp
+4. Open CSV and verify all columns present
 
 ---
 

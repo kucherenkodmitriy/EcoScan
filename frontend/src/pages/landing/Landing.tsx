@@ -222,6 +222,8 @@ function Landing() {
               <li>{t('landing.heroCard.item2')}</li>
               <li>{t('landing.heroCard.item3')}</li>
               <li>{t('landing.heroCard.item4')}</li>
+              <li>{t('landing.heroCard.item5')}</li>
+              <li>{t('landing.heroCard.item6')}</li>
             </ul>
           </div>
         </div>
@@ -339,6 +341,8 @@ function Landing() {
               <li>{t('landing.roadmap.phase1Item2')}</li>
               <li>{t('landing.roadmap.phase1Item3')}</li>
               <li>{t('landing.roadmap.phase1Item4')}</li>
+              <li>{t('landing.roadmap.phase1Item5')}</li>
+              <li>{t('landing.roadmap.phase1Item6')}</li>
             </ul>
           </div>
           <div>

@@ -150,9 +150,46 @@ src/
 └── infrastructure/   # DynamoDB repository
 ```
 
-#### Future Services (Skeletons)
-- **notifier**: Push/email notifications when bins are full
-- **shared**: Domain models, DTOs, and utilities
+#### webhook-sender (Production Ready ✅)
+Asynchronous webhook delivery service triggered by SNS/SQS.
+
+**Handler**: `sqs_handler` - Processes webhook delivery requests
+- Receives webhook events from SQS queue
+- Makes HTTP POST requests to configured webhook URLs
+- Supports three auth types: None, API Key, Bearer token
+- Updates delivery statistics in DynamoDB
+- Implements retry logic with exponential backoff
+- Handles failures with DLQ for manual investigation
+
+**Architecture**:
+```
+src/
+├── main.rs           # SQS handler entry point
+├── lib.rs            # Webhook delivery logic
+├── application/      # Business logic for HTTP delivery
+├── domain/           # Webhook entities and errors
+└── infrastructure/   # DynamoDB repository for stats
+```
+
+#### contact-form-handler (Production Ready ✅)
+Processes contact and demo request forms from the landing page.
+
+**Handler**: `lambda_handler` - API Gateway integration
+- Validates reCAPTCHA v3 tokens (score ≥0.5)
+- Stores submissions in DynamoDB with 90-day TTL
+- Sends email notifications via AWS SES
+- Prevents spam with server-side validation
+- Supports two request types: "contact" and "demo"
+
+**Architecture**:
+```
+src/
+└── main.rs           # Lambda handler with reCAPTCHA validation
+```
+
+#### Future Services (Planned)
+- **notifier**: Real-time push/email notifications when bins reach thresholds
+- **shared**: Shared domain models, DTOs, and utilities (currently stub)
 
 ### Frontend (React SPA)
 
@@ -167,12 +204,27 @@ The admin dashboard is a React single-page application hosted on CloudFront + S3
 **Pages:**
 | Route | Component | Description |
 |-------|-----------|-------------|
+| `/` | Landing | Marketing landing page with contact form |
 | `/login` | Login | Admin authentication |
-| `/dashboard` | Dashboard | Bin list with stats and actions |
-| `/bins/new` | BinForm | Create new bin |
+| `/forgot-password` | ForgotPassword | Request password reset |
+| `/reset-password` | ResetPassword | Complete password reset |
+| `/dashboard` | Dashboard | Bin list with map/table toggle, route planning |
+| `/bins/new` | BinForm | Create new bin with address autocomplete |
 | `/bins/:id` | BinDetail | View bin details, QR link |
 | `/bins/:id/edit` | BinForm | Edit existing bin |
 | `/report` | Report | Public QR code reporting |
+| `/qr-print` | QRPrint | Batch QR code printing |
+| `/settings` | Settings | Settings hub (redirects to API keys) |
+| `/settings/api-keys` | ApiKeyList | Manage API keys |
+| `/api-keys/new` | ApiKeyCreate | Create new API key |
+| `/api-keys/:id` | ApiKeyDetail | View API key details |
+| `/settings/webhooks` | WebhookList | Manage webhooks |
+| `/webhooks/new` | WebhookForm | Create webhook |
+| `/webhooks/:id` | WebhookDetail | View webhook details |
+| `/webhooks/:id/edit` | WebhookForm | Edit webhook |
+| `/settings/export` | Export | CSV data export |
+| `/privacy` | PrivacyPolicy | Privacy policy |
+| `/terms` | Terms | Terms of service |
 
 **Architecture:**
 ```
@@ -208,7 +260,7 @@ Custom error responses redirect 403/404 to `/index.html` for client-side routing
 
 ### Data Model
 
-The data model uses two DynamoDB tables with environment-prefixed names (e.g., `local-ecoscan-trash-bins`).
+The data model uses six DynamoDB tables with environment-prefixed names (e.g., `local-ecoscan-trash-bins`).
 
 #### `trash-bins` Table
 Current state of each trash bin.
@@ -217,9 +269,13 @@ Current state of each trash bin.
 |----------------|--------|---------------|--------------------------------------|
 | `binId`        | String | Partition Key | Unique UUID for the bin              |
 | `Name`         | String |               | Bin name/label                       |
+| `binType`      | String |               | mixed, plastic, paper, glass         |
 | `Status`       | Number |               | Current average status (0-100)       |
 | `LastUpdated`  | String |               | ISO 8601 timestamp                   |
 | `ReportsCount` | Number |               | Number of reports received           |
+| `isActive`     | Boolean|               | Active/inactive status               |
+| `address`      | String |               | Physical address                     |
+| `coordinates`  | Map    |               | {lat: Number, lng: Number}          |
 
 #### `status-reports` Table
 Historical status reports for auditing and analytics.
@@ -229,6 +285,67 @@ Historical status reports for auditing and analytics.
 | `binId`     | String | Partition Key | Bin UUID                        |
 | `createdAt` | String | Sort Key      | ISO 8601 timestamp              |
 | `status`    | Number |               | Reported status value (0-100)   |
+| `source`    | String |               | iot, qr, or manual              |
+
+#### `admin-users` Table
+Administrator user accounts.
+
+| Attribute          | Type    | Key           | Description                     |
+|--------------------|---------|---------------|---------------------------------|
+| `email`            | String  | Partition Key | User email (unique)             |
+| `passwordHash`     | String  |               | bcrypt hashed password          |
+| `name`             | String  |               | User display name               |
+| `role`             | String  |               | admin, operator, viewer         |
+| `isActive`         | Boolean |               | Account status                  |
+| `createdAt`        | String  |               | ISO 8601 timestamp              |
+| `lastLogin`        | String  |               | ISO 8601 timestamp              |
+| `resetToken`       | String  |               | SHA-256 hashed reset token      |
+| `resetTokenExpiry` | String  |               | ISO 8601 timestamp              |
+
+#### `api-keys` Table
+API keys for external integrations.
+
+| Attribute   | Type   | Key           | Description                          |
+|-------------|--------|---------------|--------------------------------------|
+| `keyId`     | String | Partition Key | Unique UUID                          |
+| `keyHash`   | String | GSI PK        | SHA-256 hash for lookup              |
+| `name`      | String |               | Key description                      |
+| `keyPrefix` | String |               | First 10 chars for display           |
+| `scopes`    | List   |               | ["bins:read", "bins:write"]          |
+| `isActive`  | Boolean|               | Active/inactive status               |
+| `createdAt` | String |               | ISO 8601 timestamp                   |
+| `lastUsedAt`| String |               | ISO 8601 timestamp                   |
+
+#### `webhook-configs` Table
+Webhook configurations for event notifications.
+
+| Attribute         | Type    | Key           | Description                     |
+|-------------------|---------|---------------|---------------------------------|
+| `webhookId`       | String  | Partition Key | Unique UUID                     |
+| `url`             | String  |               | Webhook endpoint URL            |
+| `eventTypes`      | List    |               | ["bin.status.changed"]          |
+| `authType`        | String  |               | none, apiKey, bearer            |
+| `authValue`       | String  |               | Auth token/key (encrypted)      |
+| `isActive`        | Boolean |               | Active/inactive status          |
+| `successCount`    | Number  |               | Successful deliveries           |
+| `failureCount`    | Number  |               | Failed deliveries               |
+| `lastTriggeredAt` | String  |               | ISO 8601 timestamp              |
+| `createdAt`       | String  |               | ISO 8601 timestamp              |
+
+#### `demo-requests` Table
+Contact and demo request form submissions.
+
+| Attribute        | Type   | Key           | Description                     |
+|------------------|--------|---------------|---------------------------------|
+| `requestId`      | String | Partition Key | Unique UUID                     |
+| `name`           | String |               | Submitter name                  |
+| `email`          | String |               | Contact email                   |
+| `organization`   | String |               | Company/org name                |
+| `message`        | String |               | Request message                 |
+| `requestType`    | String |               | contact or demo                 |
+| `recaptchaScore` | Number |               | reCAPTCHA score (0-1)           |
+| `createdAt`      | String |               | ISO 8601 timestamp              |
+| `ttl`            | Number |               | Expiry timestamp (90 days)      |
 
 ## Message Flow
 

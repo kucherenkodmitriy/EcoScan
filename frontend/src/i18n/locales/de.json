@@ -279,9 +279,11 @@
     "heroCard": {
       "title": "Plattformfunktionen",
       "item1": "Interaktives Karten-Dashboard mit Echtzeit-Behälterstatus",
-      "item2": "QR-Code-System für bürgergestützte Meldungen",
+      "item2": "API-Schlüssel und Webhooks für nahtlose Integrationen",
       "item3": "Routenoptimierung mit Google Maps-Integration",
-      "item4": "Mehrsprachige Unterstützung (EN, CS, DE)"
+      "item4": "Mehrsprachige Unterstützung (EN, CS, DE)",
+      "item5": "QR-Code-System für bürgergestützte Meldungen",
+      "item6": "Datenexport und umfassende Analysen"
     },
     "problem": {
       "title": "Herausforderungen, die wir lösen",
@@ -309,12 +311,12 @@
     "capabilities": {
       "title": "Plattformfunktionen",
       "subtitle": "Kernfunktionen bereit für den Piloteinsatz mit klarem Weg zur Produktionsskalierung.",
-      "card1Title": "Mehrere Abfallströme",
-      "card1Desc": "Behälter nach Abfallart kategorisieren (Restmüll, Plastik, Papier, Glas) mit visueller Unterscheidung auf der Karte und in Berichten.",
-      "card2Title": "Gemeinschaftsbeteiligung",
-      "card2Desc": "QR-Code-Scanning ermöglicht Bürgern, Betriebsdaten beizusteuern und bürgerschaftliches Engagement in der Abfallwirtschaft aufzubauen.",
-      "card3Title": "Erweiterbare Plattform",
-      "card3Desc": "Ereignisgesteuerte Architektur nimmt IoT-Sensoren, Drittanbieter-Integrationen und benutzerdefinierte Analysemodule auf."
+      "card1Title": "API-Verwaltung & Webhooks",
+      "card1Desc": "Generieren Sie sichere API-Schlüssel mit bereichsbasierter Zugriffskontrolle. Konfigurieren Sie Webhooks, um Echtzeit-Behälterstatus-Updates an Ihre bestehenden Systeme zu senden — Flottenmanagement, GIS-Plattformen oder benutzerdefinierte Analysetools.",
+      "card2Title": "Interaktive Karten & Routen",
+      "card2Desc": "Alle Behälter auf Google Maps mit farbcodierten Statusindikatoren anzeigen. Optimierte Sammelrouten durch mehrere Behälter mit Turn-by-Turn-Navigation erstellen. Daten als CSV für externe Analysen exportieren.",
+      "card3Title": "Gemeinschaftsbeteiligung",
+      "card3Desc": "QR-Code-Scanning ermöglicht Bürgern, den Behälterstatus sofort zu melden — kein App-Download erforderlich. Mehrsprachige Unterstützung (Englisch, Tschechisch, Deutsch) gewährleistet breite Zugänglichkeit in verschiedenen Gemeinschaften."
     },
     "advantages": {
       "title": "Warum EcoScan wählen",
@@ -336,20 +338,22 @@
       "title": "Entwicklungs-Roadmap",
       "subtitle": "Aktuelle Funktionen und geplante Erweiterungen für Produktionseinsätze.",
       "phase1Title": "Jetzt verfügbar",
-      "phase1Item1": "Admin-Dashboard mit interaktiver Karte",
-      "phase1Item2": "QR-basierte Bürgermeldungen",
-      "phase1Item3": "Routenplanung mit Kartenintegration",
-      "phase1Item4": "Mehrsprachige Oberfläche (EN, CS, DE)",
+      "phase1Item1": "Admin-Dashboard mit interaktiver Karte und Routenoptimierung",
+      "phase1Item2": "API-Schlüsselverwaltung mit bereichsbasierter Zugriffskontrolle",
+      "phase1Item3": "Webhooks für Echtzeit-Ereignisbenachrichtigungen",
+      "phase1Item4": "CSV-Datenexport und mehrsprachige Unterstützung (EN, CS, DE)",
+      "phase1Item5": "QR-basierte Bürgermeldungen mit Stapeldruck",
+      "phase1Item6": "Sichere Authentifizierung mit Passwort-Zurücksetzen",
       "phase2Title": "Produktionsfunktionen",
       "phase2Item1": "IoT-Sensorintegration und Hardware-Partnerschaften",
       "phase2Item2": "E-Mail- und SMS-Benachrichtigungssysteme",
-      "phase2Item3": "Historische Analysen und Berichterstattung",
-      "phase2Item4": "Mobile Apps für Außendienstmitarbeiter",
+      "phase2Item3": "Erweiterte Analysen mit prädiktiver Modellierung",
+      "phase2Item4": "Mobile Apps für Außendienstmitarbeiter und Bürger",
       "phase3Title": "Erweiterte Funktionen",
-      "phase3Item1": "Prädiktive Füllstandmodellierung",
-      "phase3Item2": "KI-optimierte Sammelrouten",
-      "phase3Item3": "Flottenmanagement-Integration",
-      "phase3Item4": "Öffentliche Transparenz-Dashboards"
+      "phase3Item1": "KI-optimierte Sammelrouten mit maschinellem Lernen",
+      "phase3Item2": "Multi-Tenant-Architektur für regionale Einsätze",
+      "phase3Item3": "Flottenmanagement und Lieferantenleistungsverfolgung",
+      "phase3Item4": "Öffentliche Transparenz-Dashboards und offene Daten-APIs"
     },
     "contact": {
       "title": "Starten wir ein Gespräch",

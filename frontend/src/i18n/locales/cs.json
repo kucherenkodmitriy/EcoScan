@@ -279,9 +279,11 @@
     "heroCard": {
       "title": "Možnosti platformy",
       "item1": "Interaktivní mapový panel s aktuálním stavem nádob",
-      "item2": "QR kódový systém pro občanské hlášení",
+      "item2": "API klíče a webové háčky pro bezproblémové integrace",
       "item3": "Optimalizace tras s integrací Google Maps",
-      "item4": "Vícejazyčná podpora (EN, CS, DE)"
+      "item4": "Vícejazyčná podpora (EN, CS, DE)",
+      "item5": "QR kódový systém pro občanské hlášení",
+      "item6": "Export dat a komplexní analytika"
     },
     "problem": {
       "title": "Výzvy, které řešíme",
@@ -309,12 +311,12 @@
     "capabilities": {
       "title": "Funkce platformy",
       "subtitle": "Základní schopnosti připravené k pilotnímu nasazení s jasnou cestou k produkčnímu měřítku.",
-      "card1Title": "Více druhů odpadu",
-      "card1Desc": "Kategorizujte nádoby podle typu odpadu (směsný, plast, papír, sklo) s vizuálním rozlišením na mapě i v reportech.",
-      "card2Title": "Zapojení komunity",
-      "card2Desc": "Skenování QR kódů umožňuje obyvatelům přispívat provozními daty a budovat občanskou účast na odpadovém hospodářství.",
-      "card3Title": "Rozšiřitelná platforma",
-      "card3Desc": "Událostmi řízená architektura pojme IoT senzory, integrace třetích stran i vlastní analytické moduly."
+      "card1Title": "Správa API a webhooky",
+      "card1Desc": "Generujte bezpečné API klíče s řízením přístupu na základě rozsahů. Konfigurujte webové háčky pro odesílání aktualizací stavu nádob v reálném čase do vašich stávajících systémů — správa vozového parku, GIS platformy nebo vlastní analytické nástroje.",
+      "card2Title": "Interaktivní mapy a trasy",
+      "card2Desc": "Zobrazte všechny nádoby na Google Maps s barevnými indikátory stavu. Vytvořte optimalizované svozové trasy přes více nádob s navigací krok za krokem. Exportujte data do CSV pro externí analýzu.",
+      "card3Title": "Zapojení komunity",
+      "card3Desc": "Skenování QR kódů umožňuje obyvatelům okamžitě hlásit stav nádob — není potřeba stahovat aplikaci. Vícejazyčná podpora (čeština, angličtina, němčina) zajišťuje širokou dostupnost napříč různorodými komunitami."
     },
     "advantages": {
       "title": "Proč zvolit EcoScan",
@@ -336,20 +338,22 @@
       "title": "Plán vývoje",
       "subtitle": "Aktuální schopnosti a plánovaná vylepšení pro produkční nasazení.",
       "phase1Title": "K dispozici nyní",
-      "phase1Item1": "Administrátorský panel s interaktivní mapou",
-      "phase1Item2": "Občanské hlášení pomocí QR kódů",
-      "phase1Item3": "Plánování tras s mapovou integrací",
-      "phase1Item4": "Vícejazyčné rozhraní (EN, CS, DE)",
+      "phase1Item1": "Administrátorský panel s interaktivní mapou a optimalizací tras",
+      "phase1Item2": "Správa API klíčů s řízením přístupu na základě rozsahů",
+      "phase1Item3": "Webové háčky pro upozornění na události v reálném čase",
+      "phase1Item4": "Export dat do CSV a vícejazyčná podpora (EN, CS, DE)",
+      "phase1Item5": "Občanské hlášení pomocí QR kódů s hromadným tiskem",
+      "phase1Item6": "Zabezpečená autentizace s obnovou hesla",
       "phase2Title": "Produkční funkce",
       "phase2Item1": "Integrace IoT senzorů a partnerství s výrobci hardwaru",
       "phase2Item2": "E-mailové a SMS upozornění",
-      "phase2Item3": "Historická analytika a reporting",
-      "phase2Item4": "Mobilní aplikace pro pracovníky v terénu",
+      "phase2Item3": "Pokročilá analytika s prediktivním modelováním",
+      "phase2Item4": "Mobilní aplikace pro pracovníky v terénu a občany",
       "phase3Title": "Pokročilé schopnosti",
-      "phase3Item1": "Prediktivní modelování naplněnosti",
-      "phase3Item2": "AI-optimalizované svozové trasy",
-      "phase3Item3": "Integrace správy vozového parku",
-      "phase3Item4": "Veřejné transparentní dashboardy"
+      "phase3Item1": "AI-optimalizované svozové trasy s machine learning",
+      "phase3Item2": "Multi-tenant architektura pro regionální nasazení",
+      "phase3Item3": "Správa vozového parku a sledování výkonu dodavatelů",
+      "phase3Item4": "Veřejné transparentní dashboardy a otevřená data API"
     },
     "contact": {
       "title": "Začněme rozhovor",

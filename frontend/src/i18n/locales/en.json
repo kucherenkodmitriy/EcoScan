@@ -279,9 +279,11 @@
     "heroCard": {
       "title": "Platform capabilities",
       "item1": "Interactive map dashboard with real-time bin statuses",
-      "item2": "QR code system for citizen-powered reporting",
+      "item2": "API keys and webhooks for seamless integrations",
       "item3": "Route optimization with Google Maps integration",
-      "item4": "Multi-language support (EN, CS, DE)"
+      "item4": "Multi-language support (EN, CS, DE)",
+      "item5": "QR code system for citizen-powered reporting",
+      "item6": "Data export and comprehensive analytics"
     },
     "problem": {
       "title": "Challenges we address",
@@ -309,12 +311,12 @@
     "capabilities": {
       "title": "Platform features",
       "subtitle": "Core capabilities ready for pilot deployment, with a clear path to production scale.",
-      "card1Title": "Multiple waste streams",
-      "card1Desc": "Categorize bins by waste type (mixed, plastic, paper, glass) with visual differentiation on the map and in reports.",
-      "card2Title": "Community engagement",
-      "card2Desc": "QR code scanning enables residents to contribute operational data, building civic participation in waste management.",
-      "card3Title": "Extensible platform",
-      "card3Desc": "Event-driven architecture accommodates IoT sensors, third-party integrations, and custom analytics modules."
+      "card1Title": "API Management & Webhooks",
+      "card1Desc": "Generate secure API keys with scope-based access control. Configure webhooks to push real-time bin status updates to your existing systems — fleet management, GIS platforms, or custom analytics tools.",
+      "card2Title": "Interactive Maps & Routes",
+      "card2Desc": "View all bins on Google Maps with color-coded status indicators. Create optimized collection routes through multiple bins with turn-by-turn directions. Export data to CSV for external analysis.",
+      "card3Title": "Community Engagement",
+      "card3Desc": "QR code scanning enables residents to report bin status instantly — no app download required. Multi-language support (English, Czech, German) ensures broad accessibility across diverse communities."
     },
     "advantages": {
       "title": "Why choose EcoScan",
@@ -336,20 +338,22 @@
       "title": "Development roadmap",
       "subtitle": "Current capabilities and planned enhancements for production deployments.",
       "phase1Title": "Available now",
-      "phase1Item1": "Admin dashboard with interactive map",
-      "phase1Item2": "QR-based citizen reporting",
-      "phase1Item3": "Route planning with mapping",
-      "phase1Item4": "Multi-language interface (EN, CS, DE)",
+      "phase1Item1": "Admin dashboard with interactive map and route optimization",
+      "phase1Item2": "API keys management with scope-based access control",
+      "phase1Item3": "Webhooks for real-time event notifications",
+      "phase1Item4": "CSV data export and multi-language support (EN, CS, DE)",
+      "phase1Item5": "QR-based citizen reporting with batch printing",
+      "phase1Item6": "Secure authentication with password reset flow",
       "phase2Title": "Production features",
       "phase2Item1": "IoT sensor integration and hardware partnerships",
       "phase2Item2": "Email and SMS alerting systems",
-      "phase2Item3": "Historical analytics and reporting",
-      "phase2Item4": "Mobile apps for field crews",
+      "phase2Item3": "Advanced analytics with predictive modeling",
+      "phase2Item4": "Mobile apps for field crews and citizens",
       "phase3Title": "Advanced capabilities",
-      "phase3Item1": "Predictive fill-level modeling",
-      "phase3Item2": "AI-optimized collection routes",
-      "phase3Item3": "Fleet management integration",
-      "phase3Item4": "Public transparency dashboards"
+      "phase3Item1": "AI-optimized collection routes with machine learning",
+      "phase3Item2": "Multi-tenant architecture for regional deployments",
+      "phase3Item3": "Fleet management and vendor performance tracking",
+      "phase3Item4": "Public transparency dashboards and open data APIs"
     },
     "contact": {
       "title": "Start a conversation",

@@ -2,50 +2,67 @@
 
 A serverless trash bin monitoring system with React admin dashboard, built on AWS Lambda, DynamoDB, API Gateway, CloudFront, and SQS with Terraform infrastructure as code.
 
+**Enterprise-ready waste management platform** with API keys, webhooks, route optimization, multi-language support, and comprehensive analytics.
+
 ## Architecture
 
 EcoScan uses an event-driven architecture with a React SPA frontend:
 
 ```
-┌─────────────────────────────────────────────────────────────────┐
-│                CloudFront (CDN + HTTPS)                          │
-├─────────────────────────────┬───────────────────────────────────┤
-│  /* → S3 (React SPA)        │  /api/* → API Gateway             │
-└─────────────────────────────┴──────────────────┬────────────────┘
-                                                 │
-┌────────────────────────────────────────────────▼────────────────┐
-│                        API Gateway                               │
-├─────────────────┬───────────────────────┬───────────────────────┤
-│ POST /bins/{id}/status │ POST /auth/login │ GET/POST /admin/*   │
-│ (IoT devices)          │ (No auth)        │ (JWT required)       │
-└────────┬───────────────┴────────┬────────┴──────────┬───────────┘
-         │                        │                    │
-         ▼                        │         ┌─────────▼─────────┐
-    ┌─────────┐                   │         │ Lambda Authorizer │
-    │   SQS   │                   │         └─────────┬─────────┘
-    └────┬────┘                   ▼                   │
-         │              ┌──────────────────┐          │
-         ▼              │ admin-dashboard- │◄─────────┘
-┌─────────────────┐     │ api Lambda       │
-│ bin-status-     │     └────────┬─────────┘
-│ reporter Lambda │              │
-└────────┬────────┘              │
-         └───────────┬───────────┘
-                     ▼
-              ┌───────────┐
-              │ DynamoDB  │
-              └───────────┘
+┌──────────────────────────────────────────────────────────────────────┐
+│                    CloudFront (CDN + HTTPS)                          │
+├──────────────────────────────┬───────────────────────────────────────┤
+│  /* → S3 (React SPA)         │  /api/* → API Gateway                 │
+└──────────────────────────────┴───────────────────┬───────────────────┘
+                                                   │
+┌──────────────────────────────────────────────────▼───────────────────┐
+│                          API Gateway                                  │
+├────────┬──────────┬──────────┬───────────┬──────────────────────────┤
+│ Public │ Auth     │ IoT/QR   │ External  │ Admin (JWT required)     │
+│ /report│ /login   │ /bins/   │ /api/     │ /admin/*                 │
+│        │ /forgot  │ {id}/    │ external/ │  - bins, api-keys,       │
+│        │ /reset   │ status   │ bins      │    webhooks, export      │
+└────┬───┴────┬─────┴────┬─────┴─────┬─────┴──────────┬───────────────┘
+     │        │          │           │                │
+     │        │          ▼           │    ┌───────────▼───────────┐
+     │        │     ┌────────┐       │    │  Lambda Authorizer    │
+     │        │     │  SQS   │       │    │  (JWT validation)     │
+     │        │     └───┬────┘       │    └───────────┬───────────┘
+     │        │         │            │                │
+     ▼        ▼         ▼            ▼                ▼
+┌────────────────────────────────────────────────────────────────────┐
+│                        Lambda Functions                             │
+├────────────────┬───────────────────┬──────────────┬────────────────┤
+│ admin-         │ bin-status-       │ webhook-     │ contact-form-  │
+│ dashboard-api  │ reporter          │ sender       │ handler        │
+│ (main API)     │ (SQS processor)   │ (SQS)        │ (forms)        │
+└────────┬───────┴────────┬──────────┴──────┬───────┴────────┬───────┘
+         │                │                 │                │
+         └────────────────┼─────────────────┼────────────────┘
+                          ▼                 │
+                   ┌─────────────┐          │
+                   │  DynamoDB   │          │
+                   │  (6 tables) │◄─────────┘
+                   └─────────────┘
+         trash-bins, status-reports, admin-users,
+         api-keys, webhook-configs, demo-requests
 ```
 
 **Key Features:**
-- 🖥️ React admin dashboard with bin management
-- 🚀 Async processing with SQS for resilience and scalability
-- 📦 Rust Lambda functions for high performance
-- 🔐 JWT authentication for admin endpoints
-- 🌐 CloudFront CDN for global static file delivery
-- 🏗️ Multi-layer Terraform infrastructure (5 layers)
-- 🧪 LocalStack for local development
-- ✅ Comprehensive E2E testing
+- 🖥️ **Modern React Admin Dashboard** - Full-featured SPA with bin management, map view, and route planning
+- 🔑 **API Keys Management** - Scope-based access control for external integrations
+- 🔗 **Webhooks** - Real-time event notifications with delivery tracking and retry logic
+- 📊 **Data Export** - One-time CSV exports of all bin data
+- 🌍 **Multi-Language Support** - English, Czech, and German translations
+- 🗺️ **Interactive Maps** - Google Maps integration with route optimization and address autocomplete
+- 📱 **QR Code System** - Generate, print, and scan QR codes for public bin reporting
+- 🔐 **Secure Authentication** - JWT tokens with forgot/reset password flow via email
+- 🚀 **Event-Driven Architecture** - Async processing with SQS for resilience and scalability
+- 📦 **High-Performance Backend** - Rust Lambda functions with structured logging
+- 🌐 **Global CDN** - CloudFront for fast static file delivery worldwide
+- 🏗️ **Infrastructure as Code** - Multi-layer Terraform (5 layers) for reproducible deployments
+- 🧪 **Local Development** - Full LocalStack integration for testing
+- ✅ **Comprehensive Testing** - Unit, integration, and E2E tests with CI/CD automation
 
 ## Getting Started
 
@@ -121,22 +138,49 @@ EcoScan/
 ├── frontend/                      # React SPA (Admin Dashboard)
 │   ├── src/
 │   │   ├── api/                  # API client with JWT auth
+│   │   ├── components/           # Reusable components
+│   │   │   ├── map/             # Map components (BinMap, RouteModal, AddBinModal)
+│   │   │   ├── CookieConsent.tsx
+│   │   │   ├── LanguageSelector.tsx
+│   │   │   └── QRLabel.tsx
 │   │   ├── context/              # Auth context
-│   │   └── pages/                # Login, Dashboard, BinDetail, BinForm, Report
+│   │   ├── i18n/                 # Internationalization (EN, CS, DE)
+│   │   └── pages/                # All pages
+│   │       ├── Login.tsx         # Authentication
+│   │       ├── ForgotPassword.tsx
+│   │       ├── ResetPassword.tsx
+│   │       ├── Dashboard.tsx     # Main bin list with map
+│   │       ├── BinDetail.tsx     # Bin details
+│   │       ├── BinForm.tsx       # Create/edit bin
+│   │       ├── Report.tsx        # Public QR reporting
+│   │       ├── QRPrint.tsx       # Batch QR printing
+│   │       ├── Settings.tsx      # Settings hub
+│   │       ├── ApiKeyList.tsx    # API keys management
+│   │       ├── ApiKeyCreate.tsx
+│   │       ├── ApiKeyDetail.tsx
+│   │       ├── WebhookList.tsx   # Webhooks management
+│   │       ├── WebhookForm.tsx
+│   │       ├── WebhookDetail.tsx
+│   │       ├── Export.tsx        # CSV data export
+│   │       ├── PrivacyPolicy.tsx
+│   │       ├── Terms.tsx
+│   │       └── landing/          # Landing page
 │   ├── package.json
 │   └── vite.config.ts            # Dev proxy to LocalStack
 ├── services/                      # Rust microservices
 │   ├── bin-status-reporter/      # SQS-triggered status processor
 │   ├── lambda-authorizer/        # JWT token validator
-│   ├── admin-dashboard-api/      # Admin CRUD API
+│   ├── admin-dashboard-api/      # Main API (CRUD, auth, API keys, webhooks)
+│   ├── webhook-sender/           # Webhook delivery service
+│   ├── contact-form-handler/     # Contact/demo form handler
 │   ├── e2e-tests/                # End-to-end integration tests
 │   └── shared/                   # Shared domain models (stub)
 ├── infrastructure/               # Terraform IaC
 │   ├── layers/                   # Multi-layer architecture
 │   │   ├── 00-foundation/       # S3 buckets, GitHub Actions IAM
-│   │   ├── 01-data/             # DynamoDB, Secrets Manager, SQS
-│   │   ├── 02-compute/          # Lambda functions, SQS event mapping
-│   │   ├── 03-api/              # API Gateway, Lambda authorizer config
+│   │   ├── 01-data/             # DynamoDB (6 tables), Secrets Manager, SQS, SNS
+│   │   ├── 02-compute/          # Lambda functions (5), IAM roles, SQS event mapping
+│   │   ├── 03-api/              # API Gateway, routes, Lambda authorizer config
 │   │   └── 04-frontend/         # CloudFront CDN, S3 static hosting
 │   ├── environments/            # Environment configs (local/dev/prod)
 │   └── scripts/                 # Deployment scripts
@@ -144,6 +188,70 @@ EcoScan/
 ├── docs/                         # Documentation
 └── docker-compose.yml           # LocalStack configuration
 ```
+
+## Core Features
+
+### 🔑 API Keys Management
+Create and manage API keys for external integrations with scope-based access control:
+- **Scopes**: `bins:read`, `bins:write` for granular permissions
+- **Security**: SHA-256 hashed keys, prefix display for identification
+- **Tracking**: Last used timestamp, creation date
+- **Admin UI**: Full CRUD interface in Settings > API Keys
+
+**External API Endpoint**: `GET /api/external/bins` (requires API key in `X-API-Key` header)
+
+### 🔗 Webhooks
+Real-time event notifications with delivery tracking:
+- **Events**: Bin status changes, threshold alerts
+- **Auth Types**: None, API Key, Bearer token
+- **Delivery Stats**: Success/failure counts, last triggered timestamp
+- **Retry Logic**: Automatic retry with exponential backoff
+- **Admin UI**: Webhooks management in Settings > Webhooks
+
+### 📊 Data Export
+One-time CSV export of all bin data:
+- Bin ID, name, type, address
+- GPS coordinates (latitude/longitude)
+- Current fullness percentage
+- Report count and last updated timestamp
+- Status (active/inactive)
+- **Access**: Settings > Data Export
+
+### 🔐 Authentication & Security
+- **JWT Tokens**: Secure authentication with automatic refresh
+- **Password Reset**: Email-based forgot/reset password flow
+- **Token Security**: 1-hour expiry for reset tokens, SHA-256 hashing
+- **Email Delivery**: AWS SES integration for production, SMTP for local
+
+### 🌍 Internationalization
+Multi-language support with complete translations:
+- **English (EN)** - Default
+- **Czech (CS)** - Full translation
+- **German (DE)** - Full translation
+- 470+ translation keys across all UI elements
+- Language persistence in URL parameters for SEO
+
+### 🗺️ Maps & Route Planning
+Interactive Google Maps integration:
+- **Bin Visualization**: Color-coded markers by fullness (green/orange/red)
+- **Marker Clustering**: Efficient display of many bins
+- **Route Optimization**: Create optimized collection routes through multiple bins
+- **Address Autocomplete**: Google Places API for easy bin creation
+- **Directions**: Real-time routing with turn-by-turn navigation
+
+### 📱 QR Code System
+Generate and print QR codes for public bin reporting:
+- **Batch Printing**: Select multiple bins and print all QR codes
+- **Filtering**: Filter by bin type, status, and active/inactive
+- **Public Reporting**: Users scan QR code to report bin fullness
+- **Responsive Design**: Print-optimized layout
+
+### 📨 Contact & Demo Requests
+Landing page with contact form and demo request modal:
+- **reCAPTCHA v3**: Server-side spam protection
+- **Email Delivery**: AWS SES for contact notifications
+- **DynamoDB Storage**: 90-day TTL for form submissions
+- **Analytics**: Google Analytics integration with cookie consent
 
 ## Documentation
 
@@ -295,6 +403,35 @@ curl -X POST "${BASE_URL}/auth/login" \
 # List bins (requires JWT)
 TOKEN="<token from login>"
 curl "${BASE_URL}/admin/bins" -H "Authorization: Bearer ${TOKEN}"
+
+# Forgot password
+curl -X POST "${BASE_URL}/auth/forgot-password" \
+  -H "Content-Type: application/json" \
+  -d '{"email": "admin@ecoscan.local"}'
+# Response: {"message": "If an account with that email exists..."}
+
+# Create API key (requires JWT)
+curl -X POST "${BASE_URL}/admin/api-keys" \
+  -H "Authorization: Bearer ${TOKEN}" \
+  -H "Content-Type: application/json" \
+  -d '{"name": "External Integration", "scopes": ["bins:read"]}'
+# Response: {"apiKey": "es_live_abc123...", "keyId": "...", ...}
+
+# List bins using API key (external API)
+API_KEY="es_live_abc123..."
+curl "${BASE_URL}/api/external/bins" -H "X-API-Key: ${API_KEY}"
+
+# Create webhook (requires JWT)
+curl -X POST "${BASE_URL}/admin/webhooks" \
+  -H "Authorization: Bearer ${TOKEN}" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "url": "https://example.com/webhook",
+    "eventTypes": ["bin.status.changed"],
+    "authType": "bearer",
+    "authValue": "secret_token",
+    "isActive": true
+  }'
 ```
 
 The status update is queued in SQS and processed asynchronously by Lambda.

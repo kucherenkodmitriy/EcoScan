@@ -16,6 +16,8 @@ import WebhookForm from './pages/WebhookForm'
 import ApiKeyCreate from './pages/ApiKeyCreate'
 import ApiKeyDetail from './pages/ApiKeyDetail'
 import Settings from './pages/Settings'
+import UserDetail from './pages/UserDetail'
+import UserForm from './pages/UserForm'
 import CookieConsent from './components/CookieConsent'
 
 function PrivateRoute({ children }: { children: React.ReactNode }) {
@@ -136,6 +138,38 @@ function App() {
         element={
           <PrivateRoute>
             <ApiKeyDetail />
+          </PrivateRoute>
+        }
+      />
+      <Route
+        path="/settings/users"
+        element={
+          <PrivateRoute>
+            <Settings />
+          </PrivateRoute>
+        }
+      />
+      <Route
+        path="/users/new"
+        element={
+          <PrivateRoute>
+            <UserForm />
+          </PrivateRoute>
+        }
+      />
+      <Route
+        path="/users/:email"
+        element={
+          <PrivateRoute>
+            <UserDetail />
+          </PrivateRoute>
+        }
+      />
+      <Route
+        path="/users/:email/edit"
+        element={
+          <PrivateRoute>
+            <UserForm />
           </PrivateRoute>
         }
       />

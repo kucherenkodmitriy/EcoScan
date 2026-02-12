@@ -99,3 +99,53 @@ pub struct ResetPasswordRequest {
 pub struct MessageResponse {
     pub message: String,
 }
+
+/// Create user request
+#[derive(Debug, Deserialize)]
+pub struct CreateUserRequest {
+    pub email: String,
+    pub name: String,
+    pub role: UserRole,
+}
+
+/// Update user request
+#[derive(Debug, Deserialize)]
+pub struct UpdateUserRequest {
+    pub name: Option<String>,
+    pub role: Option<UserRole>,
+    pub is_active: Option<bool>,
+}
+
+/// User created response (includes initial password)
+#[derive(Debug, Serialize)]
+pub struct UserCreatedResponse {
+    pub email: String,
+    pub name: String,
+    pub role: UserRole,
+    pub initial_password: String,
+    pub created_at: String,
+}
+
+/// Detailed user info for list/detail views (no password hash)
+#[derive(Debug, Serialize)]
+pub struct UserDetailInfo {
+    pub email: String,
+    pub name: String,
+    pub role: UserRole,
+    pub is_active: bool,
+    pub created_at: String,
+    pub last_login: Option<String>,
+}
+
+impl From<&AdminUser> for UserDetailInfo {
+    fn from(user: &AdminUser) -> Self {
+        Self {
+            email: user.email.clone(),
+            name: user.name.clone(),
+            role: user.role,
+            is_active: user.is_active,
+            created_at: user.created_at.to_rfc3339(),
+            last_login: user.last_login.map(|dt| dt.to_rfc3339()),
+        }
+    }
+}

@@ -390,7 +390,8 @@
     "title": "Einstellungen",
     "apiKeys": "API-Schlüssel",
     "webhooks": "Webhooks",
-    "dataExport": "Datenexport"
+    "dataExport": "Datenexport",
+    "users": "Benutzer"
   },
   "export": {
     "title": "Datenexport",
@@ -510,5 +511,53 @@
     "successNote": "Falls Sie nichts von uns hören, prüfen Sie bitte Ihren Spam-Ordner oder kontaktieren Sie",
     "close": "Schließen",
     "errorFallback": "Bitte versuchen Sie es erneut oder schreiben Sie uns an partnerships@ecoscan.city"
+  },
+  "users": {
+    "title": "Benutzerverwaltung",
+    "createUser": "Benutzer erstellen",
+    "editUser": "Benutzer bearbeiten",
+    "userDetails": "Benutzerdetails",
+    "you": "Sie",
+    "never": "Nie",
+    "noUsersFound": "Keine Benutzer mit den ausgewählten Filtern gefunden",
+    "filterByRole": "Nach Rolle filtern",
+    "filterByStatus": "Nach Status filtern",
+    "allRoles": "Alle Rollen",
+    "allStatuses": "Alle Status",
+    "create": "Erstellen",
+    "basicInfo": "Grundlegende Informationen",
+    "timestamps": "Zeitstempel",
+    "roles": {
+      "admin": "Administrator",
+      "operator": "Operator",
+      "viewer": "Betrachter"
+    },
+    "status": {
+      "active": "Aktiv",
+      "inactive": "Inaktiv"
+    },
+    "table": {
+      "name": "Name",
+      "email": "E-Mail",
+      "role": "Rolle",
+      "status": "Status",
+      "lastLogin": "Letzte Anmeldung",
+      "created": "Erstellt",
+      "actions": "Aktionen"
+    },
+    "form": {
+      "email": "E-Mail",
+      "emailNotEditable": "E-Mail kann nach der Erstellung nicht geändert werden",
+      "name": "Name",
+      "role": "Rolle",
+      "active": "Aktiv",
+      "status": "Status",
+      "cannotChangeOwnRole": "Sie können Ihre eigene Rolle nicht ändern"
+    },
+    "userCreatedSuccess": "Benutzer erfolgreich erstellt!",
+    "initialPasswordInfo": "Für diesen Benutzer wurde ein erstes Passwort generiert. Bitte teilen Sie es sicher. Der Benutzer sollte es nach der ersten Anmeldung ändern.",
+    "copyPassword": "Passwort kopieren",
+    "passwordCopied": "Passwort in die Zwischenablage kopiert!",
+    "passwordWarning": "⚠️ Dieses Passwort wird nur einmal angezeigt. Stellen Sie sicher, dass Sie es speichern oder mit dem Benutzer teilen."
   }
 }

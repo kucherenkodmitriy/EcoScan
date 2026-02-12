@@ -450,3 +450,112 @@ export async function deleteWebhook(webhookId: string): Promise<void> {
     throw new Error(errorMessage)
   }
 }
+
+// =============================================================================
+// User Management API
+// =============================================================================
+
+export interface User {
+  email: string
+  name: string
+  role: 'admin' | 'operator' | 'viewer'
+  is_active: boolean
+  created_at: string
+  last_login: string | null
+}
+
+export interface CreateUserRequest {
+  email: string
+  name: string
+  role: 'admin' | 'operator' | 'viewer'
+}
+
+export interface UpdateUserRequest {
+  name?: string
+  role?: 'admin' | 'operator' | 'viewer'
+  is_active?: boolean
+}
+
+export interface UserCreatedResponse {
+  email: string
+  name: string
+  role: 'admin' | 'operator' | 'viewer'
+  initial_password: string
+  created_at: string
+}
+
+export async function getUsers(): Promise<User[]> {
+  const response = await fetchWithAuth('/admin/users')
+  if (!response.ok) {
+    const error = await response.json().catch(() => ({ error: 'Failed to fetch users' }))
+    throw new Error(error.error || 'Failed to fetch users')
+  }
+  return response.json()
+}
+
+export async function getUser(email: string): Promise<User> {
+  const encodedEmail = encodeURIComponent(email)
+  const response = await fetchWithAuth(`/admin/users/${encodedEmail}`)
+  if (!response.ok) {
+    const error = await response.json().catch(() => ({ error: 'Failed to fetch user' }))
+    throw new Error(error.error || 'Failed to fetch user')
+  }
+  return response.json()
+}
+
+export async function createUser(request: CreateUserRequest): Promise<UserCreatedResponse> {
+  const response = await fetchWithAuth('/admin/users', {
+    method: 'POST',
+    body: JSON.stringify(request),
+  })
+  if (!response.ok) {
+    const errorText = await response.text()
+    let errorMessage = 'Failed to create user'
+    try {
+      const errorJson = JSON.parse(errorText)
+      errorMessage = errorJson.error || errorJson.message || errorMessage
+    } catch {
+      if (errorText) errorMessage = errorText
+    }
+    throw new Error(errorMessage)
+  }
+  return response.json()
+}
+
+export async function updateUser(email: string, request: UpdateUserRequest): Promise<User> {
+  const encodedEmail = encodeURIComponent(email)
+  const response = await fetchWithAuth(`/admin/users/${encodedEmail}`, {
+    method: 'PUT',
+    body: JSON.stringify(request),
+  })
+  if (!response.ok) {
+    const errorText = await response.text()
+    let errorMessage = 'Failed to update user'
+    try {
+      const errorJson = JSON.parse(errorText)
+      errorMessage = errorJson.error || errorJson.message || errorMessage
+    } catch {
+      if (errorText) errorMessage = errorText
+    }
+    throw new Error(errorMessage)
+  }
+  return response.json()
+}
+
+export async function deleteUser(email: string): Promise<void> {
+  const encodedEmail = encodeURIComponent(email)
+  const response = await fetchWithAuth(`/admin/users/${encodedEmail}`, {
+    method: 'DELETE',
+  })
+  if (!response.ok) {
+    const errorText = await response.text()
+    let errorMessage = 'Failed to delete user'
+    try {
+      const errorJson = JSON.parse(errorText)
+      errorMessage = errorJson.error || errorJson.message || errorMessage
+    } catch {
+      if (errorText) errorMessage = errorText
+    }
+    throw new Error(errorMessage)
+  }
+}

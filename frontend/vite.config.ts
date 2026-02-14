@@ -22,7 +22,7 @@ export default defineConfig(({ mode }) => {
       port: 3000,
       proxy: {
         // In development, proxy /api to LocalStack or API Gateway
-        '/api': {
+        '/api/': {
           target: proxyTarget,
           changeOrigin: true,
           rewrite: (path) => path.replace(/^\/api/, ''),

@@ -55,5 +55,5 @@ resource "aws_secretsmanager_secret" "google_maps_api_key" {
 # Store the Google Maps API key value
 resource "aws_secretsmanager_secret_version" "google_maps_api_key" {
   secret_id     = aws_secretsmanager_secret.google_maps_api_key.id
-  secret_string = var.google_maps_api_key
+  secret_string = var.google_maps_api_key != "" ? var.google_maps_api_key : "placeholder-for-local-dev"
 }

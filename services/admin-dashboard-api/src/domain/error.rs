@@ -34,6 +34,12 @@ pub enum AppError {
 
     #[error("Reset token is invalid or expired")]
     ResetTokenInvalid,
+
+    #[error("Not found: {0}")]
+    NotFound(String),
+
+    #[error("Permission denied: {0}")]
+    PermissionDenied(String),
 }
 
 impl From<aws_sdk_dynamodb::Error> for AppError {

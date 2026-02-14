@@ -287,6 +287,43 @@ mod tests {
             }
             Ok(())
         }
+
+        async fn list_users(&self) -> Result<Vec<AdminUser>> {
+            Ok(self.users.lock().unwrap().clone())
+        }
+
+        async fn update_user(
+            &self,
+            email: &str,
+            name: Option<&str>,
+            role: Option<UserRole>,
+            is_active: Option<bool>,
+        ) -> Result<()> {
+            let mut users = self.users.lock().unwrap();
+            if let Some(user) = users.iter_mut().find(|u| u.email == email) {
+                if let Some(n) = name {
+                    user.name = n.to_string();
+                }
+                if let Some(r) = role {
+                    user.role = r;
+                }
+                if let Some(a) = is_active {
+                    user.is_active = a;
+                }
+            }
+            Ok(())
+        }
+
+        async fn count_active_admins(&self) -> Result<usize> {
+            let count = self
+                .users
+                .lock()
+                .unwrap()
+                .iter()
+                .filter(|u| u.role == UserRole::Admin && u.is_active)
+                .count();
+            Ok(count)
+        }
     }
 
     #[tokio::test]

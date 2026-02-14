@@ -14,16 +14,17 @@ use tracing::{error, info, instrument, warn};
 use uuid::Uuid;
 
 use crate::application::{
-    create_api_key, create_bin, create_webhook, delete_api_key, delete_bin, delete_webhook,
-    get_api_key, get_bin, get_bin_external, get_webhook, handle_forgot_password, handle_login,
-    handle_reset_password, list_api_keys, list_bins, list_bins_external, list_webhooks,
-    update_api_key, update_bin, update_webhook,
+    create_admin_user, create_api_key, create_bin, create_webhook, delete_api_key, delete_bin,
+    delete_user, delete_webhook, get_api_key, get_bin, get_bin_external, get_user, get_webhook,
+    handle_forgot_password, handle_login, handle_reset_password, list_api_keys, list_bins,
+    list_bins_external, list_users, list_webhooks, update_api_key, update_bin, update_user,
+    update_webhook,
 };
 use crate::config::Config;
 use crate::domain::{
-    AppError, CreateApiKeyRequest, CreateBinRequest, CreateWebhookRequest, ForgotPasswordRequest,
-    LoginRequest, PublicBinInfo, ResetPasswordRequest, UpdateApiKeyRequest, UpdateBinRequest,
-    UpdateWebhookRequest,
+    AppError, CreateApiKeyRequest, CreateBinRequest, CreateUserRequest, CreateWebhookRequest,
+    ForgotPasswordRequest, LoginRequest, PublicBinInfo, ResetPasswordRequest, UpdateApiKeyRequest,
+    UpdateBinRequest, UpdateUserRequest, UpdateWebhookRequest,
 };
 use crate::infrastructure::{DynamoDbRepository, EmailService, JwtConfig};
 
@@ -88,7 +89,9 @@ fn error_response(status_code: i64, message: &str, cors_origin: &str) -> ApiGate
 fn error_to_status_code(error: &AppError) -> i64 {
     match error {
         AppError::InvalidCredentials | AppError::AuthenticationError(_) => 401,
-        AppError::UserNotFound(_)
+        AppError::PermissionDenied(_) => 403,
+        AppError::NotFound(_)
+        | AppError::UserNotFound(_)
         | AppError::BinNotFound(_)
         | AppError::WebhookNotFound(_)
         | AppError::ApiKeyNotFound(_) => 404,
@@ -259,7 +262,7 @@ async fn api_handler_inner(
 
         // List webhooks
         ("GET", p) if p.ends_with("/admin/webhooks") => {
-            handle_list_webhooks(&repo, cors_origin).await
+            handle_list_webhooks(&request, &repo, cors_origin).await
         }
 
         // Create webhook
@@ -270,7 +273,7 @@ async fn api_handler_inner(
         // Get single webhook
         ("GET", p) if p.contains("/admin/webhooks/") => {
             let webhook_id = extract_last_path_segment(p);
-            handle_get_webhook(&repo, webhook_id, cors_origin).await
+            handle_get_webhook(&request, &repo, webhook_id, cors_origin).await
         }
 
         // Update webhook
@@ -282,7 +285,7 @@ async fn api_handler_inner(
         // Delete webhook
         ("DELETE", p) if p.contains("/admin/webhooks/") => {
             let webhook_id = extract_last_path_segment(p);
-            handle_delete_webhook(&repo, webhook_id, cors_origin).await
+            handle_delete_webhook(&request, &repo, webhook_id, cors_origin).await
         }
 
         // =================================================================
@@ -308,7 +311,7 @@ async fn api_handler_inner(
 
         // List API keys
         ("GET", p) if p.ends_with("/admin/api-keys") => {
-            handle_list_api_keys(&repo, cors_origin).await
+            handle_list_api_keys(&request, &repo, cors_origin).await
         }
 
         // Create API key
@@ -321,7 +324,7 @@ async fn api_handler_inner(
         // Get single API key
         ("GET", p) if p.contains("/admin/api-keys/") => {
             let key_id = extract_last_path_segment(p);
-            handle_get_api_key(&repo, key_id, cors_origin).await
+            handle_get_api_key(&request, &repo, key_id, cors_origin).await
         }
 
         // Update API key
@@ -333,7 +336,43 @@ async fn api_handler_inner(
         // Delete API key
         ("DELETE", p) if p.contains("/admin/api-keys/") => {
             let key_id = extract_last_path_segment(p);
-            handle_delete_api_key(&repo, key_id, cors_origin).await
+            handle_delete_api_key(&request, &repo, key_id, cors_origin).await
+        }
+
+        // =================================================================
+        // Admin user management endpoints
+        // =================================================================
+
+        // List users
+        ("GET", p) if p.ends_with("/admin/users") => {
+            handle_list_users(&request, &repo, cors_origin).await
+        }
+
+        // Create user
+        ("POST", p) if p.ends_with("/admin/users") => {
+            handle_create_user(&request, &repo, &state.email_service, cors_origin).await
+        }
+
+        // Get single user
+        ("GET", p) if p.contains("/admin/users/") => {
+            let email = extract_last_path_segment(p);
+            handle_get_user(&request, &repo, email, cors_origin).await
+        }
+
+        // Update user
+        ("PUT", p) if p.contains("/admin/users/") => {
+            let email = extract_last_path_segment(p);
+            let current_user_email = extract_authorizer_context(&request, "email")
+                .unwrap_or_else(|| "unknown".to_string());
+            handle_update_user(&request, &repo, email, &current_user_email, cors_origin).await
+        }
+
+        // Delete user
+        ("DELETE", p) if p.contains("/admin/users/") => {
+            let email = extract_last_path_segment(p);
+            let current_user_email = extract_authorizer_context(&request, "email")
+                .unwrap_or_else(|| "unknown".to_string());
+            handle_delete_user(&request, &repo, email, &current_user_email, cors_origin).await
         }
 
         // Not found
@@ -555,14 +594,39 @@ fn extract_last_path_segment(path: &str) -> Option<String> {
     path.split('/').next_back().map(|s| s.to_string())
 }
 
+/// Check if the user has admin role
+#[allow(clippy::result_large_err)]
+fn require_admin_role(
+    request: &ApiGatewayProxyRequest,
+    cors_origin: &str,
+) -> Result<(), ApiGatewayProxyResponse> {
+    let role = extract_authorizer_context(request, "role").unwrap_or_else(|| "viewer".to_string());
+
+    if role.to_lowercase() != "admin" {
+        warn!(role = %role, "Unauthorized access attempt to admin endpoint");
+        return Err(error_response(
+            403,
+            "Forbidden: Admin role required",
+            cors_origin,
+        ));
+    }
+
+    Ok(())
+}
+
 // =============================================================================
 // Webhook Handlers
 // =============================================================================
 
 async fn handle_list_webhooks(
+    request: &ApiGatewayProxyRequest,
     repo: &DynamoDbRepository,
     cors_origin: &str,
 ) -> ApiGatewayProxyResponse {
+    if let Err(response) = require_admin_role(request, cors_origin) {
+        return response;
+    }
+
     match list_webhooks(repo).await {
         Ok(webhooks) => success_response(200, json!({ "webhooks": webhooks }), cors_origin),
         Err(e) => {
@@ -573,10 +637,15 @@ async fn handle_list_webhooks(
 }
 
 async fn handle_get_webhook(
+    request: &ApiGatewayProxyRequest,
     repo: &DynamoDbRepository,
     webhook_id: Option<String>,
     cors_origin: &str,
 ) -> ApiGatewayProxyResponse {
+    if let Err(response) = require_admin_role(request, cors_origin) {
+        return response;
+    }
+
     let webhook_id = match webhook_id {
         Some(id) if !id.is_empty() => id,
         _ => return error_response(400, "Invalid webhook ID", cors_origin),
@@ -596,6 +665,10 @@ async fn handle_create_webhook(
     repo: &DynamoDbRepository,
     cors_origin: &str,
 ) -> ApiGatewayProxyResponse {
+    if let Err(response) = require_admin_role(request, cors_origin) {
+        return response;
+    }
+
     let body = match &request.body {
         Some(b) => b,
         None => return error_response(400, "Request body is required", cors_origin),
@@ -624,6 +697,10 @@ async fn handle_update_webhook(
     webhook_id: Option<String>,
     cors_origin: &str,
 ) -> ApiGatewayProxyResponse {
+    if let Err(response) = require_admin_role(request, cors_origin) {
+        return response;
+    }
+
     let webhook_id = match webhook_id {
         Some(id) if !id.is_empty() => id,
         _ => return error_response(400, "Invalid webhook ID", cors_origin),
@@ -652,10 +729,15 @@ async fn handle_update_webhook(
 }
 
 async fn handle_delete_webhook(
+    request: &ApiGatewayProxyRequest,
     repo: &DynamoDbRepository,
     webhook_id: Option<String>,
     cors_origin: &str,
 ) -> ApiGatewayProxyResponse {
+    if let Err(response) = require_admin_role(request, cors_origin) {
+        return response;
+    }
+
     let webhook_id = match webhook_id {
         Some(id) if !id.is_empty() => id,
         _ => return error_response(400, "Invalid webhook ID", cors_origin),
@@ -736,9 +818,14 @@ async fn handle_get_bin_external(
 // =============================================================================
 
 async fn handle_list_api_keys(
+    request: &ApiGatewayProxyRequest,
     repo: &DynamoDbRepository,
     cors_origin: &str,
 ) -> ApiGatewayProxyResponse {
+    if let Err(response) = require_admin_role(request, cors_origin) {
+        return response;
+    }
+
     match list_api_keys(repo).await {
         Ok(keys) => success_response(200, json!({ "api_keys": keys }), cors_origin),
         Err(e) => {
@@ -754,6 +841,10 @@ async fn handle_create_api_key(
     created_by: &str,
     cors_origin: &str,
 ) -> ApiGatewayProxyResponse {
+    if let Err(response) = require_admin_role(request, cors_origin) {
+        return response;
+    }
+
     let body = match &request.body {
         Some(b) => b,
         None => return error_response(400, "Request body is required", cors_origin),
@@ -777,10 +868,15 @@ async fn handle_create_api_key(
 }
 
 async fn handle_get_api_key(
+    request: &ApiGatewayProxyRequest,
     repo: &DynamoDbRepository,
     key_id: Option<String>,
     cors_origin: &str,
 ) -> ApiGatewayProxyResponse {
+    if let Err(response) = require_admin_role(request, cors_origin) {
+        return response;
+    }
+
     let key_id = match key_id {
         Some(id) if !id.is_empty() => id,
         _ => return error_response(400, "Invalid API key ID", cors_origin),
@@ -801,6 +897,10 @@ async fn handle_update_api_key(
     key_id: Option<String>,
     cors_origin: &str,
 ) -> ApiGatewayProxyResponse {
+    if let Err(response) = require_admin_role(request, cors_origin) {
+        return response;
+    }
+
     let key_id = match key_id {
         Some(id) if !id.is_empty() => id,
         _ => return error_response(400, "Invalid API key ID", cors_origin),
@@ -829,10 +929,15 @@ async fn handle_update_api_key(
 }
 
 async fn handle_delete_api_key(
+    request: &ApiGatewayProxyRequest,
     repo: &DynamoDbRepository,
     key_id: Option<String>,
     cors_origin: &str,
 ) -> ApiGatewayProxyResponse {
+    if let Err(response) = require_admin_role(request, cors_origin) {
+        return response;
+    }
+
     let key_id = match key_id {
         Some(id) if !id.is_empty() => id,
         _ => return error_response(400, "Invalid API key ID", cors_origin),
@@ -872,6 +977,169 @@ async fn handle_get_public_bin(
             let public_info = PublicBinInfo::from(&bin);
             success_response(200, serde_json::to_value(public_info).unwrap(), cors_origin)
         }
+        Err(e) => {
+            let status = error_to_status_code(&e);
+            error_response(status, &e.to_string(), cors_origin)
+        }
+    }
+}
+
+// =============================================================================
+// User Management Handlers
+// =============================================================================
+
+async fn handle_list_users(
+    request: &ApiGatewayProxyRequest,
+    repo: &DynamoDbRepository,
+    cors_origin: &str,
+) -> ApiGatewayProxyResponse {
+    if let Err(response) = require_admin_role(request, cors_origin) {
+        return response;
+    }
+
+    match list_users(repo).await {
+        Ok(users) => success_response(200, serde_json::to_value(users).unwrap(), cors_origin),
+        Err(e) => {
+            let status = error_to_status_code(&e);
+            error_response(status, &e.to_string(), cors_origin)
+        }
+    }
+}
+
+async fn handle_create_user(
+    request: &ApiGatewayProxyRequest,
+    repo: &DynamoDbRepository,
+    email_service: &EmailService,
+    cors_origin: &str,
+) -> ApiGatewayProxyResponse {
+    if let Err(response) = require_admin_role(request, cors_origin) {
+        return response;
+    }
+
+    let body = match &request.body {
+        Some(b) => b,
+        None => return error_response(400, "Request body is required", cors_origin),
+    };
+
+    let create_request: CreateUserRequest = match serde_json::from_str(body) {
+        Ok(r) => r,
+        Err(e) => {
+            warn!(error = %e, "Failed to parse create user request");
+            return error_response(400, "Invalid request body", cors_origin);
+        }
+    };
+
+    match create_admin_user(repo, Some(email_service), create_request).await {
+        Ok(response) => success_response(201, serde_json::to_value(response).unwrap(), cors_origin),
+        Err(e) => {
+            let status = error_to_status_code(&e);
+            error_response(status, &e.to_string(), cors_origin)
+        }
+    }
+}
+
+async fn handle_get_user(
+    request: &ApiGatewayProxyRequest,
+    repo: &DynamoDbRepository,
+    email: Option<String>,
+    cors_origin: &str,
+) -> ApiGatewayProxyResponse {
+    if let Err(response) = require_admin_role(request, cors_origin) {
+        return response;
+    }
+
+    let email = match email {
+        Some(e) if !e.is_empty() => e,
+        _ => return error_response(400, "Invalid email", cors_origin),
+    };
+
+    // URL decode the email
+    let decoded_email = match urlencoding::decode(&email) {
+        Ok(decoded) => decoded.into_owned(),
+        Err(_) => email,
+    };
+
+    match get_user(repo, &decoded_email).await {
+        Ok(user) => success_response(200, serde_json::to_value(user).unwrap(), cors_origin),
+        Err(e) => {
+            let status = error_to_status_code(&e);
+            error_response(status, &e.to_string(), cors_origin)
+        }
+    }
+}
+
+async fn handle_update_user(
+    request: &ApiGatewayProxyRequest,
+    repo: &DynamoDbRepository,
+    email: Option<String>,
+    current_user_email: &str,
+    cors_origin: &str,
+) -> ApiGatewayProxyResponse {
+    if let Err(response) = require_admin_role(request, cors_origin) {
+        return response;
+    }
+
+    let email = match email {
+        Some(e) if !e.is_empty() => e,
+        _ => return error_response(400, "Invalid email", cors_origin),
+    };
+
+    // URL decode the email
+    let decoded_email = match urlencoding::decode(&email) {
+        Ok(decoded) => decoded.into_owned(),
+        Err(_) => email,
+    };
+
+    let body = match &request.body {
+        Some(b) => b,
+        None => return error_response(400, "Request body is required", cors_origin),
+    };
+
+    let update_request: UpdateUserRequest = match serde_json::from_str(body) {
+        Ok(r) => r,
+        Err(e) => {
+            warn!(error = %e, "Failed to parse update user request");
+            return error_response(400, "Invalid request body", cors_origin);
+        }
+    };
+
+    match update_user(repo, &decoded_email, current_user_email, update_request).await {
+        Ok(user) => success_response(200, serde_json::to_value(user).unwrap(), cors_origin),
+        Err(e) => {
+            let status = error_to_status_code(&e);
+            error_response(status, &e.to_string(), cors_origin)
+        }
+    }
+}
+
+async fn handle_delete_user(
+    request: &ApiGatewayProxyRequest,
+    repo: &DynamoDbRepository,
+    email: Option<String>,
+    current_user_email: &str,
+    cors_origin: &str,
+) -> ApiGatewayProxyResponse {
+    if let Err(response) = require_admin_role(request, cors_origin) {
+        return response;
+    }
+
+    let email = match email {
+        Some(e) if !e.is_empty() => e,
+        _ => return error_response(400, "Invalid email", cors_origin),
+    };
+
+    // URL decode the email
+    let decoded_email = match urlencoding::decode(&email) {
+        Ok(decoded) => decoded.into_owned(),
+        Err(_) => email,
+    };
+
+    match delete_user(repo, &decoded_email, current_user_email).await {
+        Ok(_) => success_response(
+            200,
+            json!({ "message": "User deleted successfully" }),
+            cors_origin,
+        ),
         Err(e) => {
             let status = error_to_status_code(&e);
             error_response(status, &e.to_string(), cors_origin)

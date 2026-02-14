@@ -301,6 +301,144 @@ impl UserRepository for DynamoDbRepository {
         info!(email = %email, "Password updated and reset token cleared");
         Ok(())
     }
+
+    #[instrument(skip(self), fields(table = %self.users_table))]
+    async fn list_users(&self) -> Result<Vec<AdminUser>> {
+        let result = self
+            .client
+            .scan()
+            .table_name(&self.users_table)
+            .send()
+            .await
+            .map_err(|e| AppError::DatabaseError(e.to_string()))?;
+
+        let users: Vec<AdminUser> = result
+            .items
+            .unwrap_or_default()
+            .iter()
+            .filter_map(|item| {
+                Some(AdminUser {
+                    email: item.get("email").and_then(|v| v.as_s().ok()).cloned()?,
+                    password_hash: item
+                        .get("passwordHash")
+                        .and_then(|v| v.as_s().ok())
+                        .cloned()
+                        .unwrap_or_default(),
+                    name: item
+                        .get("name")
+                        .and_then(|v| v.as_s().ok())
+                        .cloned()
+                        .unwrap_or_default(),
+                    role: item
+                        .get("role")
+                        .and_then(|v| v.as_s().ok())
+                        .map(|s| Self::parse_user_role(s))
+                        .unwrap_or_default(),
+                    created_at: item
+                        .get("createdAt")
+                        .and_then(|v| v.as_s().ok())
+                        .and_then(|s| DateTime::parse_from_rfc3339(s).ok())
+                        .map(|dt| dt.with_timezone(&Utc))
+                        .unwrap_or_else(Utc::now),
+                    last_login: item
+                        .get("lastLogin")
+                        .and_then(|v| v.as_s().ok())
+                        .and_then(|s| DateTime::parse_from_rfc3339(s).ok())
+                        .map(|dt| dt.with_timezone(&Utc)),
+                    is_active: item
+                        .get("isActive")
+                        .and_then(|v| v.as_bool().ok())
+                        .copied()
+                        .unwrap_or(true),
+                })
+            })
+            .collect();
+
+        info!(count = users.len(), "Listed users");
+        Ok(users)
+    }
+
+    #[instrument(skip(self), fields(table = %self.users_table))]
+    async fn update_user(
+        &self,
+        email: &str,
+        name: Option<&str>,
+        role: Option<UserRole>,
+        is_active: Option<bool>,
+    ) -> Result<()> {
+        let mut update_parts = Vec::new();
+        let mut expression_values = std::collections::HashMap::new();
+
+        if let Some(n) = name {
+            update_parts.push("#n = :name");
+            expression_values.insert(":name".to_string(), AttributeValue::S(n.to_string()));
+        }
+
+        if let Some(r) = role {
+            update_parts.push("#r = :role");
+            expression_values.insert(":role".to_string(), AttributeValue::S(r.to_string()));
+        }
+
+        if let Some(active) = is_active {
+            update_parts.push("isActive = :active");
+            expression_values.insert(":active".to_string(), AttributeValue::Bool(active));
+        }
+
+        if update_parts.is_empty() {
+            return Ok(());
+        }
+
+        let update_expression = format!("SET {}", update_parts.join(", "));
+
+        let mut request_builder = self
+            .client
+            .update_item()
+            .table_name(&self.users_table)
+            .key("email", AttributeValue::S(email.to_string()))
+            .update_expression(update_expression);
+
+        // Handle reserved words
+        if name.is_some() {
+            request_builder =
+                request_builder.expression_attribute_names("#n".to_string(), "name".to_string());
+        }
+        if role.is_some() {
+            request_builder =
+                request_builder.expression_attribute_names("#r".to_string(), "role".to_string());
+        }
+
+        for (key, value) in expression_values {
+            request_builder = request_builder.expression_attribute_values(key, value);
+        }
+
+        request_builder
+            .send()
+            .await
+            .map_err(|e| AppError::DatabaseError(e.to_string()))?;
+
+        info!(email = %email, "User updated successfully");
+        Ok(())
+    }
+
+    #[instrument(skip(self), fields(table = %self.users_table))]
+    async fn count_active_admins(&self) -> Result<usize> {
+        let result = self
+            .client
+            .scan()
+            .table_name(&self.users_table)
+            .filter_expression("#r = :admin AND isActive = :active")
+            .expression_attribute_names("#r".to_string(), "role".to_string())
+            .expression_attribute_values(":admin", AttributeValue::S("admin".to_string()))
+            .expression_attribute_values(":active", AttributeValue::Bool(true))
+            .select(aws_sdk_dynamodb::types::Select::Count)
+            .send()
+            .await
+            .map_err(|e| AppError::DatabaseError(e.to_string()))?;
+
+        let count = result.count().try_into().unwrap_or(0);
+        info!(count = count, "Counted active admins");
+        Ok(count)
+    }
 }
 
 #[async_trait]

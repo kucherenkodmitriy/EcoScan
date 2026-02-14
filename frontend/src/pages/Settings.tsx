@@ -5,6 +5,7 @@ import LanguageSwitcher from '../components/LanguageSwitcher'
 import { ApiKeysContent } from './ApiKeyList'
 import { WebhooksContent } from './WebhookList'
 import { ExportContent } from './Export'
+import UserList from './UserList'
 import styles from './Settings.module.css'
 
 export default function Settings() {
@@ -15,6 +16,7 @@ export default function Settings() {
   const getActiveSection = () => {
     if (location.pathname.includes('/settings/webhooks')) return 'webhooks'
     if (location.pathname.includes('/settings/export')) return 'export'
+    if (location.pathname.includes('/settings/users')) return 'users'
     return 'api-keys'
   }
 
@@ -60,12 +62,19 @@ export default function Settings() {
           >
             {t('settings.dataExport')}
           </Link>
+          <Link
+            to="/settings/users"
+            className={activeSection === 'users' ? styles.navItemActive : styles.navItem}
+          >
+            {t('settings.users')}
+          </Link>
         </nav>
 
         <main className={styles.content}>
           {activeSection === 'api-keys' && <ApiKeysContent />}
           {activeSection === 'webhooks' && <WebhooksContent />}
           {activeSection === 'export' && <ExportContent />}
+          {activeSection === 'users' && <UserList />}
         </main>
       </div>
     </div>

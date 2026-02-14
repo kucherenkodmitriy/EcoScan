@@ -390,7 +390,8 @@
     "title": "Nastavení",
     "apiKeys": "API klíče",
     "webhooks": "Webhooky",
-    "dataExport": "Export dat"
+    "dataExport": "Export dat",
+    "users": "Uživatelé"
   },
   "export": {
     "title": "Export dat",
@@ -510,5 +511,53 @@
     "successNote": "Pokud se neozveme, zkontrolujte spam nebo kontaktujte",
     "close": "Zavřít",
     "errorFallback": "Zkuste to prosím znovu nebo nám napište na partnerships@ecoscan.city"
+  },
+  "users": {
+    "title": "Správa uživatelů",
+    "createUser": "Vytvořit uživatele",
+    "editUser": "Upravit uživatele",
+    "userDetails": "Detaily uživatele",
+    "you": "Vy",
+    "never": "Nikdy",
+    "noUsersFound": "S vybranými filtry nebyli nalezeni žádní uživatelé",
+    "filterByRole": "Filtrovat podle role",
+    "filterByStatus": "Filtrovat podle stavu",
+    "allRoles": "Všechny role",
+    "allStatuses": "Všechny stavy",
+    "create": "Vytvořit",
+    "basicInfo": "Základní informace",
+    "timestamps": "Časové značky",
+    "roles": {
+      "admin": "Administrátor",
+      "operator": "Operátor",
+      "viewer": "Pozorovatel"
+    },
+    "status": {
+      "active": "Aktivní",
+      "inactive": "Neaktivní"
+    },
+    "table": {
+      "name": "Jméno",
+      "email": "E-mail",
+      "role": "Role",
+      "status": "Stav",
+      "lastLogin": "Poslední přihlášení",
+      "created": "Vytvořeno",
+      "actions": "Akce"
+    },
+    "form": {
+      "email": "E-mail",
+      "emailNotEditable": "E-mail nelze po vytvoření změnit",
+      "name": "Jméno",
+      "role": "Role",
+      "active": "Aktivní",
+      "status": "Stav",
+      "cannotChangeOwnRole": "Nemůžete změnit svou vlastní roli"
+    },
+    "userCreatedSuccess": "Uživatel úspěšně vytvořen!",
+    "initialPasswordInfo": "Pro tohoto uživatele bylo vygenerováno počáteční heslo. Sdílejte ho bezpečně. Uživatel by si ho měl změnit po prvním přihlášení.",
+    "copyPassword": "Kopírovat heslo",
+    "passwordCopied": "Heslo zkopírováno do schránky!",
+    "passwordWarning": "⚠️ Toto heslo bude zobrazeno pouze jednou. Nezapomeňte si ho uložit nebo sdílet s uživatelem."
   }
 }

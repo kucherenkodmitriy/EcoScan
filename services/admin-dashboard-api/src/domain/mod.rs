@@ -9,8 +9,9 @@ pub use api_key::{
 };
 pub use error::{AppError, Result};
 pub use user::{
-    AdminUser, ForgotPasswordRequest, LoginRequest, LoginResponse, MessageResponse,
-    ResetPasswordRequest, UserInfo, UserRole,
+    AdminUser, CreateUserRequest, ForgotPasswordRequest, LoginRequest, LoginResponse,
+    MessageResponse, ResetPasswordRequest, UpdateUserRequest, UserCreatedResponse, UserDetailInfo,
+    UserInfo, UserRole,
 };
 pub use webhook::{
     CreateWebhookRequest, UpdateWebhookRequest, WebhookAuthType, WebhookConfig, WebhookInfo,
@@ -130,6 +131,15 @@ pub trait UserRepository: Send + Sync {
     async fn get_reset_token(&self, email: &str) -> Result<Option<(String, DateTime<Utc>)>>;
     async fn clear_reset_token(&self, email: &str) -> Result<()>;
     async fn update_password(&self, email: &str, password_hash: &str) -> Result<()>;
+    async fn list_users(&self) -> Result<Vec<AdminUser>>;
+    async fn update_user(
+        &self,
+        email: &str,
+        name: Option<&str>,
+        role: Option<UserRole>,
+        is_active: Option<bool>,
+    ) -> Result<()>;
+    async fn count_active_admins(&self) -> Result<usize>;
 }
 
 /// Repository trait for bin operations

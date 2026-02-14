@@ -390,7 +390,8 @@
     "title": "Settings",
     "apiKeys": "API Keys",
     "webhooks": "Webhooks",
-    "dataExport": "Data Export"
+    "dataExport": "Data Export",
+    "users": "Users"
   },
   "export": {
     "title": "Data Export",
@@ -510,5 +511,53 @@
     "successNote": "If you don't hear from us, please check your spam folder or contact",
     "close": "Close",
     "errorFallback": "Please try again or email us at partnerships@ecoscan.city"
+  },
+  "users": {
+    "title": "User Management",
+    "createUser": "Create User",
+    "editUser": "Edit User",
+    "userDetails": "User Details",
+    "you": "You",
+    "never": "Never",
+    "noUsersFound": "No users found with the selected filters",
+    "filterByRole": "Filter by Role",
+    "filterByStatus": "Filter by Status",
+    "allRoles": "All Roles",
+    "allStatuses": "All Statuses",
+    "create": "Create",
+    "basicInfo": "Basic Information",
+    "timestamps": "Timestamps",
+    "roles": {
+      "admin": "Admin",
+      "operator": "Operator",
+      "viewer": "Viewer"
+    },
+    "status": {
+      "active": "Active",
+      "inactive": "Inactive"
+    },
+    "table": {
+      "name": "Name",
+      "email": "Email",
+      "role": "Role",
+      "status": "Status",
+      "lastLogin": "Last Login",
+      "created": "Created",
+      "actions": "Actions"
+    },
+    "form": {
+      "email": "Email",
+      "emailNotEditable": "Email cannot be changed after creation",
+      "name": "Name",
+      "role": "Role",
+      "active": "Active",
+      "status": "Status",
+      "cannotChangeOwnRole": "You cannot change your own role"
+    },
+    "userCreatedSuccess": "User Created Successfully!",
+    "initialPasswordInfo": "An initial password has been generated for this user. Please share it securely. The user should change it after first login.",
+    "copyPassword": "Copy Password",
+    "passwordCopied": "Password copied to clipboard!",
+    "passwordWarning": "⚠️ This password will only be shown once. Make sure to save or share it with the user."
   }
 }

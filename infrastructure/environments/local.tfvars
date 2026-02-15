@@ -30,6 +30,9 @@ lambda_max_concurrency = 5  # Max 5 concurrent executions for local testing
 # Frontend URL for password reset links
 frontend_url = "http://localhost:3000"
 
+# JWT secret for local development (override in production)
+jwt_secret = "ecoscan-local-dev-jwt-secret-change-in-production"
+
 # reCAPTCHA settings (skip for local testing)
 skip_recaptcha       = true
 recaptcha_secret_key = ""

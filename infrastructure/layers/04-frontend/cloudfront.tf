@@ -35,6 +35,43 @@ resource "aws_cloudfront_function" "api_rewrite" {
   EOF
 }
 
+# CloudFront Response Headers Policy for security headers
+resource "aws_cloudfront_response_headers_policy" "security_headers" {
+  count = var.use_localstack ? 0 : 1
+
+  name    = "${var.environment}-${var.project_name}-security-headers"
+  comment = "Security headers for EcoScan frontend"
+
+  security_headers_config {
+    strict_transport_security {
+      access_control_max_age_sec = 31536000
+      include_subdomains         = true
+      preload                    = true
+      override                   = true
+    }
+
+    content_type_options {
+      override = true
+    }
+
+    frame_options {
+      frame_option = "DENY"
+      override     = true
+    }
+
+    referrer_policy {
+      referrer_policy = "strict-origin-when-cross-origin"
+      override        = true
+    }
+
+    xss_protection {
+      mode_block = true
+      protection = true
+      override   = true
+    }
+  }
+}
+
 # CloudFront Origin Access Control for S3
 resource "aws_cloudfront_origin_access_control" "frontend" {
   count = var.use_localstack ? 0 : 1
@@ -93,6 +130,8 @@ resource "aws_cloudfront_distribution" "frontend" {
       }
     }
 
+    response_headers_policy_id = aws_cloudfront_response_headers_policy.security_headers[0].id
+
     viewer_protocol_policy = "redirect-to-https"
     min_ttl                = 0
     default_ttl            = var.default_ttl
@@ -114,6 +153,8 @@ resource "aws_cloudfront_distribution" "frontend" {
         forward = "all"
       }
     }
+
+    response_headers_policy_id = aws_cloudfront_response_headers_policy.security_headers[0].id
 
     viewer_protocol_policy = "https-only"
     min_ttl                = 0

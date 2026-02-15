@@ -48,7 +48,7 @@ function Landing() {
   const sectionIndex = useMemo(() => new Map(sections.map((section) => [section.id, section.label])), [sections])
 
   // reCAPTCHA site key
-  const RECAPTCHA_SITE_KEY = import.meta.env.VITE_RECAPTCHA_SITE_KEY || '6LeIxAcTAAAAAJcZVRqyHh71UMIEGNQ_MXjiZKhI'
+  const RECAPTCHA_SITE_KEY = import.meta.env.VITE_RECAPTCHA_SITE_KEY || ''
 
   // Check URL for lang parameter on mount
   useEffect(() => {
@@ -60,7 +60,8 @@ function Landing() {
   }, [i18n])
 
   useEffect(() => {
-    // Load reCAPTCHA script
+    // Only load reCAPTCHA script if site key is configured
+    if (!RECAPTCHA_SITE_KEY) return
     if (!document.getElementById('recaptcha-script')) {
       const script = document.createElement('script')
       script.id = 'recaptcha-script'

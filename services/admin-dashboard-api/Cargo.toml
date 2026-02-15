@@ -31,6 +31,8 @@ aws_lambda_events = "0.11"
 anyhow = "1.0"
 sha2 = { workspace = true }
 hex = { workspace = true }
+subtle = { workspace = true }
+url = { workspace = true }
 rand = "0.8"
 aws-sdk-sesv2 = "1.0"
 urlencoding = "2.1"

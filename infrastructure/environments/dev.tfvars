@@ -32,6 +32,9 @@ lambda_max_concurrency = 100 # Allow higher concurrency in AWS
 # Use "*" for development/testing (less secure)
 # cors_allowed_origins = "https://your-cloudfront-domain.cloudfront.net"
 
+# JWT secret - must be at least 32 chars. Set via TF_VAR_jwt_secret or -var flag (not committed to repo)
+# jwt_secret = "..." # Set via TF_VAR_jwt_secret
+
 # reCAPTCHA settings
 # Set skip_recaptcha=true for e2e tests, false for production-like environments
 # recaptcha_secret_key should be set via TF_VAR_recaptcha_secret_key or -var flag

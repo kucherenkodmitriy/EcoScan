@@ -3,6 +3,16 @@ const API_BASE = '/api'
 export async function fetchWithAuth(path: string, options: RequestInit = {}) {
   const token = localStorage.getItem('ecoscan_token')
 
+  // Check if token has expired before making the request
+  const expiresAt = localStorage.getItem('ecoscan_expires')
+  if (expiresAt && new Date(expiresAt) <= new Date()) {
+    localStorage.removeItem('ecoscan_token')
+    localStorage.removeItem('ecoscan_user')
+    localStorage.removeItem('ecoscan_expires')
+    window.location.href = '/login'
+    throw new Error('Token expired')
+  }
+
   const response = await fetch(`${API_BASE}${path}`, {
     ...options,
     headers: {
@@ -15,6 +25,7 @@ export async function fetchWithAuth(path: string, options: RequestInit = {}) {
   if (response.status === 401) {
     localStorage.removeItem('ecoscan_token')
     localStorage.removeItem('ecoscan_user')
+    localStorage.removeItem('ecoscan_expires')
     window.location.href = '/login'
     throw new Error('Unauthorized')
   }

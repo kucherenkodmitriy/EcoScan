@@ -26,7 +26,7 @@ use crate::domain::{
     ForgotPasswordRequest, LoginRequest, PublicBinInfo, ResetPasswordRequest, UpdateApiKeyRequest,
     UpdateBinRequest, UpdateUserRequest, UpdateWebhookRequest,
 };
-use crate::infrastructure::{DynamoDbRepository, EmailService, JwtConfig};
+use crate::infrastructure::{decode_token, DynamoDbRepository, EmailService, JwtConfig};
 
 /// Shared application state initialized at cold start
 #[derive(Clone)]
@@ -186,6 +186,7 @@ async fn api_handler_inner(
 
     let config = &state.config;
     let cors_origin = config.cors_allowed_origins.as_str();
+    let jwt_secret = config.jwt_secret.as_str();
 
     // Initialize repository
     let repo = match DynamoDbRepository::new(config).await {
@@ -262,30 +263,30 @@ async fn api_handler_inner(
 
         // List webhooks
         ("GET", p) if p.ends_with("/admin/webhooks") => {
-            handle_list_webhooks(&request, &repo, cors_origin).await
+            handle_list_webhooks(&request, &repo, jwt_secret, cors_origin).await
         }
 
         // Create webhook
         ("POST", p) if p.ends_with("/admin/webhooks") => {
-            handle_create_webhook(&request, &repo, cors_origin).await
+            handle_create_webhook(&request, &repo, jwt_secret, cors_origin).await
         }
 
         // Get single webhook
         ("GET", p) if p.contains("/admin/webhooks/") => {
             let webhook_id = extract_last_path_segment(p);
-            handle_get_webhook(&request, &repo, webhook_id, cors_origin).await
+            handle_get_webhook(&request, &repo, webhook_id, jwt_secret, cors_origin).await
         }
 
         // Update webhook
         ("PUT", p) if p.contains("/admin/webhooks/") => {
             let webhook_id = extract_last_path_segment(p);
-            handle_update_webhook(&request, &repo, webhook_id, cors_origin).await
+            handle_update_webhook(&request, &repo, webhook_id, jwt_secret, cors_origin).await
         }
 
         // Delete webhook
         ("DELETE", p) if p.contains("/admin/webhooks/") => {
             let webhook_id = extract_last_path_segment(p);
-            handle_delete_webhook(&request, &repo, webhook_id, cors_origin).await
+            handle_delete_webhook(&request, &repo, webhook_id, jwt_secret, cors_origin).await
         }
 
         // =================================================================
@@ -311,32 +312,32 @@ async fn api_handler_inner(
 
         // List API keys
         ("GET", p) if p.ends_with("/admin/api-keys") => {
-            handle_list_api_keys(&request, &repo, cors_origin).await
+            handle_list_api_keys(&request, &repo, jwt_secret, cors_origin).await
         }
 
         // Create API key
         ("POST", p) if p.ends_with("/admin/api-keys") => {
-            let created_by = extract_authorizer_context(&request, "email")
+            let created_by = extract_authorizer_context(&request, "email", jwt_secret)
                 .unwrap_or_else(|| "unknown".to_string());
-            handle_create_api_key(&request, &repo, &created_by, cors_origin).await
+            handle_create_api_key(&request, &repo, &created_by, jwt_secret, cors_origin).await
         }
 
         // Get single API key
         ("GET", p) if p.contains("/admin/api-keys/") => {
             let key_id = extract_last_path_segment(p);
-            handle_get_api_key(&request, &repo, key_id, cors_origin).await
+            handle_get_api_key(&request, &repo, key_id, jwt_secret, cors_origin).await
         }
 
         // Update API key
         ("PUT", p) if p.contains("/admin/api-keys/") => {
             let key_id = extract_last_path_segment(p);
-            handle_update_api_key(&request, &repo, key_id, cors_origin).await
+            handle_update_api_key(&request, &repo, key_id, jwt_secret, cors_origin).await
         }
 
         // Delete API key
         ("DELETE", p) if p.contains("/admin/api-keys/") => {
             let key_id = extract_last_path_segment(p);
-            handle_delete_api_key(&request, &repo, key_id, cors_origin).await
+            handle_delete_api_key(&request, &repo, key_id, jwt_secret, cors_origin).await
         }
 
         // =================================================================
@@ -345,34 +346,57 @@ async fn api_handler_inner(
 
         // List users
         ("GET", p) if p.ends_with("/admin/users") => {
-            handle_list_users(&request, &repo, cors_origin).await
+            handle_list_users(&request, &repo, jwt_secret, cors_origin).await
         }
 
         // Create user
         ("POST", p) if p.ends_with("/admin/users") => {
-            handle_create_user(&request, &repo, &state.email_service, cors_origin).await
+            handle_create_user(
+                &request,
+                &repo,
+                &state.email_service,
+                jwt_secret,
+                cors_origin,
+            )
+            .await
         }
 
         // Get single user
         ("GET", p) if p.contains("/admin/users/") => {
             let email = extract_last_path_segment(p);
-            handle_get_user(&request, &repo, email, cors_origin).await
+            handle_get_user(&request, &repo, email, jwt_secret, cors_origin).await
         }
 
         // Update user
         ("PUT", p) if p.contains("/admin/users/") => {
             let email = extract_last_path_segment(p);
-            let current_user_email = extract_authorizer_context(&request, "email")
+            let current_user_email = extract_authorizer_context(&request, "email", jwt_secret)
                 .unwrap_or_else(|| "unknown".to_string());
-            handle_update_user(&request, &repo, email, &current_user_email, cors_origin).await
+            handle_update_user(
+                &request,
+                &repo,
+                email,
+                &current_user_email,
+                jwt_secret,
+                cors_origin,
+            )
+            .await
         }
 
         // Delete user
         ("DELETE", p) if p.contains("/admin/users/") => {
             let email = extract_last_path_segment(p);
-            let current_user_email = extract_authorizer_context(&request, "email")
+            let current_user_email = extract_authorizer_context(&request, "email", jwt_secret)
                 .unwrap_or_else(|| "unknown".to_string());
-            handle_delete_user(&request, &repo, email, &current_user_email, cors_origin).await
+            handle_delete_user(
+                &request,
+                &repo,
+                email,
+                &current_user_email,
+                jwt_secret,
+                cors_origin,
+            )
+            .await
         }
 
         // Not found
@@ -598,9 +622,11 @@ fn extract_last_path_segment(path: &str) -> Option<String> {
 #[allow(clippy::result_large_err)]
 fn require_admin_role(
     request: &ApiGatewayProxyRequest,
+    jwt_secret: &str,
     cors_origin: &str,
 ) -> Result<(), ApiGatewayProxyResponse> {
-    let role = extract_authorizer_context(request, "role").unwrap_or_else(|| "viewer".to_string());
+    let role = extract_authorizer_context(request, "role", jwt_secret)
+        .unwrap_or_else(|| "viewer".to_string());
 
     if role.to_lowercase() != "admin" {
         warn!(role = %role, "Unauthorized access attempt to admin endpoint");
@@ -621,9 +647,10 @@ fn require_admin_role(
 async fn handle_list_webhooks(
     request: &ApiGatewayProxyRequest,
     repo: &DynamoDbRepository,
+    jwt_secret: &str,
     cors_origin: &str,
 ) -> ApiGatewayProxyResponse {
-    if let Err(response) = require_admin_role(request, cors_origin) {
+    if let Err(response) = require_admin_role(request, jwt_secret, cors_origin) {
         return response;
     }
 
@@ -640,9 +667,10 @@ async fn handle_get_webhook(
     request: &ApiGatewayProxyRequest,
     repo: &DynamoDbRepository,
     webhook_id: Option<String>,
+    jwt_secret: &str,
     cors_origin: &str,
 ) -> ApiGatewayProxyResponse {
-    if let Err(response) = require_admin_role(request, cors_origin) {
+    if let Err(response) = require_admin_role(request, jwt_secret, cors_origin) {
         return response;
     }
 
@@ -663,9 +691,10 @@ async fn handle_get_webhook(
 async fn handle_create_webhook(
     request: &ApiGatewayProxyRequest,
     repo: &DynamoDbRepository,
+    jwt_secret: &str,
     cors_origin: &str,
 ) -> ApiGatewayProxyResponse {
-    if let Err(response) = require_admin_role(request, cors_origin) {
+    if let Err(response) = require_admin_role(request, jwt_secret, cors_origin) {
         return response;
     }
 
@@ -695,9 +724,10 @@ async fn handle_update_webhook(
     request: &ApiGatewayProxyRequest,
     repo: &DynamoDbRepository,
     webhook_id: Option<String>,
+    jwt_secret: &str,
     cors_origin: &str,
 ) -> ApiGatewayProxyResponse {
-    if let Err(response) = require_admin_role(request, cors_origin) {
+    if let Err(response) = require_admin_role(request, jwt_secret, cors_origin) {
         return response;
     }
 
@@ -732,9 +762,10 @@ async fn handle_delete_webhook(
     request: &ApiGatewayProxyRequest,
     repo: &DynamoDbRepository,
     webhook_id: Option<String>,
+    jwt_secret: &str,
     cors_origin: &str,
 ) -> ApiGatewayProxyResponse {
-    if let Err(response) = require_admin_role(request, cors_origin) {
+    if let Err(response) = require_admin_role(request, jwt_secret, cors_origin) {
         return response;
     }
 
@@ -765,14 +796,34 @@ fn extract_query_param(event: &ApiGatewayProxyRequest, name: &str) -> Option<Str
         .map(|(_, v)| v.to_string())
 }
 
-/// Extract value from API Gateway authorizer context
-fn extract_authorizer_context(event: &ApiGatewayProxyRequest, key: &str) -> Option<String> {
-    event
+/// Extract value from API Gateway authorizer context.
+/// Falls back to decoding the JWT from the Authorization header when the
+/// authorizer context is empty (e.g., LocalStack doesn't forward it).
+fn extract_authorizer_context(
+    event: &ApiGatewayProxyRequest,
+    key: &str,
+    jwt_secret: &str,
+) -> Option<String> {
+    // Try authorizer context first (production path)
+    if let Some(value) = event
         .request_context
         .authorizer
         .get(key)
         .and_then(|v| v.as_str())
         .map(|s| s.to_string())
+    {
+        return Some(value);
+    }
+
+    // Fallback: decode JWT from Authorization header
+    let auth_header = event.headers.get("Authorization")?.to_str().ok()?;
+    let token = auth_header.strip_prefix("Bearer ")?;
+    let claims = decode_token(token, jwt_secret).ok()?;
+    match key {
+        "email" => Some(claims.sub),
+        "role" => Some(claims.role),
+        _ => None,
+    }
 }
 
 // =============================================================================
@@ -820,9 +871,10 @@ async fn handle_get_bin_external(
 async fn handle_list_api_keys(
     request: &ApiGatewayProxyRequest,
     repo: &DynamoDbRepository,
+    jwt_secret: &str,
     cors_origin: &str,
 ) -> ApiGatewayProxyResponse {
-    if let Err(response) = require_admin_role(request, cors_origin) {
+    if let Err(response) = require_admin_role(request, jwt_secret, cors_origin) {
         return response;
     }
 
@@ -839,9 +891,10 @@ async fn handle_create_api_key(
     request: &ApiGatewayProxyRequest,
     repo: &DynamoDbRepository,
     created_by: &str,
+    jwt_secret: &str,
     cors_origin: &str,
 ) -> ApiGatewayProxyResponse {
-    if let Err(response) = require_admin_role(request, cors_origin) {
+    if let Err(response) = require_admin_role(request, jwt_secret, cors_origin) {
         return response;
     }
 
@@ -871,9 +924,10 @@ async fn handle_get_api_key(
     request: &ApiGatewayProxyRequest,
     repo: &DynamoDbRepository,
     key_id: Option<String>,
+    jwt_secret: &str,
     cors_origin: &str,
 ) -> ApiGatewayProxyResponse {
-    if let Err(response) = require_admin_role(request, cors_origin) {
+    if let Err(response) = require_admin_role(request, jwt_secret, cors_origin) {
         return response;
     }
 
@@ -895,9 +949,10 @@ async fn handle_update_api_key(
     request: &ApiGatewayProxyRequest,
     repo: &DynamoDbRepository,
     key_id: Option<String>,
+    jwt_secret: &str,
     cors_origin: &str,
 ) -> ApiGatewayProxyResponse {
-    if let Err(response) = require_admin_role(request, cors_origin) {
+    if let Err(response) = require_admin_role(request, jwt_secret, cors_origin) {
         return response;
     }
 
@@ -932,9 +987,10 @@ async fn handle_delete_api_key(
     request: &ApiGatewayProxyRequest,
     repo: &DynamoDbRepository,
     key_id: Option<String>,
+    jwt_secret: &str,
     cors_origin: &str,
 ) -> ApiGatewayProxyResponse {
-    if let Err(response) = require_admin_role(request, cors_origin) {
+    if let Err(response) = require_admin_role(request, jwt_secret, cors_origin) {
         return response;
     }
 
@@ -991,9 +1047,10 @@ async fn handle_get_public_bin(
 async fn handle_list_users(
     request: &ApiGatewayProxyRequest,
     repo: &DynamoDbRepository,
+    jwt_secret: &str,
     cors_origin: &str,
 ) -> ApiGatewayProxyResponse {
-    if let Err(response) = require_admin_role(request, cors_origin) {
+    if let Err(response) = require_admin_role(request, jwt_secret, cors_origin) {
         return response;
     }
 
@@ -1010,9 +1067,10 @@ async fn handle_create_user(
     request: &ApiGatewayProxyRequest,
     repo: &DynamoDbRepository,
     email_service: &EmailService,
+    jwt_secret: &str,
     cors_origin: &str,
 ) -> ApiGatewayProxyResponse {
-    if let Err(response) = require_admin_role(request, cors_origin) {
+    if let Err(response) = require_admin_role(request, jwt_secret, cors_origin) {
         return response;
     }
 
@@ -1042,9 +1100,10 @@ async fn handle_get_user(
     request: &ApiGatewayProxyRequest,
     repo: &DynamoDbRepository,
     email: Option<String>,
+    jwt_secret: &str,
     cors_origin: &str,
 ) -> ApiGatewayProxyResponse {
-    if let Err(response) = require_admin_role(request, cors_origin) {
+    if let Err(response) = require_admin_role(request, jwt_secret, cors_origin) {
         return response;
     }
 
@@ -1073,9 +1132,10 @@ async fn handle_update_user(
     repo: &DynamoDbRepository,
     email: Option<String>,
     current_user_email: &str,
+    jwt_secret: &str,
     cors_origin: &str,
 ) -> ApiGatewayProxyResponse {
-    if let Err(response) = require_admin_role(request, cors_origin) {
+    if let Err(response) = require_admin_role(request, jwt_secret, cors_origin) {
         return response;
     }
 
@@ -1117,9 +1177,10 @@ async fn handle_delete_user(
     repo: &DynamoDbRepository,
     email: Option<String>,
     current_user_email: &str,
+    jwt_secret: &str,
     cors_origin: &str,
 ) -> ApiGatewayProxyResponse {
-    if let Err(response) = require_admin_role(request, cors_origin) {
+    if let Err(response) = require_admin_role(request, jwt_secret, cors_origin) {
         return response;
     }
 

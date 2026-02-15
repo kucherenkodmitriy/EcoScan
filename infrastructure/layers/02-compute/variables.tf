@@ -107,8 +107,12 @@ variable "from_email" {
 variable "jwt_secret" {
   description = "Secret key for JWT token signing"
   type        = string
-  default     = "ecoscan-jwt-secret-change-in-production"
   sensitive   = true
+
+  validation {
+    condition     = length(var.jwt_secret) >= 32
+    error_message = "jwt_secret must be at least 32 characters long for security."
+  }
 }
 
 variable "jwt_expiry_hours" {

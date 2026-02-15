@@ -1,6 +1,7 @@
 use chrono::{Duration, Utc};
 use rand::Rng;
 use sha2::{Digest, Sha256};
+use subtle::ConstantTimeEq;
 use tracing::{info, instrument, warn};
 
 use crate::domain::{
@@ -10,6 +11,35 @@ use crate::domain::{
 use crate::infrastructure::{
     generate_token, hash_password, verify_password, EmailService, JwtConfig,
 };
+
+/// Validate password meets strength requirements:
+/// - At least 8 characters
+/// - At least one uppercase letter
+/// - At least one lowercase letter
+/// - At least one digit
+fn validate_password(password: &str) -> Result<()> {
+    if password.len() < 8 {
+        return Err(AppError::ValidationError(
+            "Password must be at least 8 characters".to_string(),
+        ));
+    }
+    if !password.chars().any(|c| c.is_uppercase()) {
+        return Err(AppError::ValidationError(
+            "Password must contain at least one uppercase letter".to_string(),
+        ));
+    }
+    if !password.chars().any(|c| c.is_lowercase()) {
+        return Err(AppError::ValidationError(
+            "Password must contain at least one lowercase letter".to_string(),
+        ));
+    }
+    if !password.chars().any(|c| c.is_ascii_digit()) {
+        return Err(AppError::ValidationError(
+            "Password must contain at least one digit".to_string(),
+        ));
+    }
+    Ok(())
+}
 
 /// Handle user login
 #[instrument(skip(repo, request, jwt_config), fields(email = %request.email))]
@@ -77,11 +107,7 @@ pub async fn create_user(
         ));
     }
 
-    if password.len() < 8 {
-        return Err(AppError::ValidationError(
-            "Password must be at least 8 characters".to_string(),
-        ));
-    }
+    validate_password(&password)?;
 
     // Check if user already exists
     if repo.get_user(&email).await?.is_some() {
@@ -180,11 +206,7 @@ pub async fn handle_reset_password(
     let email = request.email.trim().to_lowercase();
 
     // Validate new password
-    if request.new_password.len() < 8 {
-        return Err(AppError::ValidationError(
-            "Password must be at least 8 characters".to_string(),
-        ));
-    }
+    validate_password(&request.new_password)?;
 
     // Hash the incoming token
     let mut hasher = Sha256::new();
@@ -197,8 +219,11 @@ pub async fn handle_reset_password(
         .await?
         .ok_or(AppError::ResetTokenInvalid)?;
 
-    // Compare hashes (constant-time not critical since hashed, but check correctness)
-    if incoming_hash != stored_hash {
+    // Compare hashes using constant-time comparison to prevent timing attacks
+    let hashes_match = incoming_hash.as_bytes().ct_eq(stored_hash.as_bytes());
+    if hashes_match.unwrap_u8() != 1 {
+        // Clear token on invalid attempt to prevent brute-force
+        let _ = repo.clear_reset_token(&email).await;
         warn!(email = %email, "Invalid reset token");
         return Err(AppError::ResetTokenInvalid);
     }
@@ -413,7 +438,7 @@ mod tests {
         let result = create_user(
             &repo,
             "new@example.com".to_string(),
-            "password123".to_string(),
+            "Password123".to_string(),
             "New User".to_string(),
             UserRole::Admin,
         )
@@ -431,6 +456,54 @@ mod tests {
             &repo,
             "new@example.com".to_string(),
             "short".to_string(),
+            "New User".to_string(),
+            UserRole::Admin,
+        )
+        .await;
+
+        assert!(matches!(result, Err(AppError::ValidationError(_))));
+    }
+
+    #[tokio::test]
+    async fn test_create_user_password_no_uppercase() {
+        let repo = MockUserRepository::new();
+
+        let result = create_user(
+            &repo,
+            "new@example.com".to_string(),
+            "password123".to_string(),
+            "New User".to_string(),
+            UserRole::Admin,
+        )
+        .await;
+
+        assert!(matches!(result, Err(AppError::ValidationError(_))));
+    }
+
+    #[tokio::test]
+    async fn test_create_user_password_no_lowercase() {
+        let repo = MockUserRepository::new();
+
+        let result = create_user(
+            &repo,
+            "new@example.com".to_string(),
+            "PASSWORD123".to_string(),
+            "New User".to_string(),
+            UserRole::Admin,
+        )
+        .await;
+
+        assert!(matches!(result, Err(AppError::ValidationError(_))));
+    }
+
+    #[tokio::test]
+    async fn test_create_user_password_no_digit() {
+        let repo = MockUserRepository::new();
+
+        let result = create_user(
+            &repo,
+            "new@example.com".to_string(),
+            "PasswordABC".to_string(),
             "New User".to_string(),
             UserRole::Admin,
         )

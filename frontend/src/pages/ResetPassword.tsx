@@ -9,8 +9,13 @@ import styles from './Login.module.css'
 export default function ResetPassword() {
   const { t } = useTranslation()
   const [searchParams] = useSearchParams()
-  const token = searchParams.get('token') || ''
-  const email = searchParams.get('email') || ''
+  const rawToken = searchParams.get('token') || ''
+  const rawEmail = searchParams.get('email') || ''
+
+  // Validate token format (64 hex chars) and email format
+  const hexRegex = /^[0-9a-f]{64}$/i
+  const token = hexRegex.test(rawToken) ? rawToken : ''
+  const email = rawEmail.includes('@') ? rawEmail : ''
 
   const [newPassword, setNewPassword] = useState('')
   const [confirmPassword, setConfirmPassword] = useState('')

@@ -1,5 +1,5 @@
 use chrono::{Duration, Utc};
-use jsonwebtoken::{encode, Algorithm, EncodingKey, Header};
+use jsonwebtoken::{decode, encode, Algorithm, DecodingKey, EncodingKey, Header, Validation};
 use serde::{Deserialize, Serialize};
 
 use crate::domain::{AppError, Result, UserRole};
@@ -58,6 +58,16 @@ pub fn generate_token(
         encode(&header, &claims, &encoding_key).map_err(|e| AppError::JwtError(e.to_string()))?;
 
     Ok((token, expiry.to_rfc3339()))
+}
+
+/// Decode and validate a JWT token, returning the claims
+pub fn decode_token(token: &str, secret: &str) -> std::result::Result<Claims, String> {
+    let decoding_key = DecodingKey::from_secret(secret.as_bytes());
+    let validation = Validation::new(Algorithm::HS256);
+
+    decode::<Claims>(token, &decoding_key, &validation)
+        .map(|data| data.claims)
+        .map_err(|e| e.to_string())
 }
 
 /// Verify password against hash

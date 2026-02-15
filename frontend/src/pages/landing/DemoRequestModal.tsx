@@ -27,11 +27,12 @@ function DemoRequestModal({ isOpen, onClose }: DemoRequestModalProps) {
   const [submitted, setSubmitted] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
-  // reCAPTCHA site key - replace with your actual key
-  const RECAPTCHA_SITE_KEY = import.meta.env.VITE_RECAPTCHA_SITE_KEY || '6LeIxAcTAAAAAJcZVRqyHh71UMIEGNQ_MXjiZKhI'
+  // reCAPTCHA site key
+  const RECAPTCHA_SITE_KEY = import.meta.env.VITE_RECAPTCHA_SITE_KEY || ''
 
   useEffect(() => {
-    // Load reCAPTCHA script
+    // Only load reCAPTCHA script if site key is configured
+    if (!RECAPTCHA_SITE_KEY) return
     if (!document.getElementById('recaptcha-script')) {
       const script = document.createElement('script')
       script.id = 'recaptcha-script'

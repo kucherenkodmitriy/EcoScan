@@ -37,9 +37,19 @@ export function AuthProvider({ children }: AuthProviderProps) {
   useEffect(() => {
     const storedToken = localStorage.getItem('ecoscan_token')
     const storedUser = localStorage.getItem('ecoscan_user')
+    const expiresAt = localStorage.getItem('ecoscan_expires')
+
+    // Validate token expiry on initialization
     if (storedToken && storedUser) {
-      setToken(storedToken)
-      setUser(JSON.parse(storedUser))
+      if (expiresAt && new Date(expiresAt) <= new Date()) {
+        // Token has expired — clear stored auth
+        localStorage.removeItem('ecoscan_token')
+        localStorage.removeItem('ecoscan_user')
+        localStorage.removeItem('ecoscan_expires')
+      } else {
+        setToken(storedToken)
+        setUser(JSON.parse(storedUser))
+      }
     }
     setIsLoading(false)
   }, [])

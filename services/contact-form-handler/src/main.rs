@@ -48,6 +48,61 @@ enum HandlerError {
     Http(String),
     #[error("SES error: {0}")]
     Ses(String),
+    #[error("Validation error: {0}")]
+    Validation(String),
+}
+
+fn validate_contact_request(request: &ContactRequest) -> Result<(), HandlerError> {
+    // Validate email format
+    let email = request.email.trim();
+    if email.len() > 254 {
+        return Err(HandlerError::Validation(
+            "Email address is too long".to_string(),
+        ));
+    }
+    if !email.contains('@') || !email.contains('.') {
+        return Err(HandlerError::Validation(
+            "Invalid email address format".to_string(),
+        ));
+    }
+
+    // Validate length limits
+    if let Some(name) = &request.name {
+        if name.len() > 200 {
+            return Err(HandlerError::Validation(
+                "Name is too long (max 200 characters)".to_string(),
+            ));
+        }
+    }
+    if let Some(company) = &request.company_name {
+        if company.len() > 200 {
+            return Err(HandlerError::Validation(
+                "Company name is too long (max 200 characters)".to_string(),
+            ));
+        }
+    }
+    if let Some(org) = &request.organization {
+        if org.len() > 200 {
+            return Err(HandlerError::Validation(
+                "Organization is too long (max 200 characters)".to_string(),
+            ));
+        }
+    }
+    if let Some(message) = &request.message {
+        if message.len() > 5000 {
+            return Err(HandlerError::Validation(
+                "Message is too long (max 5000 characters)".to_string(),
+            ));
+        }
+    }
+
+    Ok(())
+}
+
+/// Sanitize a string for use in email headers to prevent header injection.
+/// Strips carriage returns and newlines.
+fn sanitize_for_email_header(input: &str) -> String {
+    input.replace(['\r', '\n'], "")
 }
 
 async fn verify_recaptcha(token: &str, secret: &str) -> Result<RecaptchaResponse, HandlerError> {
@@ -140,14 +195,14 @@ async fn send_notification_email(
     request_id: &str,
 ) -> Result<(), HandlerError> {
     let subject = match request.request_type.as_str() {
-        "demo" => format!(
+        "demo" => sanitize_for_email_header(&format!(
             "New Demo Request from {}",
             request.company_name.as_deref().unwrap_or("Unknown Company")
-        ),
-        _ => format!(
+        )),
+        _ => sanitize_for_email_header(&format!(
             "New Contact Form Submission from {}",
             request.name.as_deref().unwrap_or("Unknown")
-        ),
+        )),
     };
 
     let body_text = match request.request_type.as_str() {
@@ -266,6 +321,18 @@ async fn function_handler(
     let body = event.payload.body.ok_or("Missing request body")?;
     let mut request: ContactRequest =
         serde_json::from_str(&body).map_err(|e| format!("Invalid request body: {}", e))?;
+
+    // Validate input
+    if let Err(e) = validate_contact_request(&request) {
+        warn!("Validation failed: {}", e);
+        return Ok(create_response(
+            400,
+            serde_json::json!({
+                "error": "Validation failed",
+                "message": e.to_string()
+            }),
+        ));
+    }
 
     // Auto-detect request type if not provided
     if request.request_type.is_empty() {

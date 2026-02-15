@@ -1,3 +1,5 @@
+use tracing::warn;
+
 use crate::infrastructure::get_jwt_secret;
 
 /// Application configuration loaded from environment variables
@@ -47,8 +49,7 @@ impl Config {
                 .and_then(|v| v.parse().ok())
                 .unwrap_or(24),
             log_level: std::env::var("LOG_LEVEL").unwrap_or_else(|_| "INFO".to_string()),
-            cors_allowed_origins: std::env::var("CORS_ALLOWED_ORIGINS")
-                .unwrap_or_else(|_| "*".to_string()),
+            cors_allowed_origins: std::env::var("CORS_ALLOWED_ORIGINS").unwrap_or_default(),
             from_email: std::env::var("FROM_EMAIL").ok().filter(|s| !s.is_empty()),
             frontend_url: std::env::var("FRONTEND_URL")
                 .unwrap_or_else(|_| "http://localhost:3000".to_string()),
@@ -65,7 +66,7 @@ impl Config {
         // Fetch JWT secret (from Secrets Manager or env var)
         let jwt_secret_value = get_jwt_secret(dynamodb_endpoint.as_deref()).await?;
 
-        Ok(Self {
+        let config = Self {
             admin_users_table: std::env::var("ADMIN_USERS_TABLE_NAME")
                 .unwrap_or_else(|_| "dev-ecoscan-admin-users".to_string()),
             trash_bins_table: std::env::var("TRASH_BINS_TABLE_NAME")
@@ -84,12 +85,19 @@ impl Config {
                 .and_then(|v| v.parse().ok())
                 .unwrap_or(24),
             log_level: std::env::var("LOG_LEVEL").unwrap_or_else(|_| "INFO".to_string()),
-            cors_allowed_origins: std::env::var("CORS_ALLOWED_ORIGINS")
-                .unwrap_or_else(|_| "*".to_string()),
+            cors_allowed_origins: std::env::var("CORS_ALLOWED_ORIGINS").unwrap_or_default(),
             from_email: std::env::var("FROM_EMAIL").ok().filter(|s| !s.is_empty()),
             frontend_url: std::env::var("FRONTEND_URL")
                 .unwrap_or_else(|_| "http://localhost:3000".to_string()),
-        })
+        };
+
+        if config.cors_allowed_origins == "*" {
+            warn!("CORS_ALLOWED_ORIGINS is set to '*' — this allows any origin. Set a specific origin for production.");
+        } else if config.cors_allowed_origins.is_empty() {
+            warn!("CORS_ALLOWED_ORIGINS is not set — CORS requests will be rejected. Set an explicit origin.");
+        }
+
+        Ok(config)
     }
 
     /// Check if running in local development mode (LocalStack)

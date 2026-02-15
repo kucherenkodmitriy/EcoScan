@@ -1,10 +1,83 @@
+use std::net::IpAddr;
 use tracing::{info, instrument};
+use url::Url;
 use uuid::Uuid;
 
 use crate::domain::{
     AppError, CreateWebhookRequest, Result, UpdateWebhookRequest, WebhookAuthType, WebhookConfig,
     WebhookInfo, WebhookRepository,
 };
+
+/// Check if an IP address is a private/reserved address
+fn is_private_ip(ip: &IpAddr) -> bool {
+    match ip {
+        IpAddr::V4(v4) => {
+            v4.is_loopback()          // 127.0.0.0/8
+                || v4.is_private()    // 10.0.0.0/8, 172.16.0.0/12, 192.168.0.0/16
+                || v4.is_link_local() // 169.254.0.0/16 (blocks AWS metadata endpoint)
+                || v4.is_unspecified() // 0.0.0.0
+                || v4.is_broadcast() // 255.255.255.255
+        }
+        IpAddr::V6(v6) => {
+            v6.is_loopback()          // ::1
+                || v6.is_unspecified() // ::
+        }
+    }
+}
+
+/// Validate a webhook URL to prevent SSRF attacks.
+/// Blocks private IPs, localhost, link-local, and internal hostnames.
+fn validate_webhook_url(url_str: &str) -> Result<()> {
+    let parsed = Url::parse(url_str)
+        .map_err(|_| AppError::ValidationError("Invalid webhook URL format".to_string()))?;
+
+    // Must be http or https
+    match parsed.scheme() {
+        "http" | "https" => {}
+        _ => {
+            return Err(AppError::ValidationError(
+                "Webhook URL must use http or https scheme".to_string(),
+            ));
+        }
+    }
+
+    let host = parsed
+        .host_str()
+        .ok_or_else(|| AppError::ValidationError("Webhook URL must have a host".to_string()))?;
+
+    // Block localhost and internal hostnames
+    let host_lower = host.to_lowercase();
+    if host_lower == "localhost"
+        || host_lower.ends_with(".local")
+        || host_lower.ends_with(".internal")
+        || host_lower.ends_with(".localhost")
+    {
+        return Err(AppError::ValidationError(
+            "Webhook URL must not point to localhost or internal hosts".to_string(),
+        ));
+    }
+
+    // If the host is an IP address, check if it's private
+    if let Ok(ip) = host.parse::<IpAddr>() {
+        if is_private_ip(&ip) {
+            return Err(AppError::ValidationError(
+                "Webhook URL must not point to a private or reserved IP address".to_string(),
+            ));
+        }
+    }
+
+    // Also check bracket-stripped IPv6 (url crate strips brackets)
+    let stripped = host.trim_start_matches('[').trim_end_matches(']');
+    if let Ok(ip) = stripped.parse::<IpAddr>() {
+        if is_private_ip(&ip) {
+            return Err(AppError::ValidationError(
+                "Webhook URL must not point to a private or reserved IP address".to_string(),
+            ));
+        }
+    }
+
+    Ok(())
+}
 
 /// List all webhooks
 #[instrument(skip(repo))]
@@ -44,11 +117,7 @@ pub async fn create_webhook(
         ));
     }
 
-    if !request.url.starts_with("http://") && !request.url.starts_with("https://") {
-        return Err(AppError::ValidationError(
-            "Webhook URL must start with http:// or https://".to_string(),
-        ));
-    }
+    validate_webhook_url(&request.url)?;
 
     let webhook_id = Uuid::new_v4().to_string();
     let now = chrono::Utc::now();
@@ -93,11 +162,7 @@ pub async fn update_webhook(
 
     // Validate URL if provided
     if let Some(url) = &request.url {
-        if !url.starts_with("http://") && !url.starts_with("https://") {
-            return Err(AppError::ValidationError(
-                "Webhook URL must start with http:// or https://".to_string(),
-            ));
-        }
+        validate_webhook_url(url)?;
     }
 
     repo.update_webhook(webhook_id, &request).await?;
@@ -289,6 +354,103 @@ mod tests {
         assert_eq!(result[0].name, "Webhook 1");
         // Verify auth_value is not exposed in WebhookInfo
         // (WebhookInfo doesn't have auth_value field)
+    }
+
+    #[tokio::test]
+    async fn test_create_webhook_localhost_blocked() {
+        let repo = MockWebhookRepository::new();
+
+        let request = CreateWebhookRequest {
+            name: "Test".to_string(),
+            url: "http://localhost:8080/hook".to_string(),
+            auth_type: None,
+            auth_header: None,
+            auth_value: None,
+            events: None,
+        };
+
+        let result = create_webhook(&repo, request).await;
+        assert!(matches!(result, Err(AppError::ValidationError(_))));
+    }
+
+    #[tokio::test]
+    async fn test_create_webhook_private_ip_blocked() {
+        let repo = MockWebhookRepository::new();
+
+        for url in &[
+            "http://127.0.0.1/hook",
+            "http://10.0.0.1/hook",
+            "http://172.16.0.1/hook",
+            "http://192.168.1.1/hook",
+            "http://169.254.169.254/latest/meta-data/",
+        ] {
+            let request = CreateWebhookRequest {
+                name: "Test".to_string(),
+                url: url.to_string(),
+                auth_type: None,
+                auth_header: None,
+                auth_value: None,
+                events: None,
+            };
+
+            let result = create_webhook(&repo, request).await;
+            assert!(
+                matches!(result, Err(AppError::ValidationError(_))),
+                "Expected error for URL: {}",
+                url
+            );
+        }
+    }
+
+    #[tokio::test]
+    async fn test_create_webhook_valid_public_url() {
+        let repo = MockWebhookRepository::new();
+
+        let request = CreateWebhookRequest {
+            name: "Public Webhook".to_string(),
+            url: "https://hooks.example.com/callback".to_string(),
+            auth_type: None,
+            auth_header: None,
+            auth_value: None,
+            events: None,
+        };
+
+        let result = create_webhook(&repo, request).await;
+        assert!(result.is_ok());
+    }
+
+    #[tokio::test]
+    async fn test_create_webhook_missing_scheme() {
+        let repo = MockWebhookRepository::new();
+
+        let request = CreateWebhookRequest {
+            name: "Test".to_string(),
+            url: "example.com/hook".to_string(),
+            auth_type: None,
+            auth_header: None,
+            auth_value: None,
+            events: None,
+        };
+
+        let result = create_webhook(&repo, request).await;
+        assert!(matches!(result, Err(AppError::ValidationError(_))));
+    }
+
+    #[tokio::test]
+    async fn test_create_webhook_internal_hostname_blocked() {
+        let repo = MockWebhookRepository::new();
+
+        let request = CreateWebhookRequest {
+            name: "Test".to_string(),
+            url: "http://service.internal/hook".to_string(),
+            auth_type: None,
+            auth_header: None,
+            auth_value: None,
+            events: None,
+        };
+
+        let result = create_webhook(&repo, request).await;
+        assert!(matches!(result, Err(AppError::ValidationError(_))));
     }
 
     #[tokio::test]

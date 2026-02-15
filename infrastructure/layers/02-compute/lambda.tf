@@ -96,6 +96,13 @@ resource "aws_lambda_function" "authorizer" {
     mode = "Active"
   }
 
+  lifecycle {
+    precondition {
+      condition     = !var.use_localstack || length(var.jwt_secret) >= 32
+      error_message = "jwt_secret must be at least 32 characters when use_localstack is true."
+    }
+  }
+
   tags = merge(
     local.common_tags,
     {
@@ -299,6 +306,13 @@ resource "aws_lambda_function" "admin_dashboard" {
         JWT_SECRET_ARN = local.jwt_secret_arn
       }
     )
+  }
+
+  lifecycle {
+    precondition {
+      condition     = !var.use_localstack || length(var.jwt_secret) >= 32
+      error_message = "jwt_secret must be at least 32 characters when use_localstack is true."
+    }
   }
 
   tracing_config {

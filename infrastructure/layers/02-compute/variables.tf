@@ -105,12 +105,13 @@ variable "from_email" {
 }
 
 variable "jwt_secret" {
-  description = "Secret key for JWT token signing"
+  description = "Secret key for JWT token signing (only used with LocalStack)"
   type        = string
+  default     = ""
   sensitive   = true
 
   validation {
-    condition     = length(var.jwt_secret) >= 32
+    condition     = var.jwt_secret == "" || length(var.jwt_secret) >= 32
     error_message = "jwt_secret must be at least 32 characters long for security."
   }
 }

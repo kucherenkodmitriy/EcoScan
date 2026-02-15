@@ -545,6 +545,12 @@ resource "aws_iam_policy" "github_actions_extra_policy" {
           "cloudfront:ListFunctions",
           "cloudfront:PublishFunction",
           "cloudfront:UpdateFunction",
+          "cloudfront:CreateResponseHeadersPolicy",
+          "cloudfront:DeleteResponseHeadersPolicy",
+          "cloudfront:GetResponseHeadersPolicy",
+          "cloudfront:GetResponseHeadersPolicyConfig",
+          "cloudfront:UpdateResponseHeadersPolicy",
+          "cloudfront:ListResponseHeadersPolicies",
         ]
         Resource = "*"
       },

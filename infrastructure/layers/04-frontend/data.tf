@@ -3,7 +3,7 @@ data "terraform_remote_state" "api" {
   backend = var.use_localstack ? "local" : "s3"
 
   config = var.use_localstack ? {
-    path = "${path.module}/../03-api/terraform.tfstate"
+    path = "${path.module}/../03-api/terraform-local.tfstate"
     } : {
     bucket = "${var.project_name}-terraform-state-${var.environment}"
     key    = "layers/03-api/terraform.tfstate"

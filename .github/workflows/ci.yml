@@ -595,7 +595,7 @@ jobs:
     needs: [detect-changes]
     if: |
       github.ref == 'refs/heads/dev' &&
-      (needs.detect-changes.outputs.frontend == 'true' || needs.detect-changes.outputs.frontend_infra == 'true')
+      (needs.detect-changes.outputs.frontend == 'true' || needs.detect-changes.outputs.frontend_infra == 'true' || needs.detect-changes.outputs.api == 'true')
     steps:
       - uses: actions/checkout@v4
 
@@ -668,8 +668,8 @@ jobs:
       github.ref == 'refs/heads/dev' &&
       (needs.terraform-validate.result == 'success' || needs.terraform-validate.result == 'skipped') &&
       (needs.deploy-api.result == 'success' || needs.deploy-api.result == 'skipped') &&
-      (needs.build-frontend.result == 'success') &&
-      (needs.detect-changes.outputs.frontend == 'true' || needs.detect-changes.outputs.frontend_infra == 'true' || needs.detect-changes.outputs.tfvars == 'true')
+      (needs.build-frontend.result == 'success' || needs.build-frontend.result == 'skipped') &&
+      (needs.detect-changes.outputs.frontend == 'true' || needs.detect-changes.outputs.frontend_infra == 'true' || needs.detect-changes.outputs.tfvars == 'true' || needs.detect-changes.outputs.api == 'true')
     steps:
       - uses: actions/checkout@v4
 
@@ -688,6 +688,7 @@ jobs:
           role-session-name: GitHubActions-DeployFrontend
 
       - name: Download frontend build
+        if: needs.build-frontend.result == 'success'
         uses: actions/download-artifact@v4
         with:
           name: frontend-build
@@ -737,6 +738,7 @@ jobs:
           echo "FRONTEND_URL=$(terraform output -raw frontend_url)" >> $GITHUB_OUTPUT
 
       - name: Upload to S3
+        if: needs.build-frontend.result == 'success'
         run: |
           aws s3 sync frontend/dist/ s3://${{ steps.infra-outputs.outputs.FRONTEND_BUCKET }}/ \
             --delete \
@@ -753,6 +755,7 @@ jobs:
             --cache-control "public, max-age=0, must-revalidate" \;
 
       - name: Invalidate CloudFront cache
+        if: needs.build-frontend.result == 'success' || steps.plan.outputs.exitcode == '2'
         run: |
           aws cloudfront create-invalidation \
             --distribution-id ${{ steps.infra-outputs.outputs.CLOUDFRONT_ID }} \

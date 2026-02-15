@@ -107,7 +107,12 @@ fi
 #   01-data: DynamoDB tables, Secrets Manager, SQS queues
 #   02-compute: Lambda functions (depends on 01-data for tables, secrets, SQS)
 #   03-api: API Gateway (depends on 01-data for SQS, 02-compute for Lambda ARNs)
-LAYERS=("00-foundation" "01-data" "02-compute" "03-api")
+#   04-frontend: CloudFront + S3 (depends on 03-api for API Gateway URL) - AWS only
+if [[ "$ENVIRONMENT" == "local" ]]; then
+    LAYERS=("00-foundation" "01-data" "02-compute" "03-api")
+else
+    LAYERS=("00-foundation" "01-data" "02-compute" "03-api" "04-frontend")
+fi
 
 for layer in "${LAYERS[@]}"; do
     echo ""

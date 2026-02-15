@@ -90,7 +90,7 @@ export default function UserForm() {
     navigate('/settings/users')
   }
 
-  const isEditingSelf = isEdit && email && decodeURIComponent(email) === currentUser?.email
+  const isEditingSelf = !!(isEdit && email && decodeURIComponent(email) === currentUser?.email)
 
   if (loading) {
     return (

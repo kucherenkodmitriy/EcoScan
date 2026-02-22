@@ -40,7 +40,10 @@ test.describe('API Keys Settings', () => {
     const createPage = new ApiKeyCreatePage(page);
     await createPage.goto();
     await expect(createPage.nameInput).toBeVisible({ timeout: 10000 });
+    const responsePromise = page.waitForResponse((r) => r.url().includes('/admin/api-keys') && r.request().method() === 'POST');
     await createPage.createKey(`Test Key ${Date.now()}`, { read: true });
+    const data = await (await responsePromise).json();
+    if (data.key_id) createdKeyIds.push(data.key_id);
     await expect(createPage.generatedKey).toBeVisible({ timeout: 10000 });
   });
 
@@ -48,7 +51,10 @@ test.describe('API Keys Settings', () => {
     const createPage = new ApiKeyCreatePage(page);
     await createPage.goto();
     await expect(createPage.nameInput).toBeVisible({ timeout: 10000 });
+    const responsePromise = page.waitForResponse((r) => r.url().includes('/admin/api-keys') && r.request().method() === 'POST');
     await createPage.createKey(`Warning Key ${Date.now()}`, { read: true });
+    const data = await (await responsePromise).json();
+    if (data.key_id) createdKeyIds.push(data.key_id);
     await expect(createPage.warningMessage).toBeVisible({ timeout: 10000 });
   });
 
@@ -56,7 +62,10 @@ test.describe('API Keys Settings', () => {
     const createPage = new ApiKeyCreatePage(page);
     await createPage.goto();
     await expect(createPage.nameInput).toBeVisible({ timeout: 10000 });
+    const responsePromise = page.waitForResponse((r) => r.url().includes('/admin/api-keys') && r.request().method() === 'POST');
     await createPage.createKey(`Copy Key ${Date.now()}`, { read: true });
+    const data = await (await responsePromise).json();
+    if (data.key_id) createdKeyIds.push(data.key_id);
     await expect(createPage.copyButton).toBeVisible({ timeout: 10000 });
   });
 

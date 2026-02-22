@@ -86,3 +86,37 @@ export async function deleteWebhookViaApi(token: string, webhookId: string): Pro
     headers: { Authorization: `Bearer ${token}` },
   });
 }
+
+export async function loginAs(email: string, password: string): Promise<string> {
+  const res = await fetch(`${BASE_URL}${API_BASE}/auth/login`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ email, password }),
+  });
+  if (!res.ok) throw new Error(`Login as ${email} failed: ${res.status}`);
+  const data = await res.json();
+  return data.token;
+}
+
+export async function createUserViaApi(
+  token: string,
+  user: { email: string; name: string; role: string },
+): Promise<{ email: string; initial_password: string }> {
+  const res = await fetch(`${BASE_URL}${API_BASE}/admin/users`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${token}`,
+    },
+    body: JSON.stringify(user),
+  });
+  if (!res.ok) throw new Error(`Create user failed: ${res.status}`);
+  return res.json();
+}
+
+export async function deleteUserViaApi(token: string, email: string): Promise<void> {
+  await fetch(`${BASE_URL}${API_BASE}/admin/users/${encodeURIComponent(email)}`, {
+    method: 'DELETE',
+    headers: { Authorization: `Bearer ${token}` },
+  });
+}

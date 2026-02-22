@@ -44,6 +44,9 @@ test.describe('Webhooks Settings', () => {
     });
     await form.submitButton.click();
     await expect(page).toHaveURL(/\/(settings\/webhooks|webhooks\/)/, { timeout: 10000 });
+    // Track for cleanup — extract ID if redirected to detail page
+    const match = page.url().match(/\/webhooks\/([^/]+)$/);
+    if (match) createdWebhookIds.push(match[1]);
   });
 
   test('auth header shown when authType is api_key', async ({ page }) => {

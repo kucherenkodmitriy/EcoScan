@@ -53,9 +53,6 @@ export default function QRPrint() {
   // Print mode
   const [isPrintMode, setIsPrintMode] = useState(false)
 
-  // Full page mode (one QR per A4 page)
-  const [fullPageMode, setFullPageMode] = useState(false)
-
   useEffect(() => {
     const loadBins = async () => {
       try {
@@ -116,14 +113,6 @@ export default function QRPrint() {
 
   const handlePrint = () => {
     setIsPrintMode(true)
-    if (!fullPageMode) {
-      // For grid mode, print immediately
-      setTimeout(() => {
-        window.print()
-        setIsPrintMode(false)
-      }, 100)
-    }
-    // For full page mode, show preview first - user can press Ctrl+P
   }
 
   const handlePrintSingle = (bin: Bin) => {
@@ -143,169 +132,59 @@ export default function QRPrint() {
     }, 100)
   }
 
-  // Print view
+  // Print view — A4 full page mode (one QR per page)
   if (isPrintMode) {
     const binsToPrint = selectedBins.length > 0 ? selectedBins : (previewBin ? [previewBin] : [])
 
-    // Full page mode - one QR per A4 page, QR fills entire page
-    if (fullPageMode) {
-      return (
-        <div style={{ background: '#eee', padding: '20px' }}>
-          <style>{`
-            .qr-page {
-              width: 210mm;
-              height: 297mm;
-              display: flex;
-              align-items: center;
-              justify-content: center;
-              background: white;
-              box-sizing: border-box;
-              margin: 0 auto 20px auto;
-              box-shadow: 0 2px 10px rgba(0,0,0,0.2);
-              position: relative;
+    return (
+      <div className={styles.printPreview}>
+        <div className={styles.printToolbar}>
+          <button
+            className="btn btn-primary"
+            onClick={() => window.print()}
+          >
+            {t('qrPrint.printNow')}
+          </button>
+          <button
+            className="btn btn-secondary"
+            onClick={() => setIsPrintMode(false)}
+            style={{ background: '#666', border: 'none' }}
+          >
+            {t('common.back')}
+          </button>
+        </div>
+        <style>{`
+          @media print {
+            @page {
+              size: A4 portrait;
+              margin: 0;
             }
-            .qr-content {
-              display: flex;
-              flex-direction: column;
-              align-items: center;
-              gap: 10px;
-              padding: 20px;
+            html, body {
+              margin: 0 !important;
+              padding: 0 !important;
+              background: white !important;
             }
-            .qr-cta {
-              font-size: 48px;
-              font-weight: 700;
-              color: #2e7d32;
-              margin: 0 0 30px 0;
-              text-align: center;
-            }
-            .qr-bin-info {
-              display: flex;
-              flex-direction: column;
-              align-items: center;
-              gap: 8px;
-              margin-top: 10px;
-            }
-            .bin-name {
-              font-size: 24px;
-              font-weight: 600;
-              color: #333;
-            }
-            .bin-type {
-              font-size: 18px;
-              color: #666;
-              text-transform: capitalize;
-            }
-            .bin-address {
-              font-size: 16px;
-              color: #888;
-            }
-            @media print {
-              @page {
-                size: A4 portrait;
-                margin: 0;
-              }
-              html, body {
-                margin: 0 !important;
-                padding: 0 !important;
-                background: white !important;
-              }
-              .no-print {
-                display: none !important;
-              }
-              .qr-page-container {
-                padding: 0 !important;
-                background: white !important;
-              }
-              .qr-page {
-                margin: 0;
-                box-shadow: none;
-                page-break-after: always;
-                break-after: page;
-              }
-              .qr-page:last-child {
-                page-break-after: auto;
-                break-after: auto;
-              }
-            }
-          `}</style>
-          <div className="qr-page-container">
-            {binsToPrint.map((bin, index) => (
-              <div key={bin.bin_id} className="qr-page">
-                <div className="qr-content">
-                  <h1 className="qr-cta">{t('qrPrint.containerFullCTA')}</h1>
-                  <QRCodeSVG
-                    value={`${window.location.origin}/report?bin=${bin.bin_id}`}
-                    size={550}
-                    level="L"
-                  />
-                  <div className="qr-bin-info">
-                    <span className="bin-name">{bin.name || t('qrPrint.unnamed')}</span>
-                    {bin.bin_type && <span className="bin-type">{bin.bin_type}</span>}
-                    {bin.address && <span className="bin-address">{bin.address}</span>}
-                  </div>
-                </div>
-                <div className="page-number no-print" style={{
-                  position: 'absolute',
-                  bottom: '10px',
-                  right: '10px',
-                  fontSize: '14px',
-                  color: '#666'
-                }}>
-                  {t('qrPrint.pageOf', { current: index + 1, total: binsToPrint.length })}
+          }
+        `}</style>
+        <div className={styles.printPages}>
+          {binsToPrint.map((bin, index) => (
+            <div key={bin.bin_id} className={styles.printPage}>
+              <div className={styles.printPageContent}>
+                <h1 className={styles.printCTA}>{t('qrPrint.containerFullCTA')}</h1>
+                <QRCodeSVG
+                  value={`${window.location.origin}/report?bin=${bin.bin_id}`}
+                  size={550}
+                  level="L"
+                />
+                <div className={styles.printBinInfo}>
+                  <span className={styles.printBinName}>{bin.name || t('qrPrint.unnamed')}</span>
+                  {bin.bin_type && <span className={styles.printBinType}>{bin.bin_type}</span>}
+                  {bin.address && <span className={styles.printBinAddress}>{bin.address}</span>}
                 </div>
               </div>
-            ))}
-          </div>
-          <div
-            style={{
-              position: 'fixed',
-              top: 20,
-              right: 20,
-              display: 'flex',
-              gap: '10px',
-              zIndex: 1000
-            }}
-            className="no-print"
-          >
-            <button
-              onClick={() => window.print()}
-              style={{
-                padding: '10px 20px',
-                background: '#2e7d32',
-                color: 'white',
-                border: 'none',
-                borderRadius: '8px',
-                cursor: 'pointer',
-                fontWeight: 'bold'
-              }}
-            >
-              {t('qrPrint.printNow')}
-            </button>
-            <button
-              onClick={() => setIsPrintMode(false)}
-              style={{
-                padding: '10px 20px',
-                background: '#333',
-                color: 'white',
-                border: 'none',
-                borderRadius: '8px',
-                cursor: 'pointer',
-              }}
-            >
-              {t('common.back')}
-            </button>
-          </div>
-        </div>
-      )
-    }
-
-    // Grid mode - 4 per page
-    return (
-      <div className={styles.printContainer}>
-        <div className={styles.printGrid}>
-          {binsToPrint.map((bin) => (
-            <div key={bin.bin_id} className={styles.printLabel}>
-              <QRLabel bin={bin} size="large" />
+              <div className={styles.printPageNumber}>
+                {t('qrPrint.pageOf', { current: index + 1, total: binsToPrint.length })}
+              </div>
             </div>
           ))}
         </div>
@@ -382,23 +261,13 @@ export default function QRPrint() {
           <span className={styles.counter}>
             {t('qrPrint.binsSelected', { count: selectedIds.size })}
           </span>
-          <div className={styles.printOptions}>
-            <label className={styles.printModeToggle}>
-              <input
-                type="checkbox"
-                checked={fullPageMode}
-                onChange={(e) => setFullPageMode(e.target.checked)}
-              />
-              <span>{t('qrPrint.fullA4Page')}</span>
-            </label>
-            <button
-              className="btn btn-primary"
-              onClick={handlePrint}
-              disabled={selectedIds.size === 0}
-            >
-              {t('qrPrint.printSelected')} ({selectedIds.size})
-            </button>
-          </div>
+          <button
+            className="btn btn-primary"
+            onClick={handlePrint}
+            disabled={selectedIds.size === 0}
+          >
+            {t('qrPrint.printSelected')} ({selectedIds.size})
+          </button>
         </div>
 
         {/* Bin list */}

@@ -1,17 +1,28 @@
 import { test, expect } from '../../fixtures/base';
 import { BinDetailPage } from '../../pages/bin-detail.page';
-import { loginAndGetToken, createBinViaApi } from '../../helpers/api';
+import { loginAndGetToken, createBinViaApi, deleteBinViaApi } from '../../helpers/api';
 
 test.describe('Bin Delete', () => {
   let detail: BinDetailPage;
   let testBinId: string;
+  const createdBinIds: string[] = [];
 
   test.beforeEach(async ({ page }) => {
     // Create a temporary bin for delete testing
     const token = await loginAndGetToken();
     testBinId = await createBinViaApi(token, { name: `Delete Test ${Date.now()}` });
+    createdBinIds.push(testBinId);
     detail = new BinDetailPage(page);
     await detail.goto(testBinId);
+  });
+
+  test.afterAll(async () => {
+    if (createdBinIds.length > 0) {
+      const token = await loginAndGetToken();
+      for (const id of createdBinIds) {
+        await deleteBinViaApi(token, id).catch(() => {});
+      }
+    }
   });
 
   test('shows confirmation modal on delete', async () => {

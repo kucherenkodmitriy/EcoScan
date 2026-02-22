@@ -449,6 +449,8 @@ impl BinRepository for DynamoDbRepository {
             .client
             .scan()
             .table_name(&self.bins_table)
+            .filter_expression("isActive = :active")
+            .expression_attribute_values(":active", AttributeValue::Bool(true))
             .send()
             .await
             .map_err(|e| AppError::DatabaseError(e.to_string()))?;
@@ -745,6 +747,8 @@ impl WebhookRepository for DynamoDbRepository {
             .client
             .scan()
             .table_name(&self.webhooks_table)
+            .filter_expression("isActive = :active")
+            .expression_attribute_values(":active", AttributeValue::Bool(true))
             .send()
             .await
             .map_err(|e| AppError::DatabaseError(e.to_string()))?;

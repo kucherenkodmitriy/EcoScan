@@ -1,57 +1,3 @@
-.page {
-  min-height: 100vh;
-}
-
-.header {
-  background: linear-gradient(135deg, #1a5d1a 0%, #2e7d32 100%);
-  color: white;
-  padding: 16px 24px;
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
-}
-
-.headerLeft {
-  display: flex;
-  align-items: center;
-  gap: 16px;
-}
-
-.headerLeft h1 {
-  font-size: 22px;
-  font-weight: 700;
-}
-
-.backLink {
-  color: white;
-  text-decoration: none;
-  opacity: 0.9;
-  font-size: 14px;
-}
-
-.backLink:hover {
-  opacity: 1;
-}
-
-.headerRight {
-  display: flex;
-  align-items: center;
-  gap: 16px;
-}
-
-.userInfo {
-  font-size: 14px;
-  opacity: 0.9;
-  text-align: right;
-}
-
-.userInfo strong {
-  display: block;
-  font-size: 15px;
-  opacity: 1;
-}
-
 .main {
   max-width: 1000px;
   margin: 0 auto;
@@ -174,22 +120,6 @@
 }
 
 @media (max-width: 768px) {
-  .header {
-    flex-direction: column;
-    gap: 12px;
-    text-align: center;
-  }
-
-  .headerLeft {
-    flex-direction: column;
-    gap: 8px;
-  }
-
-  .headerRight {
-    width: 100%;
-    justify-content: center;
-  }
-
   .toolbar {
     flex-direction: column;
     gap: 12px;

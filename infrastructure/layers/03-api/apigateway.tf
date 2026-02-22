@@ -296,6 +296,18 @@ resource "aws_api_gateway_deployment" "api_deployment" {
       aws_api_gateway_integration.options_admin_api_keys_integration.id,
       aws_api_gateway_method.options_admin_api_key.id,
       aws_api_gateway_integration.options_admin_api_key_integration.id,
+      # Admin user management endpoints
+      aws_api_gateway_resource.admin_users.id,
+      aws_api_gateway_resource.admin_user_email.id,
+      aws_api_gateway_method.get_admin_users.id,
+      aws_api_gateway_method.post_admin_users.id,
+      aws_api_gateway_method.get_admin_user.id,
+      aws_api_gateway_method.put_admin_user.id,
+      aws_api_gateway_method.delete_admin_user.id,
+      aws_api_gateway_method.options_admin_users.id,
+      aws_api_gateway_integration.options_admin_users_integration.id,
+      aws_api_gateway_method.options_admin_user.id,
+      aws_api_gateway_integration.options_admin_user_integration.id,
     ]))
   }
 
@@ -1137,6 +1149,165 @@ resource "aws_api_gateway_integration" "delete_admin_webhook_integration" {
   rest_api_id             = aws_api_gateway_rest_api.api.id
   resource_id             = aws_api_gateway_resource.admin_webhook_id.id
   http_method             = aws_api_gateway_method.delete_admin_webhook.http_method
+  integration_http_method = "POST"
+  type                    = "AWS_PROXY"
+  uri                     = "arn:aws:apigateway:${var.aws_region}:lambda:path/2015-03-31/functions/${local.admin_dashboard_arn}/invocations"
+  credentials             = aws_iam_role.apigateway_lambda_role.arn
+}
+
+# =============================================================================
+# Admin User Management Endpoints (/admin/users)
+# =============================================================================
+
+resource "aws_api_gateway_resource" "admin_users" {
+  rest_api_id = aws_api_gateway_rest_api.api.id
+  parent_id   = aws_api_gateway_resource.admin.id
+  path_part   = "users"
+}
+
+resource "aws_api_gateway_resource" "admin_user_email" {
+  rest_api_id = aws_api_gateway_rest_api.api.id
+  parent_id   = aws_api_gateway_resource.admin_users.id
+  path_part   = "{email}"
+}
+
+# OPTIONS /admin/users - CORS preflight
+resource "aws_api_gateway_method" "options_admin_users" {
+  rest_api_id   = aws_api_gateway_rest_api.api.id
+  resource_id   = aws_api_gateway_resource.admin_users.id
+  http_method   = "OPTIONS"
+  authorization = "NONE"
+}
+
+resource "aws_api_gateway_integration" "options_admin_users_integration" {
+  rest_api_id             = aws_api_gateway_rest_api.api.id
+  resource_id             = aws_api_gateway_resource.admin_users.id
+  http_method             = aws_api_gateway_method.options_admin_users.http_method
+  integration_http_method = "POST"
+  type                    = "AWS_PROXY"
+  uri                     = "arn:aws:apigateway:${var.aws_region}:lambda:path/2015-03-31/functions/${local.admin_dashboard_arn}/invocations"
+  credentials             = aws_iam_role.apigateway_lambda_role.arn
+}
+
+# GET /admin/users - List users (requires JWT)
+resource "aws_api_gateway_method" "get_admin_users" {
+  rest_api_id   = aws_api_gateway_rest_api.api.id
+  resource_id   = aws_api_gateway_resource.admin_users.id
+  http_method   = "GET"
+  authorization = "CUSTOM"
+  authorizer_id = aws_api_gateway_authorizer.jwt_authorizer.id
+}
+
+resource "aws_api_gateway_integration" "get_admin_users_integration" {
+  rest_api_id             = aws_api_gateway_rest_api.api.id
+  resource_id             = aws_api_gateway_resource.admin_users.id
+  http_method             = aws_api_gateway_method.get_admin_users.http_method
+  integration_http_method = "POST"
+  type                    = "AWS_PROXY"
+  uri                     = "arn:aws:apigateway:${var.aws_region}:lambda:path/2015-03-31/functions/${local.admin_dashboard_arn}/invocations"
+  credentials             = aws_iam_role.apigateway_lambda_role.arn
+}
+
+# POST /admin/users - Create user (requires JWT)
+resource "aws_api_gateway_method" "post_admin_users" {
+  rest_api_id   = aws_api_gateway_rest_api.api.id
+  resource_id   = aws_api_gateway_resource.admin_users.id
+  http_method   = "POST"
+  authorization = "CUSTOM"
+  authorizer_id = aws_api_gateway_authorizer.jwt_authorizer.id
+}
+
+resource "aws_api_gateway_integration" "post_admin_users_integration" {
+  rest_api_id             = aws_api_gateway_rest_api.api.id
+  resource_id             = aws_api_gateway_resource.admin_users.id
+  http_method             = aws_api_gateway_method.post_admin_users.http_method
+  integration_http_method = "POST"
+  type                    = "AWS_PROXY"
+  uri                     = "arn:aws:apigateway:${var.aws_region}:lambda:path/2015-03-31/functions/${local.admin_dashboard_arn}/invocations"
+  credentials             = aws_iam_role.apigateway_lambda_role.arn
+}
+
+# OPTIONS /admin/users/{email} - CORS preflight
+resource "aws_api_gateway_method" "options_admin_user" {
+  rest_api_id   = aws_api_gateway_rest_api.api.id
+  resource_id   = aws_api_gateway_resource.admin_user_email.id
+  http_method   = "OPTIONS"
+  authorization = "NONE"
+}
+
+resource "aws_api_gateway_integration" "options_admin_user_integration" {
+  rest_api_id             = aws_api_gateway_rest_api.api.id
+  resource_id             = aws_api_gateway_resource.admin_user_email.id
+  http_method             = aws_api_gateway_method.options_admin_user.http_method
+  integration_http_method = "POST"
+  type                    = "AWS_PROXY"
+  uri                     = "arn:aws:apigateway:${var.aws_region}:lambda:path/2015-03-31/functions/${local.admin_dashboard_arn}/invocations"
+  credentials             = aws_iam_role.apigateway_lambda_role.arn
+}
+
+# GET /admin/users/{email} - Get single user (requires JWT)
+resource "aws_api_gateway_method" "get_admin_user" {
+  rest_api_id   = aws_api_gateway_rest_api.api.id
+  resource_id   = aws_api_gateway_resource.admin_user_email.id
+  http_method   = "GET"
+  authorization = "CUSTOM"
+  authorizer_id = aws_api_gateway_authorizer.jwt_authorizer.id
+
+  request_parameters = {
+    "method.request.path.email" = true
+  }
+}
+
+resource "aws_api_gateway_integration" "get_admin_user_integration" {
+  rest_api_id             = aws_api_gateway_rest_api.api.id
+  resource_id             = aws_api_gateway_resource.admin_user_email.id
+  http_method             = aws_api_gateway_method.get_admin_user.http_method
+  integration_http_method = "POST"
+  type                    = "AWS_PROXY"
+  uri                     = "arn:aws:apigateway:${var.aws_region}:lambda:path/2015-03-31/functions/${local.admin_dashboard_arn}/invocations"
+  credentials             = aws_iam_role.apigateway_lambda_role.arn
+}
+
+# PUT /admin/users/{email} - Update user (requires JWT)
+resource "aws_api_gateway_method" "put_admin_user" {
+  rest_api_id   = aws_api_gateway_rest_api.api.id
+  resource_id   = aws_api_gateway_resource.admin_user_email.id
+  http_method   = "PUT"
+  authorization = "CUSTOM"
+  authorizer_id = aws_api_gateway_authorizer.jwt_authorizer.id
+
+  request_parameters = {
+    "method.request.path.email" = true
+  }
+}
+
+resource "aws_api_gateway_integration" "put_admin_user_integration" {
+  rest_api_id             = aws_api_gateway_rest_api.api.id
+  resource_id             = aws_api_gateway_resource.admin_user_email.id
+  http_method             = aws_api_gateway_method.put_admin_user.http_method
+  integration_http_method = "POST"
+  type                    = "AWS_PROXY"
+  uri                     = "arn:aws:apigateway:${var.aws_region}:lambda:path/2015-03-31/functions/${local.admin_dashboard_arn}/invocations"
+  credentials             = aws_iam_role.apigateway_lambda_role.arn
+}
+
+# DELETE /admin/users/{email} - Delete user (requires JWT)
+resource "aws_api_gateway_method" "delete_admin_user" {
+  rest_api_id   = aws_api_gateway_rest_api.api.id
+  resource_id   = aws_api_gateway_resource.admin_user_email.id
+  http_method   = "DELETE"
+  authorization = "CUSTOM"
+  authorizer_id = aws_api_gateway_authorizer.jwt_authorizer.id
+
+  request_parameters = {
+    "method.request.path.email" = true
+  }
+}
+
+resource "aws_api_gateway_integration" "delete_admin_user_integration" {
+  rest_api_id             = aws_api_gateway_rest_api.api.id
+  resource_id             = aws_api_gateway_resource.admin_user_email.id
+  http_method             = aws_api_gateway_method.delete_admin_user.http_method
   integration_http_method = "POST"
   type                    = "AWS_PROXY"
   uri                     = "arn:aws:apigateway:${var.aws_region}:lambda:path/2015-03-31/functions/${local.admin_dashboard_arn}/invocations"

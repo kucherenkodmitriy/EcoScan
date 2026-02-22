@@ -4,6 +4,7 @@ import { getUser, deleteUser, type User } from '../api/client'
 import styles from './UserDetail.module.css'
 import { useTranslation } from 'react-i18next'
 import { useAuth } from '../context/AuthContext'
+import { useBreadcrumbs } from '../context/BreadcrumbContext'
 
 export default function UserDetail() {
   const { t } = useTranslation()
@@ -14,6 +15,12 @@ export default function UserDetail() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [deleteConfirm, setDeleteConfirm] = useState(false)
+
+  useBreadcrumbs([
+    { label: t('breadcrumbs.dashboard'), path: '/dashboard' },
+    { label: t('breadcrumbs.settings'), path: '/settings/users' },
+    { label: user?.name || t('common.loading') },
+  ])
 
   useEffect(() => {
     if (email) {
@@ -83,9 +90,6 @@ export default function UserDetail() {
     return (
       <div className={styles.container}>
         <div className={styles.error}>{error || 'User not found'}</div>
-        <button onClick={() => navigate('/settings/users')} className={styles.backButton}>
-          ← {t('common.back')}
-        </button>
       </div>
     )
   }
@@ -99,9 +103,6 @@ export default function UserDetail() {
           {t('users.userDetails')}
           {isCurrentUser && <span className={styles.youBadge}>{t('users.you')}</span>}
         </h1>
-        <button onClick={() => navigate('/settings/users')} className={styles.backButton}>
-          ← {t('common.back')}
-        </button>
       </div>
 
       <div className={styles.card}>

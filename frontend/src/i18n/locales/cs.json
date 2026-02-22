@@ -19,7 +19,22 @@
     "inactive": "Neaktivní",
     "yes": "Ano",
     "no": "Ne",
-    "never": "Nikdy"
+    "never": "Nikdy",
+    "retry": "Zkusit znovu",
+    "confirmDelete": "Potvrdit smazání",
+    "saving": "Ukládám..."
+  },
+  "breadcrumbs": {
+    "dashboard": "Přehled",
+    "newBin": "Nový koš",
+    "editBin": "Upravit",
+    "settings": "Nastavení",
+    "newApiKey": "Nový API klíč",
+    "newWebhook": "Nový webhook",
+    "editWebhook": "Upravit",
+    "newUser": "Nový uživatel",
+    "editUser": "Upravit",
+    "printQR": "Tisk QR kódů"
   },
   "binTypes": {
     "mixed": "Směsný",
@@ -200,6 +215,34 @@
   },
   "qrLabel": {
     "scanToReport": "Naskenujte pro nahlášení stavu koše"
+  },
+  "qrPrint": {
+    "title": "Tisk QR kódů",
+    "subtitle": "Vyberte koše a vytiskněte QR štítky pro skenování",
+    "allTypes": "Všechny typy",
+    "allStatus": "Všechny stavy",
+    "all": "Vše",
+    "full": "Plné (80%+)",
+    "filling": "Plnící se (50-79%)",
+    "available": "Dostupné (<50%)",
+    "activeOnly": "Pouze aktivní",
+    "inactiveOnly": "Pouze neaktivní",
+    "filterType": "Typ",
+    "filterStatus": "Stav",
+    "filterActive": "Aktivní",
+    "selectAll": "Vybrat vše",
+    "deselectAll": "Zrušit výběr",
+    "printSelected": "Tisknout vybrané",
+    "printNow": "Tisknout nyní",
+    "preview": "Náhled",
+    "binsSelected": "{{count}} košů vybráno",
+    "fullA4Page": "Celá stránka A4",
+    "qrPreviewTitle": "Náhled QR kódu",
+    "containerFullCTA": "Kontejner plný? Naskenujte a nahlaste!",
+    "loadingBins": "Nahrávám koše...",
+    "noMatchingBins": "Žádné koše neodpovídají filtrům.",
+    "unnamed": "Nepojmenovaný",
+    "pageOf": "Strana {{current}} z {{total}}"
   },
   "cookies": {
     "message": "Používáme cookies k analýze návštěvnosti a zlepšení vašeho zážitku. Osobní údaje nesdílíme s třetími stranami.",

@@ -202,7 +202,10 @@ echo -e "${GREEN}=== Infrastructure deployment complete! ===${NC}"
 echo "Environment: $ENVIRONMENT"
 echo "API Gateway URL: $API_GATEWAY_URL"
 
-# For LocalStack, provide the special test URL
+# For LocalStack, write frontend .env.local and provide the special test URL
 if [[ "$ENVIRONMENT" == "local" ]]; then
+    FRONTEND_ENV="$PROJECT_ROOT/frontend/.env.local"
+    echo "VITE_API_GATEWAY_ID=${API_GATEWAY_ID}" > "$FRONTEND_ENV"
+    echo -e "${GREEN}✓ Wrote $FRONTEND_ENV (VITE_API_GATEWAY_ID=${API_GATEWAY_ID})${NC}"
     echo "LocalStack API URL: http://localhost:4566/restapis/${API_GATEWAY_ID}/local/_user_request_"
 fi

@@ -1,9 +1,8 @@
 import { useState, useEffect } from 'react'
 import { useParams, useNavigate, Link } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
-import { useAuth } from '../context/AuthContext'
 import { getWebhook, deleteWebhook, WebhookInfo } from '../api/client'
-import LanguageSwitcher from '../components/LanguageSwitcher'
+import { useBreadcrumbs } from '../context/BreadcrumbContext'
 import styles from './WebhookDetail.module.css'
 
 function formatDate(dateStr: string | null, neverText: string): string {
@@ -16,12 +15,16 @@ export default function WebhookDetail() {
   const { t } = useTranslation()
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
-  const { user, logout } = useAuth()
-
   const [webhook, setWebhook] = useState<WebhookInfo | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const [deleting, setDeleting] = useState(false)
+
+  useBreadcrumbs([
+    { label: t('breadcrumbs.dashboard'), path: '/dashboard' },
+    { label: t('breadcrumbs.settings'), path: '/settings/webhooks' },
+    { label: webhook?.name || t('common.loading') },
+  ])
 
   useEffect(() => {
     if (!id) {
@@ -59,24 +62,7 @@ export default function WebhookDetail() {
   }
 
   return (
-    <div className={styles.page}>
-      <header className={styles.header}>
-        <div className={styles.headerLeft}>
-          <Link to="/settings/webhooks" className={styles.backLink}>&larr; {t('webhooks.backToList')}</Link>
-          <h1>{t('common.appName')}</h1>
-        </div>
-        <div className={styles.headerRight}>
-          <LanguageSwitcher />
-          <div className={styles.userInfo}>
-            <strong>{user?.name}</strong>
-            <span>{user?.role}</span>
-          </div>
-          <button className="btn btn-secondary" onClick={logout}>
-            {t('common.logout')}
-          </button>
-        </div>
-      </header>
-
+    <>
       <main className={styles.main}>
         {loading ? (
           <div className={styles.loadingState}>
@@ -179,6 +165,6 @@ export default function WebhookDetail() {
           </>
         ) : null}
       </main>
-    </div>
+    </>
   )
 }

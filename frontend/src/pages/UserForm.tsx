@@ -4,6 +4,7 @@ import { getUser, createUser, updateUser, type CreateUserRequest, type UpdateUse
 import styles from './UserForm.module.css'
 import { useTranslation } from 'react-i18next'
 import { useAuth } from '../context/AuthContext'
+import { useBreadcrumbs } from '../context/BreadcrumbContext'
 
 export default function UserForm() {
   const { t } = useTranslation()
@@ -23,6 +24,21 @@ export default function UserForm() {
   const [error, setError] = useState<string | null>(null)
   const [showPasswordModal, setShowPasswordModal] = useState(false)
   const [initialPassword, setInitialPassword] = useState('')
+
+  useBreadcrumbs(
+    isEdit
+      ? [
+          { label: t('breadcrumbs.dashboard'), path: '/dashboard' },
+          { label: t('breadcrumbs.settings'), path: '/settings/users' },
+          { label: formData.name || t('common.loading'), path: `/users/${email ? encodeURIComponent(email) : ''}` },
+          { label: t('breadcrumbs.editUser') },
+        ]
+      : [
+          { label: t('breadcrumbs.dashboard'), path: '/dashboard' },
+          { label: t('breadcrumbs.settings'), path: '/settings/users' },
+          { label: t('breadcrumbs.newUser') },
+        ]
+  )
 
   useEffect(() => {
     if (isEdit && email) {
@@ -104,9 +120,6 @@ export default function UserForm() {
     <div className={styles.container}>
       <div className={styles.header}>
         <h1>{isEdit ? t('users.editUser') : t('users.createUser')}</h1>
-        <button onClick={() => navigate('/settings/users')} className={styles.backButton}>
-          ← {t('common.back')}
-        </button>
       </div>
 
       {error && <div className={styles.error}>{error}</div>}

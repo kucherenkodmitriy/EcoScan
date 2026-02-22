@@ -1,9 +1,7 @@
 import { useState, useEffect } from 'react'
 import { Link } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
-import { useAuth } from '../context/AuthContext'
 import { getApiKeys, deleteApiKey, ApiKeyInfo } from '../api/client'
-import LanguageSwitcher from '../components/LanguageSwitcher'
 import styles from './ApiKeyList.module.css'
 
 function formatDate(dateStr: string | null, neverText: string): string {
@@ -138,32 +136,3 @@ export function ApiKeysContent() {
   )
 }
 
-export default function ApiKeyList() {
-  const { t } = useTranslation()
-  const { user, logout } = useAuth()
-
-  return (
-    <div className={styles.page}>
-      <header className={styles.header}>
-        <div className={styles.headerLeft}>
-          <Link to="/dashboard" className={styles.backLink}>&larr; {t('binDetail.backToDashboard')}</Link>
-          <h1>{t('common.appName')}</h1>
-        </div>
-        <div className={styles.headerRight}>
-          <LanguageSwitcher />
-          <div className={styles.userInfo}>
-            <strong>{user?.name}</strong>
-            <span>{user?.role}</span>
-          </div>
-          <button className="btn btn-secondary" onClick={logout}>
-            {t('common.logout')}
-          </button>
-        </div>
-      </header>
-
-      <main className={styles.main}>
-        <ApiKeysContent />
-      </main>
-    </div>
-  )
-}

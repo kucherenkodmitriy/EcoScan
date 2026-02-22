@@ -1,17 +1,15 @@
 import { useState, useEffect } from 'react'
 import { useParams, useNavigate, Link } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
-import { useAuth } from '../context/AuthContext'
 import { getBin, createBin, updateBin, Bin, CreateBinInput, UpdateBinInput } from '../api/client'
+import { useBreadcrumbs } from '../context/BreadcrumbContext'
 import AddressAutocomplete from '../components/map/AddressAutocomplete'
-import LanguageSwitcher from '../components/LanguageSwitcher'
 import styles from './BinForm.module.css'
 
 export default function BinForm() {
   const { t } = useTranslation()
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
-  const { user, logout } = useAuth()
   const isEdit = Boolean(id)
 
   // Bin types with translated labels
@@ -32,6 +30,19 @@ export default function BinForm() {
   const [latitude, setLatitude] = useState('')
   const [longitude, setLongitude] = useState('')
   const [isActive, setIsActive] = useState(true)
+
+  useBreadcrumbs(
+    isEdit
+      ? [
+          { label: t('breadcrumbs.dashboard'), path: '/dashboard' },
+          { label: name || t('binDetail.unnamed'), path: `/bins/${id}` },
+          { label: t('breadcrumbs.editBin') },
+        ]
+      : [
+          { label: t('breadcrumbs.dashboard'), path: '/dashboard' },
+          { label: t('breadcrumbs.newBin') },
+        ]
+  )
 
   useEffect(() => {
     if (!isEdit || !id) return
@@ -98,26 +109,7 @@ export default function BinForm() {
   }
 
   return (
-    <div className={styles.page}>
-      <header className={styles.header}>
-        <div className={styles.headerLeft}>
-          <Link to={isEdit ? `/bins/${id}` : '/dashboard'} className={styles.backLink}>
-            &larr; {t('common.cancel')}
-          </Link>
-          <h1>{t('common.appName')}</h1>
-        </div>
-        <div className={styles.headerRight}>
-          <LanguageSwitcher />
-          <div className={styles.userInfo}>
-            <strong>{user?.name}</strong>
-            <span>{user?.role}</span>
-          </div>
-          <button className="btn btn-secondary" onClick={logout}>
-            {t('common.logout')}
-          </button>
-        </div>
-      </header>
-
+    <>
       <main className={styles.main}>
         {loading ? (
           <div className={styles.loadingState}>
@@ -228,6 +220,6 @@ export default function BinForm() {
           </div>
         )}
       </main>
-    </div>
+    </>
   )
 }

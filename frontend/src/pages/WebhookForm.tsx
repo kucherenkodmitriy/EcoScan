@@ -1,9 +1,8 @@
 import { useState, useEffect } from 'react'
 import { useParams, useNavigate, Link } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
-import { useAuth } from '../context/AuthContext'
 import { getWebhook, createWebhook, updateWebhook, WebhookInfo, CreateWebhookInput, UpdateWebhookInput } from '../api/client'
-import LanguageSwitcher from '../components/LanguageSwitcher'
+import { useBreadcrumbs } from '../context/BreadcrumbContext'
 import styles from './WebhookForm.module.css'
 
 const AUTH_TYPES = [
@@ -18,7 +17,6 @@ export default function WebhookForm() {
   const { t } = useTranslation()
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
-  const { user, logout } = useAuth()
   const isEdit = Boolean(id)
 
   const [loading, setLoading] = useState(isEdit)
@@ -32,6 +30,21 @@ export default function WebhookForm() {
   const [authValue, setAuthValue] = useState('')
   const [events, setEvents] = useState<string[]>(['bin.status.updated'])
   const [isActive, setIsActive] = useState(true)
+
+  useBreadcrumbs(
+    isEdit
+      ? [
+          { label: t('breadcrumbs.dashboard'), path: '/dashboard' },
+          { label: t('breadcrumbs.settings'), path: '/settings/webhooks' },
+          { label: name || t('common.loading'), path: `/webhooks/${id}` },
+          { label: t('breadcrumbs.editWebhook') },
+        ]
+      : [
+          { label: t('breadcrumbs.dashboard'), path: '/dashboard' },
+          { label: t('breadcrumbs.settings'), path: '/settings/webhooks' },
+          { label: t('breadcrumbs.newWebhook') },
+        ]
+  )
 
   useEffect(() => {
     if (!isEdit || !id) return
@@ -109,26 +122,7 @@ export default function WebhookForm() {
   }
 
   return (
-    <div className={styles.page}>
-      <header className={styles.header}>
-        <div className={styles.headerLeft}>
-          <Link to={isEdit ? `/webhooks/${id}` : '/settings/webhooks'} className={styles.backLink}>
-            &larr; {t('common.cancel')}
-          </Link>
-          <h1>{t('common.appName')}</h1>
-        </div>
-        <div className={styles.headerRight}>
-          <LanguageSwitcher />
-          <div className={styles.userInfo}>
-            <strong>{user?.name}</strong>
-            <span>{user?.role}</span>
-          </div>
-          <button className="btn btn-secondary" onClick={logout}>
-            {t('common.logout')}
-          </button>
-        </div>
-      </header>
-
+    <>
       <main className={styles.main}>
         {loading ? (
           <div className={styles.loadingState}>
@@ -255,6 +249,6 @@ export default function WebhookForm() {
           </div>
         )}
       </main>
-    </div>
+    </>
   )
 }

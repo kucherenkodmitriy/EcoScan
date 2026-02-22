@@ -19,7 +19,22 @@
     "inactive": "Inaktiv",
     "yes": "Ja",
     "no": "Nein",
-    "never": "Nie"
+    "never": "Nie",
+    "retry": "Erneut versuchen",
+    "confirmDelete": "Löschen bestätigen",
+    "saving": "Speichern..."
+  },
+  "breadcrumbs": {
+    "dashboard": "Dashboard",
+    "newBin": "Neuer Behälter",
+    "editBin": "Bearbeiten",
+    "settings": "Einstellungen",
+    "newApiKey": "Neuer API-Schlüssel",
+    "newWebhook": "Neuer Webhook",
+    "editWebhook": "Bearbeiten",
+    "newUser": "Neuer Benutzer",
+    "editUser": "Bearbeiten",
+    "printQR": "QR-Codes drucken"
   },
   "binTypes": {
     "mixed": "Gemischt",
@@ -200,6 +215,34 @@
   },
   "qrLabel": {
     "scanToReport": "Scannen um Behälterstatus zu melden"
+  },
+  "qrPrint": {
+    "title": "QR-Codes drucken",
+    "subtitle": "Behälter auswählen und QR-Code-Etiketten zum Scannen drucken",
+    "allTypes": "Alle Typen",
+    "allStatus": "Alle Status",
+    "all": "Alle",
+    "full": "Voll (80%+)",
+    "filling": "Füllt sich (50-79%)",
+    "available": "Verfügbar (<50%)",
+    "activeOnly": "Nur aktive",
+    "inactiveOnly": "Nur inaktive",
+    "filterType": "Typ",
+    "filterStatus": "Status",
+    "filterActive": "Aktiv",
+    "selectAll": "Alle auswählen",
+    "deselectAll": "Auswahl aufheben",
+    "printSelected": "Ausgewählte drucken",
+    "printNow": "Jetzt drucken",
+    "preview": "Vorschau",
+    "binsSelected": "{{count}} Behälter ausgewählt",
+    "fullA4Page": "Ganze A4-Seite",
+    "qrPreviewTitle": "QR-Code-Vorschau",
+    "containerFullCTA": "Behälter voll? Scannen und melden!",
+    "loadingBins": "Behälter laden...",
+    "noMatchingBins": "Keine Behälter entsprechen Ihren Filtern.",
+    "unnamed": "Unbenannt",
+    "pageOf": "Seite {{current}} von {{total}}"
   },
   "cookies": {
     "message": "Wir verwenden Cookies zur Analyse des Website-Traffics und zur Verbesserung Ihrer Erfahrung. Persönliche Daten werden nicht an Dritte weitergegeben.",

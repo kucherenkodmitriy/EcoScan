@@ -1,64 +1,3 @@
-.page {
-  min-height: 100vh;
-  display: flex;
-  flex-direction: column;
-}
-
-/* Header - same pattern as other pages */
-.header {
-  background: linear-gradient(135deg, #1a5d1a 0%, #2e7d32 100%);
-  color: white;
-  padding: 16px 24px;
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-}
-
-.headerLeft {
-  display: flex;
-  align-items: center;
-  gap: 20px;
-}
-
-.headerLeft h1 {
-  font-size: 24px;
-  font-weight: 700;
-}
-
-.backLink {
-  color: rgba(255, 255, 255, 0.9);
-  text-decoration: none;
-  font-size: 14px;
-}
-
-.backLink:hover {
-  color: white;
-}
-
-.headerRight {
-  display: flex;
-  align-items: center;
-  gap: 16px;
-}
-
-.userInfo {
-  text-align: right;
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-}
-
-.userInfo strong {
-  font-size: 14px;
-}
-
-.userInfo span {
-  font-size: 12px;
-  opacity: 0.8;
-  text-transform: capitalize;
-}
-
-/* Main content */
 .main {
   flex: 1;
   padding: 24px;
@@ -362,10 +301,6 @@
 }
 
 @media print {
-  .page {
-    display: none !important;
-  }
-
   .printContainer {
     display: block !important;
     padding: 0;
@@ -419,22 +354,6 @@
 
 /* Responsive */
 @media (max-width: 768px) {
-  .header {
-    flex-direction: column;
-    gap: 16px;
-    text-align: center;
-  }
-
-  .headerLeft {
-    flex-direction: column;
-    gap: 8px;
-  }
-
-  .headerRight {
-    width: 100%;
-    justify-content: center;
-  }
-
   .filterBar {
     flex-direction: column;
     align-items: stretch;

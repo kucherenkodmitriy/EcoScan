@@ -1,7 +1,6 @@
 import { Link, useLocation } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
-import { useAuth } from '../context/AuthContext'
-import LanguageSwitcher from '../components/LanguageSwitcher'
+import { useBreadcrumbs } from '../context/BreadcrumbContext'
 import { ApiKeysContent } from './ApiKeyList'
 import { WebhooksContent } from './WebhookList'
 import { ExportContent } from './Export'
@@ -10,8 +9,12 @@ import styles from './Settings.module.css'
 
 export default function Settings() {
   const { t } = useTranslation()
-  const { user, logout } = useAuth()
   const location = useLocation()
+
+  useBreadcrumbs([
+    { label: t('breadcrumbs.dashboard'), path: '/dashboard' },
+    { label: t('breadcrumbs.settings') },
+  ])
 
   const getActiveSection = () => {
     if (location.pathname.includes('/settings/webhooks')) return 'webhooks'
@@ -23,24 +26,7 @@ export default function Settings() {
   const activeSection = getActiveSection()
 
   return (
-    <div className={styles.page}>
-      <header className={styles.header}>
-        <div className={styles.headerLeft}>
-          <Link to="/dashboard" className={styles.backLink}>&larr; {t('binDetail.backToDashboard')}</Link>
-          <h1>{t('common.appName')}</h1>
-        </div>
-        <div className={styles.headerRight}>
-          <LanguageSwitcher />
-          <div className={styles.userInfo}>
-            <strong>{user?.name}</strong>
-            <span>{user?.role}</span>
-          </div>
-          <button className="btn btn-secondary" onClick={logout}>
-            {t('common.logout')}
-          </button>
-        </div>
-      </header>
-
+    <>
       <div className={styles.body}>
         <nav className={styles.sidebar}>
           <div className={styles.sidebarTitle}>{t('settings.title')}</div>
@@ -77,6 +63,6 @@ export default function Settings() {
           {activeSection === 'users' && <UserList />}
         </main>
       </div>
-    </div>
+    </>
   )
 }

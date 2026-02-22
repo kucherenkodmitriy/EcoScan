@@ -19,7 +19,22 @@
     "inactive": "Inactive",
     "yes": "Yes",
     "no": "No",
-    "never": "Never"
+    "never": "Never",
+    "retry": "Retry",
+    "confirmDelete": "Confirm Delete",
+    "saving": "Saving..."
+  },
+  "breadcrumbs": {
+    "dashboard": "Dashboard",
+    "newBin": "New Bin",
+    "editBin": "Edit",
+    "settings": "Settings",
+    "newApiKey": "New API Key",
+    "newWebhook": "New Webhook",
+    "editWebhook": "Edit",
+    "newUser": "New User",
+    "editUser": "Edit",
+    "printQR": "Print QR Codes"
   },
   "binTypes": {
     "mixed": "Mixed",
@@ -200,6 +215,34 @@
   },
   "qrLabel": {
     "scanToReport": "Scan to report bin status"
+  },
+  "qrPrint": {
+    "title": "Print QR Codes",
+    "subtitle": "Select bins and print QR code labels for scanning",
+    "allTypes": "All Types",
+    "allStatus": "All Status",
+    "all": "All",
+    "full": "Full (80%+)",
+    "filling": "Filling (50-79%)",
+    "available": "Available (<50%)",
+    "activeOnly": "Active Only",
+    "inactiveOnly": "Inactive Only",
+    "filterType": "Type",
+    "filterStatus": "Status",
+    "filterActive": "Active",
+    "selectAll": "Select All",
+    "deselectAll": "Deselect All",
+    "printSelected": "Print Selected",
+    "printNow": "Print Now",
+    "preview": "Preview",
+    "binsSelected": "{{count}} bins selected",
+    "fullA4Page": "Full A4 page",
+    "qrPreviewTitle": "QR Code Preview",
+    "containerFullCTA": "Container full? Scan and report!",
+    "loadingBins": "Loading bins...",
+    "noMatchingBins": "No bins match your filters.",
+    "unnamed": "Unnamed",
+    "pageOf": "Page {{current}} of {{total}}"
   },
   "cookies": {
     "message": "We use cookies to analyze site traffic and improve your experience. No personal data is shared with third parties.",

@@ -1,35 +1,39 @@
 import { useState, useEffect } from 'react'
-import { Link } from 'react-router-dom'
 import { QRCodeSVG } from 'qrcode.react'
-import { useAuth } from '../context/AuthContext'
+import { useTranslation } from 'react-i18next'
+import { useBreadcrumbs } from '../context/BreadcrumbContext'
 import { getBins, Bin } from '../api/client'
 import QRLabel from '../components/QRLabel'
 import styles from './QRPrint.module.css'
 
-// Component to render full-page QR
-const BIN_TYPES = [
-  { value: '', label: 'All Types' },
-  { value: 'mixed', label: 'Mixed' },
-  { value: 'plastic', label: 'Plastic' },
-  { value: 'paper', label: 'Paper' },
-  { value: 'glass', label: 'Glass' },
-]
-
-const STATUS_FILTERS = [
-  { value: '', label: 'All Status' },
-  { value: 'full', label: 'Full (80%+)' },
-  { value: 'filling', label: 'Filling (50-79%)' },
-  { value: 'available', label: 'Available (<50%)' },
-]
-
-const ACTIVE_FILTERS = [
-  { value: '', label: 'All' },
-  { value: 'active', label: 'Active Only' },
-  { value: 'inactive', label: 'Inactive Only' },
-]
-
 export default function QRPrint() {
-  const { user, logout } = useAuth()
+  const { t } = useTranslation()
+
+  useBreadcrumbs([
+    { label: t('breadcrumbs.dashboard'), path: '/dashboard' },
+    { label: t('breadcrumbs.printQR') },
+  ])
+
+  const BIN_TYPES = [
+    { value: '', label: t('qrPrint.allTypes') },
+    { value: 'mixed', label: t('binTypes.mixed') },
+    { value: 'plastic', label: t('binTypes.plastic') },
+    { value: 'paper', label: t('binTypes.paper') },
+    { value: 'glass', label: t('binTypes.glass') },
+  ]
+
+  const STATUS_FILTERS = [
+    { value: '', label: t('qrPrint.allStatus') },
+    { value: 'full', label: t('qrPrint.full') },
+    { value: 'filling', label: t('qrPrint.filling') },
+    { value: 'available', label: t('qrPrint.available') },
+  ]
+
+  const ACTIVE_FILTERS = [
+    { value: '', label: t('qrPrint.all') },
+    { value: 'active', label: t('qrPrint.activeOnly') },
+    { value: 'inactive', label: t('qrPrint.inactiveOnly') },
+  ]
 
   const [bins, setBins] = useState<Bin[]>([])
   const [loading, setLoading] = useState(true)
@@ -58,7 +62,7 @@ export default function QRPrint() {
         const data = await getBins()
         setBins(data)
       } catch (err) {
-        setError(err instanceof Error ? err.message : 'Failed to load bins')
+        setError(err instanceof Error ? err.message : t('binDetail.failedToLoad'))
       } finally {
         setLoading(false)
       }
@@ -228,14 +232,14 @@ export default function QRPrint() {
             {binsToPrint.map((bin, index) => (
               <div key={bin.bin_id} className="qr-page">
                 <div className="qr-content">
-                  <h1 className="qr-cta">Container full? Scan and report!</h1>
+                  <h1 className="qr-cta">{t('qrPrint.containerFullCTA')}</h1>
                   <QRCodeSVG
                     value={`${window.location.origin}/report?bin=${bin.bin_id}`}
                     size={550}
                     level="L"
                   />
                   <div className="qr-bin-info">
-                    <span className="bin-name">{bin.name || 'Unnamed Bin'}</span>
+                    <span className="bin-name">{bin.name || t('qrPrint.unnamed')}</span>
                     {bin.bin_type && <span className="bin-type">{bin.bin_type}</span>}
                     {bin.address && <span className="bin-address">{bin.address}</span>}
                   </div>
@@ -247,7 +251,7 @@ export default function QRPrint() {
                   fontSize: '14px',
                   color: '#666'
                 }}>
-                  Page {index + 1} of {binsToPrint.length}
+                  {t('qrPrint.pageOf', { current: index + 1, total: binsToPrint.length })}
                 </div>
               </div>
             ))}
@@ -275,7 +279,7 @@ export default function QRPrint() {
                 fontWeight: 'bold'
               }}
             >
-              Print Now
+              {t('qrPrint.printNow')}
             </button>
             <button
               onClick={() => setIsPrintMode(false)}
@@ -288,7 +292,7 @@ export default function QRPrint() {
                 cursor: 'pointer',
               }}
             >
-              ← Back
+              {t('common.back')}
             </button>
           </div>
         </div>
@@ -310,48 +314,32 @@ export default function QRPrint() {
   }
 
   return (
-    <div className={styles.page}>
-      <header className={styles.header}>
-        <div className={styles.headerLeft}>
-          <Link to="/dashboard" className={styles.backLink}>&larr; Dashboard</Link>
-          <h1>EcoScan</h1>
-        </div>
-        <div className={styles.headerRight}>
-          <div className={styles.userInfo}>
-            <strong>{user?.name}</strong>
-            <span>{user?.role}</span>
-          </div>
-          <button className="btn btn-secondary" onClick={logout}>
-            Logout
-          </button>
-        </div>
-      </header>
-
+    <>
       <main className={styles.main}>
         <div className={styles.titleBar}>
-          <h2>Print QR Codes</h2>
-          <p className={styles.subtitle}>Select bins and print QR code labels for scanning</p>
+          <h2>{t('qrPrint.title')}</h2>
+          <p className={styles.subtitle}>{t('qrPrint.subtitle')}</p>
         </div>
 
         {/* Filters */}
         <div className={styles.filterBar}>
           <div className={styles.filters}>
             <div className={styles.filterGroup}>
-              <label htmlFor="typeFilter">Type</label>
+              <label htmlFor="typeFilter">{t('qrPrint.filterType')}</label>
               <select
                 id="typeFilter"
                 value={typeFilter}
                 onChange={(e) => setTypeFilter(e.target.value)}
                 className={styles.select}
               >
-                {BIN_TYPES.map((t) => (
-                  <option key={t.value} value={t.value}>{t.label}</option>
+                {BIN_TYPES.map((type) => (
+                  <option key={type.value} value={type.value}>{type.label}</option>
                 ))}
               </select>
             </div>
 
             <div className={styles.filterGroup}>
-              <label htmlFor="statusFilter">Status</label>
+              <label htmlFor="statusFilter">{t('qrPrint.filterStatus')}</label>
               <select
                 id="statusFilter"
                 value={statusFilter}
@@ -365,7 +353,7 @@ export default function QRPrint() {
             </div>
 
             <div className={styles.filterGroup}>
-              <label htmlFor="activeFilter">Active</label>
+              <label htmlFor="activeFilter">{t('qrPrint.filterActive')}</label>
               <select
                 id="activeFilter"
                 value={activeFilter}
@@ -381,10 +369,10 @@ export default function QRPrint() {
 
           <div className={styles.selectionActions}>
             <button className={styles.selectBtn} onClick={selectAll}>
-              Select All ({filteredBins.length})
+              {t('qrPrint.selectAll')} ({filteredBins.length})
             </button>
             <button className={styles.selectBtn} onClick={deselectAll}>
-              Deselect All
+              {t('qrPrint.deselectAll')}
             </button>
           </div>
         </div>
@@ -392,7 +380,7 @@ export default function QRPrint() {
         {/* Selection counter and print button */}
         <div className={styles.actionBar}>
           <span className={styles.counter}>
-            {selectedIds.size} bin{selectedIds.size !== 1 ? 's' : ''} selected
+            {t('qrPrint.binsSelected', { count: selectedIds.size })}
           </span>
           <div className={styles.printOptions}>
             <label className={styles.printModeToggle}>
@@ -401,14 +389,14 @@ export default function QRPrint() {
                 checked={fullPageMode}
                 onChange={(e) => setFullPageMode(e.target.checked)}
               />
-              <span>Full A4 page</span>
+              <span>{t('qrPrint.fullA4Page')}</span>
             </label>
             <button
               className="btn btn-primary"
               onClick={handlePrint}
               disabled={selectedIds.size === 0}
             >
-              Print Selected ({selectedIds.size})
+              {t('qrPrint.printSelected')} ({selectedIds.size})
             </button>
           </div>
         </div>
@@ -418,7 +406,7 @@ export default function QRPrint() {
           {loading ? (
             <div className={styles.loadingState}>
               <div className="spinner"></div>
-              <p>Loading bins...</p>
+              <p>{t('qrPrint.loadingBins')}</p>
             </div>
           ) : error ? (
             <div className={styles.errorState}>
@@ -426,7 +414,7 @@ export default function QRPrint() {
             </div>
           ) : filteredBins.length === 0 ? (
             <div className={styles.emptyState}>
-              <p>No bins match your filters.</p>
+              <p>{t('qrPrint.noMatchingBins')}</p>
             </div>
           ) : (
             filteredBins.map((bin) => (
@@ -441,7 +429,7 @@ export default function QRPrint() {
                     onChange={() => toggleSelection(bin.bin_id)}
                   />
                   <div className={styles.binInfo}>
-                    <strong>{bin.name || 'Unnamed'}</strong>
+                    <strong>{bin.name || t('qrPrint.unnamed')}</strong>
                     <span className={`badge badge-${bin.bin_type?.toLowerCase() || 'mixed'}`}>
                       {bin.bin_type || 'mixed'}
                     </span>
@@ -453,7 +441,7 @@ export default function QRPrint() {
                   onClick={() => handlePrintSingle(bin)}
                   title="Preview QR"
                 >
-                  Preview
+                  {t('qrPrint.preview')}
                 </button>
               </div>
             ))
@@ -465,7 +453,7 @@ export default function QRPrint() {
       {previewBin && (
         <div className={styles.modal}>
           <div className={styles.modalContent}>
-            <h3>QR Code Preview</h3>
+            <h3>{t('qrPrint.qrPreviewTitle')}</h3>
             <div className={styles.previewLabel}>
               <QRLabel bin={previewBin} size="large" />
             </div>
@@ -475,15 +463,15 @@ export default function QRPrint() {
                 onClick={() => setPreviewBin(null)}
                 style={{ background: '#666', border: 'none' }}
               >
-                Close
+                {t('common.close')}
               </button>
               <button className="btn btn-primary" onClick={printSingle}>
-                Print
+                {t('common.print')}
               </button>
             </div>
           </div>
         </div>
       )}
-    </div>
+    </>
   )
 }

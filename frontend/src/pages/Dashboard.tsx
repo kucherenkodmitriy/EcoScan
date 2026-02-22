@@ -1,14 +1,12 @@
 import { useState, useEffect, useMemo, useCallback } from 'react'
 import { Link } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
-import { useAuth } from '../context/AuthContext'
+import { useBreadcrumbs } from '../context/BreadcrumbContext'
 import { getBins, Bin } from '../api/client'
 import BinMap from '../components/map/BinMap'
 import FullnessSlider from '../components/map/FullnessSlider'
 import AddBinModal from '../components/map/AddBinModal'
 import RouteModal from '../components/map/RouteModal'
-import LanguageSwitcher from '../components/LanguageSwitcher'
-import Footer from '../components/Footer'
 import { useGoogleMaps } from '../components/map/GoogleMapsProvider'
 import styles from './Dashboard.module.css'
 
@@ -28,7 +26,7 @@ function formatDate(dateStr: string | null, t: (key: string) => string): string 
 
 export default function Dashboard() {
   const { t } = useTranslation()
-  const { user, logout } = useAuth()
+  useBreadcrumbs([{ label: t('breadcrumbs.dashboard') }])
   const [bins, setBins] = useState<Bin[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
@@ -157,29 +155,7 @@ export default function Dashboard() {
   }
 
   return (
-    <div className={styles.page}>
-      <header className={styles.header}>
-        <div className={styles.headerLeft}>
-          <h1>{t('common.appName')}</h1>
-        </div>
-        <div className={styles.headerRight}>
-          <LanguageSwitcher />
-          <Link to="/settings" className={styles.gearLink} title={t('settings.title')}>
-            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-              <circle cx="12" cy="12" r="3"/>
-              <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/>
-            </svg>
-          </Link>
-          <div className={styles.userInfo}>
-            <strong>{user?.name}</strong>
-            <span>{user?.role}</span>
-          </div>
-          <button className="btn btn-secondary" onClick={logout}>
-            {t('common.logout')}
-          </button>
-        </div>
-      </header>
-
+    <>
       <main className={styles.main}>
         {/* Stats Bar */}
         <div className={styles.statsBar}>
@@ -396,7 +372,6 @@ export default function Dashboard() {
         waypointCount={binsWithCoords.length}
       />
 
-      <Footer variant="dark" />
-    </div>
+    </>
   )
 }

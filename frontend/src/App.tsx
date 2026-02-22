@@ -1,5 +1,7 @@
 import { Routes, Route, Navigate } from 'react-router-dom'
 import { useAuth } from './context/AuthContext'
+import { BreadcrumbProvider } from './context/BreadcrumbContext'
+import AdminLayout from './components/AdminLayout'
 import Login from './pages/Login'
 import ForgotPassword from './pages/ForgotPassword'
 import ResetPassword from './pages/ResetPassword'
@@ -20,14 +22,22 @@ import UserDetail from './pages/UserDetail'
 import UserForm from './pages/UserForm'
 import CookieConsent from './components/CookieConsent'
 
-function PrivateRoute({ children }: { children: React.ReactNode }) {
+function PrivateRoute() {
   const { isAuthenticated, isLoading } = useAuth()
 
   if (isLoading) {
     return null
   }
 
-  return isAuthenticated ? <>{children}</> : <Navigate to="/login" />
+  if (!isAuthenticated) {
+    return <Navigate to="/login" />
+  }
+
+  return (
+    <BreadcrumbProvider>
+      <AdminLayout />
+    </BreadcrumbProvider>
+  )
 }
 
 function App() {
@@ -41,146 +51,26 @@ function App() {
       <Route path="/report" element={<Report />} />
       <Route path="/privacy" element={<PrivacyPolicy />} />
       <Route path="/terms" element={<Terms />} />
-      <Route
-        path="/dashboard"
-        element={
-          <PrivateRoute>
-            <Dashboard />
-          </PrivateRoute>
-        }
-      />
-      <Route
-        path="/bins/new"
-        element={
-          <PrivateRoute>
-            <BinForm />
-          </PrivateRoute>
-        }
-      />
-      <Route
-        path="/bins/:id"
-        element={
-          <PrivateRoute>
-            <BinDetail />
-          </PrivateRoute>
-        }
-      />
-      <Route
-        path="/bins/:id/edit"
-        element={
-          <PrivateRoute>
-            <BinForm />
-          </PrivateRoute>
-        }
-      />
-      <Route
-        path="/settings"
-        element={<Navigate to="/settings/api-keys" />}
-      />
-      <Route
-        path="/settings/api-keys"
-        element={
-          <PrivateRoute>
-            <Settings />
-          </PrivateRoute>
-        }
-      />
-      <Route
-        path="/settings/webhooks"
-        element={
-          <PrivateRoute>
-            <Settings />
-          </PrivateRoute>
-        }
-      />
-      <Route
-        path="/settings/export"
-        element={
-          <PrivateRoute>
-            <Settings />
-          </PrivateRoute>
-        }
-      />
-      <Route
-        path="/webhooks/new"
-        element={
-          <PrivateRoute>
-            <WebhookForm />
-          </PrivateRoute>
-        }
-      />
-      <Route
-        path="/webhooks/:id"
-        element={
-          <PrivateRoute>
-            <WebhookDetail />
-          </PrivateRoute>
-        }
-      />
-      <Route
-        path="/webhooks/:id/edit"
-        element={
-          <PrivateRoute>
-            <WebhookForm />
-          </PrivateRoute>
-        }
-      />
-      <Route
-        path="/api-keys/new"
-        element={
-          <PrivateRoute>
-            <ApiKeyCreate />
-          </PrivateRoute>
-        }
-      />
-      <Route
-        path="/api-keys/:id"
-        element={
-          <PrivateRoute>
-            <ApiKeyDetail />
-          </PrivateRoute>
-        }
-      />
-      <Route
-        path="/settings/users"
-        element={
-          <PrivateRoute>
-            <Settings />
-          </PrivateRoute>
-        }
-      />
-      <Route
-        path="/users/new"
-        element={
-          <PrivateRoute>
-            <UserForm />
-          </PrivateRoute>
-        }
-      />
-      <Route
-        path="/users/:email"
-        element={
-          <PrivateRoute>
-            <UserDetail />
-          </PrivateRoute>
-        }
-      />
-      <Route
-        path="/users/:email/edit"
-        element={
-          <PrivateRoute>
-            <UserForm />
-          </PrivateRoute>
-        }
-      />
-      <Route
-        path="/print"
-        element={
-          <PrivateRoute>
-            <QRPrint />
-          </PrivateRoute>
-        }
-      />
+      <Route element={<PrivateRoute />}>
+        <Route path="/dashboard" element={<Dashboard />} />
+        <Route path="/bins/new" element={<BinForm />} />
+        <Route path="/bins/:id" element={<BinDetail />} />
+        <Route path="/bins/:id/edit" element={<BinForm />} />
+        <Route path="/settings" element={<Navigate to="/settings/api-keys" />} />
+        <Route path="/settings/api-keys" element={<Settings />} />
+        <Route path="/settings/webhooks" element={<Settings />} />
+        <Route path="/settings/export" element={<Settings />} />
+        <Route path="/settings/users" element={<Settings />} />
+        <Route path="/webhooks/new" element={<WebhookForm />} />
+        <Route path="/webhooks/:id" element={<WebhookDetail />} />
+        <Route path="/webhooks/:id/edit" element={<WebhookForm />} />
+        <Route path="/api-keys/new" element={<ApiKeyCreate />} />
+        <Route path="/api-keys/:id" element={<ApiKeyDetail />} />
+        <Route path="/users/new" element={<UserForm />} />
+        <Route path="/users/:email" element={<UserDetail />} />
+        <Route path="/users/:email/edit" element={<UserForm />} />
+        <Route path="/print" element={<QRPrint />} />
+      </Route>
       <Route path="*" element={<Navigate to="/" />} />
     </Routes>
     <CookieConsent />

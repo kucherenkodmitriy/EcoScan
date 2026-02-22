@@ -1,9 +1,8 @@
 import { useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
-import { useAuth } from '../context/AuthContext'
 import { createApiKey, ApiKeyCreatedResponse } from '../api/client'
-import LanguageSwitcher from '../components/LanguageSwitcher'
+import { useBreadcrumbs } from '../context/BreadcrumbContext'
 import styles from './ApiKeyCreate.module.css'
 
 const AVAILABLE_SCOPES = [
@@ -14,7 +13,11 @@ const AVAILABLE_SCOPES = [
 export default function ApiKeyCreate() {
   const { t } = useTranslation()
   const navigate = useNavigate()
-  const { user, logout } = useAuth()
+  useBreadcrumbs([
+    { label: t('breadcrumbs.dashboard'), path: '/dashboard' },
+    { label: t('breadcrumbs.settings'), path: '/settings/api-keys' },
+    { label: t('breadcrumbs.newApiKey') },
+  ])
 
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
@@ -91,24 +94,7 @@ export default function ApiKeyCreate() {
 
   if (createdKey) {
     return (
-      <div className={styles.page}>
-        <header className={styles.header}>
-          <div className={styles.headerLeft}>
-            <Link to="/settings/api-keys" className={styles.backLink}>&larr; {t('apiKeys.backToList')}</Link>
-            <h1>{t('common.appName')}</h1>
-          </div>
-          <div className={styles.headerRight}>
-            <LanguageSwitcher />
-            <div className={styles.userInfo}>
-              <strong>{user?.name}</strong>
-              <span>{user?.role}</span>
-            </div>
-            <button className="btn btn-secondary" onClick={logout}>
-              {t('common.logout')}
-            </button>
-          </div>
-        </header>
-
+      <>
         <main className={styles.main}>
           <div className={styles.formCard}>
             <h2>{t('apiKeys.createdTitle')}</h2>
@@ -144,29 +130,12 @@ export default function ApiKeyCreate() {
             </div>
           </div>
         </main>
-      </div>
+      </>
     )
   }
 
   return (
-    <div className={styles.page}>
-      <header className={styles.header}>
-        <div className={styles.headerLeft}>
-          <Link to="/settings/api-keys" className={styles.backLink}>&larr; {t('common.cancel')}</Link>
-          <h1>{t('common.appName')}</h1>
-        </div>
-        <div className={styles.headerRight}>
-          <LanguageSwitcher />
-          <div className={styles.userInfo}>
-            <strong>{user?.name}</strong>
-            <span>{user?.role}</span>
-          </div>
-          <button className="btn btn-secondary" onClick={logout}>
-            {t('common.logout')}
-          </button>
-        </div>
-      </header>
-
+    <>
       <main className={styles.main}>
         <div className={styles.formCard}>
           <h2>{t('apiKeys.createTitle')}</h2>
@@ -229,6 +198,6 @@ export default function ApiKeyCreate() {
           </form>
         </div>
       </main>
-    </div>
+    </>
   )
 }

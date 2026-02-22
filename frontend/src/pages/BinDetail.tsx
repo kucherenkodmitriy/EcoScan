@@ -1,10 +1,9 @@
 import { useState, useEffect } from 'react'
 import { useParams, useNavigate, Link } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
-import { useAuth } from '../context/AuthContext'
 import { getBin, deleteBin, Bin } from '../api/client'
+import { useBreadcrumbs } from '../context/BreadcrumbContext'
 import QRLabel from '../components/QRLabel'
-import LanguageSwitcher from '../components/LanguageSwitcher'
 import styles from './BinDetail.module.css'
 
 function getStatusClass(status: number): string {
@@ -23,8 +22,6 @@ export default function BinDetail() {
   const { t } = useTranslation()
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
-  const { user, logout } = useAuth()
-
   const [bin, setBin] = useState<Bin | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
@@ -32,6 +29,11 @@ export default function BinDetail() {
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
   const [showQRPreview, setShowQRPreview] = useState(false)
   const [isPrinting, setIsPrinting] = useState(false)
+
+  useBreadcrumbs([
+    { label: t('breadcrumbs.dashboard'), path: '/dashboard' },
+    { label: bin?.name || t('binDetail.unnamed') },
+  ])
 
   useEffect(() => {
     if (!id) {
@@ -84,24 +86,7 @@ export default function BinDetail() {
   }
 
   return (
-    <div className={styles.page}>
-      <header className={styles.header}>
-        <div className={styles.headerLeft}>
-          <Link to="/dashboard" className={styles.backLink}>&larr; {t('common.back')}</Link>
-          <h1>{t('common.appName')}</h1>
-        </div>
-        <div className={styles.headerRight}>
-          <LanguageSwitcher />
-          <div className={styles.userInfo}>
-            <strong>{user?.name}</strong>
-            <span>{user?.role}</span>
-          </div>
-          <button className="btn btn-secondary" onClick={logout}>
-            {t('common.logout')}
-          </button>
-        </div>
-      </header>
-
+    <>
       <main className={styles.main}>
         {loading ? (
           <div className={styles.loadingState}>
@@ -263,6 +248,6 @@ export default function BinDetail() {
           </>
         ) : null}
       </main>
-    </div>
+    </>
   )
 }

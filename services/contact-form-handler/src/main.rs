@@ -1,3 +1,7 @@
+use std::sync::Arc;
+use std::time::Duration;
+
+use aws_config::timeout::TimeoutConfig;
 use aws_lambda_events::apigw::{ApiGatewayProxyRequest, ApiGatewayProxyResponse};
 use aws_lambda_events::encodings::Body;
 use aws_lambda_events::http::HeaderMap;
@@ -50,6 +54,20 @@ enum HandlerError {
     Ses(String),
     #[error("Validation error: {0}")]
     Validation(String),
+}
+
+/// Shared state initialized at cold start
+struct HandlerState {
+    dynamodb_client: DynamoDbClient,
+    ses_client: Option<SesClient>,
+    http_client: reqwest::Client,
+    table_name: String,
+    recaptcha_secret: Option<String>,
+    skip_recaptcha: bool,
+    min_score: f64,
+    notify_email: Option<String>,
+    from_email: Option<String>,
+    cors_origin: String,
 }
 
 fn validate_contact_request(request: &ContactRequest) -> Result<(), HandlerError> {
@@ -105,11 +123,14 @@ fn sanitize_for_email_header(input: &str) -> String {
     input.replace(['\r', '\n'], "")
 }
 
-async fn verify_recaptcha(token: &str, secret: &str) -> Result<RecaptchaResponse, HandlerError> {
-    let client = reqwest::Client::new();
+async fn verify_recaptcha(
+    http_client: &reqwest::Client,
+    token: &str,
+    secret: &str,
+) -> Result<RecaptchaResponse, HandlerError> {
     let params = [("secret", secret), ("response", token)];
 
-    let response = client
+    let response = http_client
         .post("https://www.google.com/recaptcha/api/siteverify")
         .form(&params)
         .send()
@@ -271,17 +292,35 @@ async fn send_notification_email(
     Ok(())
 }
 
-fn create_response(status_code: i64, body: serde_json::Value) -> ApiGatewayProxyResponse {
+fn create_response(
+    status_code: i64,
+    body: serde_json::Value,
+    cors_origin: &str,
+) -> ApiGatewayProxyResponse {
     let mut headers = HeaderMap::new();
-    headers.insert("Content-Type", "application/json".parse().unwrap());
-    headers.insert("Access-Control-Allow-Origin", "*".parse().unwrap());
+    headers.insert(
+        "Content-Type",
+        "application/json"
+            .parse()
+            .expect("valid Content-Type header"),
+    );
+    headers.insert(
+        "Access-Control-Allow-Origin",
+        cors_origin
+            .parse()
+            .expect("valid Access-Control-Allow-Origin header"),
+    );
     headers.insert(
         "Access-Control-Allow-Methods",
-        "POST,OPTIONS".parse().unwrap(),
+        "POST,OPTIONS"
+            .parse()
+            .expect("valid Access-Control-Allow-Methods header"),
     );
     headers.insert(
         "Access-Control-Allow-Headers",
-        "Content-Type".parse().unwrap(),
+        "Content-Type"
+            .parse()
+            .expect("valid Access-Control-Allow-Headers header"),
     );
 
     ApiGatewayProxyResponse {
@@ -295,27 +334,14 @@ fn create_response(status_code: i64, body: serde_json::Value) -> ApiGatewayProxy
 
 async fn function_handler(
     event: LambdaEvent<ApiGatewayProxyRequest>,
+    state: &HandlerState,
 ) -> Result<ApiGatewayProxyResponse, Error> {
+    let cors_origin = state.cors_origin.as_str();
+
     // Handle CORS preflight
     if event.payload.http_method == "OPTIONS" {
-        return Ok(create_response(200, serde_json::json!({})));
+        return Ok(create_response(200, serde_json::json!({}), cors_origin));
     }
-
-    // Get environment variables
-    let table_name = std::env::var("DEMO_REQUESTS_TABLE")
-        .unwrap_or_else(|_| "local-ecoscan-demo-requests".to_string());
-    let recaptcha_secret = std::env::var("RECAPTCHA_SECRET_KEY").ok();
-
-    // Skip reCAPTCHA validation (for e2e tests only)
-    let skip_recaptcha = std::env::var("SKIP_RECAPTCHA")
-        .map(|v| v.eq_ignore_ascii_case("true"))
-        .unwrap_or(false);
-
-    // Minimum required reCAPTCHA score
-    let min_score: f64 = std::env::var("RECAPTCHA_MIN_SCORE")
-        .unwrap_or_else(|_| "0.5".to_string())
-        .parse()
-        .unwrap_or(0.5);
 
     // Parse request body
     let body = event.payload.body.ok_or("Missing request body")?;
@@ -331,6 +357,7 @@ async fn function_handler(
                 "error": "Validation failed",
                 "message": e.to_string()
             }),
+            cors_origin,
         ));
     }
 
@@ -349,13 +376,13 @@ async fn function_handler(
     );
 
     // reCAPTCHA validation (can be skipped for e2e tests)
-    let score = if skip_recaptcha {
+    let score = if state.skip_recaptcha {
         warn!("SKIP_RECAPTCHA is enabled - skipping reCAPTCHA validation (e2e test mode)");
         1.0 // Perfect score when skipped
     } else {
         // Verify reCAPTCHA secret is configured
-        let recaptcha_secret = match recaptcha_secret {
-            Some(secret) if !secret.is_empty() => secret,
+        let recaptcha_secret = match &state.recaptcha_secret {
+            Some(secret) if !secret.is_empty() => secret.clone(),
             _ => {
                 error!("RECAPTCHA_SECRET_KEY is not configured");
                 return Ok(create_response(
@@ -364,13 +391,18 @@ async fn function_handler(
                         "error": "Server configuration error",
                         "message": "Please contact us directly at partnerships@ecoscan.city"
                     }),
+                    cors_origin,
                 ));
             }
         };
 
         // Verify reCAPTCHA server-side (SECURE!)
-        let recaptcha_response = match verify_recaptcha(&request.recaptcha_token, &recaptcha_secret)
-            .await
+        let recaptcha_response = match verify_recaptcha(
+            &state.http_client,
+            &request.recaptcha_token,
+            &recaptcha_secret,
+        )
+        .await
         {
             Ok(resp) => resp,
             Err(e) => {
@@ -381,6 +413,7 @@ async fn function_handler(
                         "error": "Verification failed",
                         "message": "Please try again or contact us directly at partnerships@ecoscan.city"
                     }),
+                    cors_origin,
                 ));
             }
         };
@@ -397,15 +430,16 @@ async fn function_handler(
                     "error": "Security validation failed",
                     "message": "Please try again. If the problem persists, contact us at partnerships@ecoscan.city"
                 }),
+                cors_origin,
             ));
         }
 
         // Check reCAPTCHA score (lower score = more likely a bot)
         let score = recaptcha_response.score.unwrap_or(0.0);
-        if score < min_score {
+        if score < state.min_score {
             warn!(
                 "reCAPTCHA score too low for {}: {} (minimum: {})",
-                request.email, score, min_score
+                request.email, score, state.min_score
             );
             return Ok(create_response(
                 400,
@@ -414,6 +448,7 @@ async fn function_handler(
                     "message": "Your submission appears automated. Please contact us directly at partnerships@ecoscan.city",
                     "score": score
                 }),
+                cors_origin,
             ));
         }
 
@@ -426,34 +461,35 @@ async fn function_handler(
     };
 
     // Save to DynamoDB
-    let config = aws_config::load_from_env().await;
-    let dynamodb_client = DynamoDbClient::new(&config);
-
-    let request_id =
-        match save_contact_request(&dynamodb_client, &table_name, &request, score).await {
-            Ok(id) => id,
-            Err(e) => {
-                error!("Failed to save request: {}", e);
-                return Ok(create_response(
-                    500,
-                    serde_json::json!({
-                        "error": "Failed to save request",
-                        "message": "Please try again or contact us at partnerships@ecoscan.city"
-                    }),
-                ));
-            }
-        };
+    let request_id = match save_contact_request(
+        &state.dynamodb_client,
+        &state.table_name,
+        &request,
+        score,
+    )
+    .await
+    {
+        Ok(id) => id,
+        Err(e) => {
+            error!("Failed to save request: {}", e);
+            return Ok(create_response(
+                500,
+                serde_json::json!({
+                    "error": "Failed to save request",
+                    "message": "Please try again or contact us at partnerships@ecoscan.city"
+                }),
+                cors_origin,
+            ));
+        }
+    };
 
     info!("Request saved with ID: {} (score: {})", request_id, score);
 
     // Send email notification
-    let notify_email = std::env::var("NOTIFY_EMAIL").ok();
-    let from_email = std::env::var("FROM_EMAIL").ok();
-
-    if let (Some(to_email), Some(from_email)) = (notify_email, from_email) {
-        let ses_client = SesClient::new(&config);
-        match send_notification_email(&ses_client, &from_email, &to_email, &request, &request_id)
-            .await
+    if let (Some(to_email), Some(from_email), Some(ses_client)) =
+        (&state.notify_email, &state.from_email, &state.ses_client)
+    {
+        match send_notification_email(ses_client, from_email, to_email, &request, &request_id).await
         {
             Ok(_) => info!("Notification email sent to {}", to_email),
             Err(e) => {
@@ -474,6 +510,7 @@ async fn function_handler(
             "message": "Thank you! We've received your request and will respond within 24 hours.",
             "score": score
         }),
+        cors_origin,
     ))
 }
 
@@ -485,6 +522,56 @@ async fn main() -> Result<(), Error> {
         .without_time()
         .init();
 
-    lambda_runtime::run(service_fn(function_handler)).await
+    // Build AWS SDK config with timeouts at cold start
+    let timeout_config = TimeoutConfig::builder()
+        .connect_timeout(Duration::from_secs(5))
+        .operation_timeout(Duration::from_secs(10))
+        .build();
+
+    let sdk_config = aws_config::defaults(aws_config::BehaviorVersion::latest())
+        .timeout_config(timeout_config)
+        .load()
+        .await;
+
+    let dynamodb_client = DynamoDbClient::new(&sdk_config);
+
+    // Build SES client only if email config is present
+    let notify_email = std::env::var("NOTIFY_EMAIL").ok();
+    let from_email = std::env::var("FROM_EMAIL").ok();
+    let ses_client = if notify_email.is_some() && from_email.is_some() {
+        Some(SesClient::new(&sdk_config))
+    } else {
+        None
+    };
+
+    // Build HTTP client with timeout for reCAPTCHA requests
+    let http_client = reqwest::Client::builder()
+        .timeout(Duration::from_secs(10))
+        .build()
+        .expect("failed to build HTTP client");
+
+    let state = Arc::new(HandlerState {
+        dynamodb_client,
+        ses_client,
+        http_client,
+        table_name: std::env::var("DEMO_REQUESTS_TABLE")
+            .unwrap_or_else(|_| "local-ecoscan-demo-requests".to_string()),
+        recaptcha_secret: std::env::var("RECAPTCHA_SECRET_KEY").ok(),
+        skip_recaptcha: std::env::var("SKIP_RECAPTCHA")
+            .map(|v| v.eq_ignore_ascii_case("true"))
+            .unwrap_or(false),
+        min_score: std::env::var("RECAPTCHA_MIN_SCORE")
+            .unwrap_or_else(|_| "0.5".to_string())
+            .parse()
+            .unwrap_or(0.5),
+        notify_email,
+        from_email,
+        cors_origin: std::env::var("CORS_ALLOWED_ORIGINS").unwrap_or_else(|_| "*".to_string()),
+    });
+
+    lambda_runtime::run(service_fn(move |event| {
+        let state = state.clone();
+        async move { function_handler(event, &state).await }
+    }))
+    .await
 }
-// v1.1.0 - Added SES email notifications

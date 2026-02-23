@@ -33,6 +33,10 @@ locals {
   api_keys_table_name = data.terraform_remote_state.data.outputs.api_keys_table_name
   api_keys_table_arn  = data.terraform_remote_state.data.outputs.api_keys_table_arn
 
+  # DLQ names from data layer (for CloudWatch alarms)
+  sqs_dlq_name         = data.terraform_remote_state.data.outputs.sqs_dlq_name
+  webhook_sqs_dlq_name = data.terraform_remote_state.data.outputs.webhook_sqs_dlq_name
+
   # Lambda environment-specific endpoint
   dynamodb_endpoint_url = var.use_localstack ? "http://localstack:4566" : ""
 }

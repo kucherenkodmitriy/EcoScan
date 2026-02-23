@@ -439,6 +439,7 @@ resource "aws_lambda_function" "contact_form_handler" {
         RECAPTCHA_SECRET_KEY = var.recaptcha_secret_key
         NOTIFY_EMAIL         = var.notify_email
         FROM_EMAIL           = var.from_email
+        CORS_ALLOWED_ORIGINS = var.cors_allowed_origins
       },
       var.use_localstack ? {
         DYNAMODB_ENDPOINT_URL = local.dynamodb_endpoint_url

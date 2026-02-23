@@ -1,4 +1,7 @@
+use std::time::Duration;
+
 use async_trait::async_trait;
+use aws_config::timeout::TimeoutConfig;
 use aws_sdk_dynamodb::types::AttributeValue;
 use aws_sdk_dynamodb::Client;
 use chrono::{DateTime, Utc};
@@ -25,15 +28,22 @@ pub struct DynamoDbRepository {
 
 impl DynamoDbRepository {
     pub async fn new(config: &Config) -> Result<Self> {
+        let timeout_config = TimeoutConfig::builder()
+            .connect_timeout(Duration::from_secs(5))
+            .operation_timeout(Duration::from_secs(10))
+            .build();
+
         let sdk_config = if let Some(endpoint) = &config.dynamodb_endpoint {
             info!(endpoint = %endpoint, "Using custom DynamoDB endpoint (LocalStack)");
             aws_config::defaults(aws_config::BehaviorVersion::latest())
+                .timeout_config(timeout_config)
                 .endpoint_url(endpoint)
                 .region(aws_config::Region::new(config.aws_region.clone()))
                 .load()
                 .await
         } else {
             aws_config::defaults(aws_config::BehaviorVersion::latest())
+                .timeout_config(timeout_config)
                 .region(aws_config::Region::new(config.aws_region.clone()))
                 .load()
                 .await

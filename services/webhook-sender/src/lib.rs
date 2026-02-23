@@ -3,6 +3,8 @@ pub mod config;
 pub mod domain;
 pub mod infrastructure;
 
+use std::sync::Arc;
+
 use aws_lambda_events::event::sqs::{BatchItemFailure, SqsBatchResponse, SqsEvent};
 use lambda_runtime::{Error, LambdaEvent};
 use tracing::{error, info};
@@ -12,32 +14,37 @@ use crate::config::Config;
 use crate::domain::SqsMessageBody;
 use crate::infrastructure::DynamoDbWebhookRepository;
 
+/// Shared state initialized at cold start
+pub struct WebhookState {
+    pub config: Config,
+    pub repo: DynamoDbWebhookRepository,
+}
+
+/// Create the Lambda handler with shared state
+#[allow(clippy::type_complexity)]
+pub fn create_handler(
+    state: Arc<WebhookState>,
+) -> impl Fn(
+    LambdaEvent<SqsEvent>,
+) -> std::pin::Pin<
+    Box<dyn std::future::Future<Output = Result<SqsBatchResponse, Error>> + Send>,
+> + Send
+       + Sync {
+    move |event| {
+        let state = state.clone();
+        Box::pin(async move { sqs_handler_inner(event, &state).await })
+    }
+}
+
 /// SQS event handler - processes messages and delivers webhooks
-pub async fn sqs_handler(event: LambdaEvent<SqsEvent>) -> Result<SqsBatchResponse, Error> {
+async fn sqs_handler_inner(
+    event: LambdaEvent<SqsEvent>,
+    state: &WebhookState,
+) -> Result<SqsBatchResponse, Error> {
     info!(
         "Received SQS event with {} records",
         event.payload.records.len()
     );
-
-    let config = Config::from_env();
-
-    let repo = match DynamoDbWebhookRepository::new(&config).await {
-        Ok(repo) => repo,
-        Err(e) => {
-            error!("Failed to initialize DynamoDB repository: {}", e);
-            let failures: Vec<BatchItemFailure> = event
-                .payload
-                .records
-                .iter()
-                .map(|record| BatchItemFailure {
-                    item_identifier: record.message_id.clone().unwrap_or_default(),
-                })
-                .collect();
-            return Ok(SqsBatchResponse {
-                batch_item_failures: failures,
-            });
-        }
-    };
 
     let mut failures = Vec::new();
 
@@ -77,7 +84,7 @@ pub async fn sqs_handler(event: LambdaEvent<SqsEvent>) -> Result<SqsBatchRespons
         );
 
         // Deliver webhooks - individual delivery failures are logged but don't fail the message
-        deliver_webhooks(&repo, &message, &config).await;
+        deliver_webhooks(&state.repo, &message, &state.config).await;
     }
 
     Ok(SqsBatchResponse {

@@ -146,6 +146,12 @@ variable "lambda_max_concurrency" {
   default     = 10
 }
 
+variable "alarm_email" {
+  description = "Email address for CloudWatch alarm notifications (empty to skip)"
+  type        = string
+  default     = ""
+}
+
 variable "tags" {
   description = "Common tags for all resources"
   type        = map(string)

@@ -5,7 +5,7 @@ use tracing::{error, info};
 use tracing_subscriber::fmt;
 
 use admin_dashboard_api::config::Config;
-use admin_dashboard_api::infrastructure::EmailService;
+use admin_dashboard_api::infrastructure::{DynamoDbRepository, EmailService};
 use admin_dashboard_api::{create_handler, AppState};
 
 #[tokio::main]
@@ -47,10 +47,20 @@ async fn main() -> Result<(), Error> {
         }
     };
 
+    // Initialize DynamoDB repository at cold start
+    let repo = match DynamoDbRepository::new(&config).await {
+        Ok(r) => r,
+        Err(e) => {
+            error!(error = %e, "Failed to initialize DynamoDB repository");
+            return Err(Error::from(e.to_string()));
+        }
+    };
+
     // Create shared application state
     let state = AppState {
         config: Arc::new(config),
         email_service: Arc::new(email_service),
+        repo: Arc::new(repo),
     };
 
     // Run Lambda with the handler that has access to shared state

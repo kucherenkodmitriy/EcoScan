@@ -10,7 +10,7 @@ use aws_lambda_events::encodings::Body;
 use aws_lambda_events::http::HeaderMap;
 use lambda_runtime::{Error, LambdaEvent};
 use serde_json::json;
-use tracing::{error, info, instrument, warn};
+use tracing::{info, instrument, warn};
 use uuid::Uuid;
 
 use crate::application::{
@@ -33,6 +33,7 @@ use crate::infrastructure::{decode_token, DynamoDbRepository, EmailService, JwtC
 pub struct AppState {
     pub config: Arc<Config>,
     pub email_service: Arc<EmailService>,
+    pub repo: Arc<DynamoDbRepository>,
 }
 
 /// Build a successful JSON response with CORS headers
@@ -187,15 +188,7 @@ async fn api_handler_inner(
     let config = &state.config;
     let cors_origin = config.cors_allowed_origins.as_str();
     let jwt_secret = config.jwt_secret.as_str();
-
-    // Initialize repository
-    let repo = match DynamoDbRepository::new(config).await {
-        Ok(r) => r,
-        Err(e) => {
-            error!(error = %e, "Failed to initialize repository");
-            return Ok(error_response(500, "Internal server error", cors_origin));
-        }
-    };
+    let repo = &*state.repo;
 
     // Route the request
     let response = match (method, path) {
@@ -209,14 +202,14 @@ async fn api_handler_inner(
 
         // Login endpoint (no auth required)
         ("POST", p) if p.ends_with("/auth/login") => {
-            handle_login_request(&request, &repo, config, cors_origin).await
+            handle_login_request(&request, repo, config, cors_origin).await
         }
 
         // Forgot password (no auth required)
         ("POST", p) if p.ends_with("/auth/forgot-password") => {
             handle_forgot_password_request(
                 &request,
-                &repo,
+                repo,
                 &state.email_service,
                 config,
                 cors_origin,
@@ -226,67 +219,67 @@ async fn api_handler_inner(
 
         // Reset password (no auth required)
         ("POST", p) if p.ends_with("/auth/reset-password") => {
-            handle_reset_password_request(&request, &repo, cors_origin).await
+            handle_reset_password_request(&request, repo, cors_origin).await
         }
 
         // Public bin info for QR report page (no auth required)
         ("GET", p) if p.contains("/report/") => {
             let bin_id = get_path_param(&request, "bin_id");
-            handle_get_public_bin(&repo, bin_id, cors_origin).await
+            handle_get_public_bin(repo, bin_id, cors_origin).await
         }
 
         // List bins
-        ("GET", p) if p.ends_with("/admin/bins") => handle_list_bins(&repo, cors_origin).await,
+        ("GET", p) if p.ends_with("/admin/bins") => handle_list_bins(repo, cors_origin).await,
 
         // Get single bin
         ("GET", p) if p.contains("/admin/bins/") => {
             let bin_id = get_path_param(&request, "bin_id");
-            handle_get_bin(&repo, bin_id, cors_origin).await
+            handle_get_bin(repo, bin_id, cors_origin).await
         }
 
         // Create bin
         ("POST", p) if p.ends_with("/admin/bins") => {
-            handle_create_bin(&request, &repo, cors_origin).await
+            handle_create_bin(&request, repo, cors_origin).await
         }
 
         // Update bin
         ("PUT", p) if p.contains("/admin/bins/") => {
             let bin_id = get_path_param(&request, "bin_id");
-            handle_update_bin(&request, &repo, bin_id, cors_origin).await
+            handle_update_bin(&request, repo, bin_id, cors_origin).await
         }
 
         // Delete bin
         ("DELETE", p) if p.contains("/admin/bins/") => {
             let bin_id = get_path_param(&request, "bin_id");
-            handle_delete_bin(&repo, bin_id, cors_origin).await
+            handle_delete_bin(repo, bin_id, cors_origin).await
         }
 
         // List webhooks
         ("GET", p) if p.ends_with("/admin/webhooks") => {
-            handle_list_webhooks(&request, &repo, jwt_secret, cors_origin).await
+            handle_list_webhooks(&request, repo, jwt_secret, cors_origin).await
         }
 
         // Create webhook
         ("POST", p) if p.ends_with("/admin/webhooks") => {
-            handle_create_webhook(&request, &repo, jwt_secret, cors_origin).await
+            handle_create_webhook(&request, repo, jwt_secret, cors_origin).await
         }
 
         // Get single webhook
         ("GET", p) if p.contains("/admin/webhooks/") => {
             let webhook_id = extract_last_path_segment(p);
-            handle_get_webhook(&request, &repo, webhook_id, jwt_secret, cors_origin).await
+            handle_get_webhook(&request, repo, webhook_id, jwt_secret, cors_origin).await
         }
 
         // Update webhook
         ("PUT", p) if p.contains("/admin/webhooks/") => {
             let webhook_id = extract_last_path_segment(p);
-            handle_update_webhook(&request, &repo, webhook_id, jwt_secret, cors_origin).await
+            handle_update_webhook(&request, repo, webhook_id, jwt_secret, cors_origin).await
         }
 
         // Delete webhook
         ("DELETE", p) if p.contains("/admin/webhooks/") => {
             let webhook_id = extract_last_path_segment(p);
-            handle_delete_webhook(&request, &repo, webhook_id, jwt_secret, cors_origin).await
+            handle_delete_webhook(&request, repo, webhook_id, jwt_secret, cors_origin).await
         }
 
         // =================================================================
@@ -297,13 +290,13 @@ async fn api_handler_inner(
         ("GET", p) if p.ends_with("/api/bins") => {
             let limit = extract_query_param(&request, "limit").and_then(|v| v.parse::<i32>().ok());
             let cursor = extract_query_param(&request, "cursor");
-            handle_list_bins_external(&repo, limit, cursor, cors_origin).await
+            handle_list_bins_external(repo, limit, cursor, cors_origin).await
         }
 
         // Get single bin (external API)
         ("GET", p) if p.contains("/api/bins/") => {
             let bin_id = get_path_param(&request, "bin_id");
-            handle_get_bin_external(&repo, bin_id, cors_origin).await
+            handle_get_bin_external(repo, bin_id, cors_origin).await
         }
 
         // =================================================================
@@ -312,32 +305,32 @@ async fn api_handler_inner(
 
         // List API keys
         ("GET", p) if p.ends_with("/admin/api-keys") => {
-            handle_list_api_keys(&request, &repo, jwt_secret, cors_origin).await
+            handle_list_api_keys(&request, repo, jwt_secret, cors_origin).await
         }
 
         // Create API key
         ("POST", p) if p.ends_with("/admin/api-keys") => {
             let created_by = extract_authorizer_context(&request, "email", jwt_secret)
                 .unwrap_or_else(|| "unknown".to_string());
-            handle_create_api_key(&request, &repo, &created_by, jwt_secret, cors_origin).await
+            handle_create_api_key(&request, repo, &created_by, jwt_secret, cors_origin).await
         }
 
         // Get single API key
         ("GET", p) if p.contains("/admin/api-keys/") => {
             let key_id = extract_last_path_segment(p);
-            handle_get_api_key(&request, &repo, key_id, jwt_secret, cors_origin).await
+            handle_get_api_key(&request, repo, key_id, jwt_secret, cors_origin).await
         }
 
         // Update API key
         ("PUT", p) if p.contains("/admin/api-keys/") => {
             let key_id = extract_last_path_segment(p);
-            handle_update_api_key(&request, &repo, key_id, jwt_secret, cors_origin).await
+            handle_update_api_key(&request, repo, key_id, jwt_secret, cors_origin).await
         }
 
         // Delete API key
         ("DELETE", p) if p.contains("/admin/api-keys/") => {
             let key_id = extract_last_path_segment(p);
-            handle_delete_api_key(&request, &repo, key_id, jwt_secret, cors_origin).await
+            handle_delete_api_key(&request, repo, key_id, jwt_secret, cors_origin).await
         }
 
         // =================================================================
@@ -346,14 +339,14 @@ async fn api_handler_inner(
 
         // List users
         ("GET", p) if p.ends_with("/admin/users") => {
-            handle_list_users(&request, &repo, jwt_secret, cors_origin).await
+            handle_list_users(&request, repo, jwt_secret, cors_origin).await
         }
 
         // Create user
         ("POST", p) if p.ends_with("/admin/users") => {
             handle_create_user(
                 &request,
-                &repo,
+                repo,
                 &state.email_service,
                 jwt_secret,
                 cors_origin,
@@ -364,7 +357,7 @@ async fn api_handler_inner(
         // Get single user
         ("GET", p) if p.contains("/admin/users/") => {
             let email = extract_last_path_segment(p);
-            handle_get_user(&request, &repo, email, jwt_secret, cors_origin).await
+            handle_get_user(&request, repo, email, jwt_secret, cors_origin).await
         }
 
         // Update user
@@ -374,7 +367,7 @@ async fn api_handler_inner(
                 .unwrap_or_else(|| "unknown".to_string());
             handle_update_user(
                 &request,
-                &repo,
+                repo,
                 email,
                 &current_user_email,
                 jwt_secret,
@@ -390,7 +383,7 @@ async fn api_handler_inner(
                 .unwrap_or_else(|| "unknown".to_string());
             handle_delete_user(
                 &request,
-                &repo,
+                repo,
                 email,
                 &current_user_email,
                 jwt_secret,

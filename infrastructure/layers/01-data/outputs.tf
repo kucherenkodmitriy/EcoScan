@@ -69,6 +69,11 @@ output "sqs_dlq_arn" {
   value       = aws_sqs_queue.status_updates_dlq.arn
 }
 
+output "sqs_dlq_name" {
+  description = "Name of the status updates dead letter queue"
+  value       = aws_sqs_queue.status_updates_dlq.name
+}
+
 # SNS Topic outputs
 output "sns_topic_arn" {
   description = "ARN of the status updates SNS topic"
@@ -99,6 +104,11 @@ output "webhook_sqs_queue_name" {
 output "webhook_sqs_dlq_arn" {
   description = "ARN of the webhook delivery dead letter queue"
   value       = aws_sqs_queue.webhook_delivery_dlq.arn
+}
+
+output "webhook_sqs_dlq_name" {
+  description = "Name of the webhook delivery dead letter queue"
+  value       = aws_sqs_queue.webhook_delivery_dlq.name
 }
 
 # Webhook Configs DynamoDB outputs

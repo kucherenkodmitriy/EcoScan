@@ -1,5 +1,8 @@
+use std::time::Duration;
+
 use async_trait::async_trait;
 use aws_config::meta::region::RegionProviderChain;
+use aws_config::timeout::TimeoutConfig;
 use aws_credential_types::Credentials;
 use aws_sdk_dynamodb::{types::AttributeValue, Client};
 use chrono::{DateTime, Utc};
@@ -58,6 +61,11 @@ impl DynamoDbRepository {
     }
 
     pub async fn new() -> Result<Self> {
+        let timeout_config = TimeoutConfig::builder()
+            .connect_timeout(Duration::from_secs(5))
+            .operation_timeout(Duration::from_secs(10))
+            .build();
+
         let is_local = std::env::var("DYNAMODB_ENDPOINT_URL").is_ok();
         let client = if is_local {
             let endpoint_url = std::env::var("DYNAMODB_ENDPOINT_URL").unwrap();
@@ -78,6 +86,7 @@ impl DynamoDbRepository {
             // For real AWS, use the default provider chain.
             let region_provider = RegionProviderChain::default_provider().or_else("eu-central-1");
             let config = aws_config::defaults(aws_config::BehaviorVersion::latest())
+                .timeout_config(timeout_config)
                 .region(region_provider)
                 .load()
                 .await;

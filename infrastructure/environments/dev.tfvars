@@ -28,9 +28,7 @@ lambda_sqs_batch_size  = 10  # Process up to 10 messages per invocation
 lambda_max_concurrency = 100 # Allow higher concurrency in AWS
 
 # CORS configuration
-# Set this to your CloudFront domain after deployment, e.g., "https://d1234abcd.cloudfront.net"
-# Use "*" for development/testing (less secure)
-# cors_allowed_origins = "https://your-cloudfront-domain.cloudfront.net"
+cors_allowed_origins = "https://ecoscan.city"
 
 # JWT secret - must be at least 32 chars. Set via TF_VAR_jwt_secret or -var flag (not committed to repo)
 # jwt_secret = "..." # Set via TF_VAR_jwt_secret
@@ -54,6 +52,9 @@ frontend_url = "https://ecoscan.city"
 # Custom domain
 custom_domain       = "ecoscan.city"
 acm_certificate_arn = "arn:aws:acm:us-east-1:019891040755:certificate/abf83fba-4c07-4c98-a621-493da23f764a"
+
+# CloudWatch alarm notifications - set via TF_VAR_alarm_email
+alarm_email = ""
 
 # Tags
 tags = {

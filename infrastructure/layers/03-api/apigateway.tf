@@ -128,7 +128,7 @@ resource "aws_api_gateway_integration_response" "options_status_response" {
   response_parameters = {
     "method.response.header.Access-Control-Allow-Headers" = "'Content-Type,Authorization'"
     "method.response.header.Access-Control-Allow-Methods" = "'GET,POST,PUT,DELETE,OPTIONS'"
-    "method.response.header.Access-Control-Allow-Origin"  = "'*'"
+    "method.response.header.Access-Control-Allow-Origin"  = "'${var.cors_allowed_origins}'"
   }
 
   depends_on = [aws_api_gateway_integration.options_status_integration]

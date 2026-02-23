@@ -4,6 +4,8 @@ pub mod infrastructure;
 
 pub use domain::error::AppError;
 
+use std::sync::Arc;
+
 use aws_lambda_events::event::apigw::{ApiGatewayProxyRequest, ApiGatewayProxyResponse};
 use aws_lambda_events::event::sqs::{BatchItemFailure, SqsBatchResponse, SqsEvent};
 use aws_lambda_events::http::HeaderMap;
@@ -32,31 +34,31 @@ struct SqsMessageBody {
     source: Option<String>,
 }
 
+/// Create the Lambda handler with shared DynamoDB repository
+#[allow(clippy::type_complexity)]
+pub fn create_handler(
+    repo: Arc<DynamoDbRepository>,
+) -> impl Fn(
+    LambdaEvent<SqsEvent>,
+) -> std::pin::Pin<
+    Box<dyn std::future::Future<Output = Result<SqsBatchResponse, Error>> + Send>,
+> + Send
+       + Sync {
+    move |event| {
+        let repo = repo.clone();
+        Box::pin(async move { sqs_handler_inner(event, &repo).await })
+    }
+}
+
 // SQS event handler - processes messages from the SQS queue
-pub async fn sqs_handler(event: LambdaEvent<SqsEvent>) -> Result<SqsBatchResponse, Error> {
+async fn sqs_handler_inner(
+    event: LambdaEvent<SqsEvent>,
+    repo: &DynamoDbRepository,
+) -> Result<SqsBatchResponse, Error> {
     info!(
         "Received SQS event with {} records",
         event.payload.records.len()
     );
-
-    let repo = match DynamoDbRepository::new().await {
-        Ok(repo) => repo,
-        Err(e) => {
-            error!("Failed to initialize DynamoDB repository: {}", e);
-            // Return all messages as failures if we can't connect to DynamoDB
-            let failures: Vec<BatchItemFailure> = event
-                .payload
-                .records
-                .iter()
-                .map(|record| BatchItemFailure {
-                    item_identifier: record.message_id.clone().unwrap_or_default(),
-                })
-                .collect();
-            return Ok(SqsBatchResponse {
-                batch_item_failures: failures,
-            });
-        }
-    };
 
     let mut failures = Vec::new();
 
@@ -95,7 +97,7 @@ pub async fn sqs_handler(event: LambdaEvent<SqsEvent>) -> Result<SqsBatchRespons
         );
 
         // Process the record within the span context
-        match process_sqs_record(&repo, &record)
+        match process_sqs_record(repo, &record)
             .instrument(span.clone())
             .await
         {
@@ -169,6 +171,7 @@ async fn process_sqs_record(
 
 pub async fn api_gateway_handler(
     event: LambdaEvent<ApiGatewayProxyRequest>,
+    repo: &DynamoDbRepository,
 ) -> Result<ApiGatewayProxyResponse, Error> {
     info!("Received API Gateway event: {:?}", event);
 
@@ -177,15 +180,7 @@ pub async fn api_gateway_handler(
         Err(resp) => return Ok(resp),
     };
 
-    let repo = match DynamoDbRepository::new().await {
-        Ok(repo) => repo,
-        Err(e) => {
-            error!("Failed to initialize DynamoDB repository: {}", e);
-            return Ok(build_response(500, "Internal Server Error"));
-        }
-    };
-
-    match handle_status_update(&repo, request).await {
+    match handle_status_update(repo, request).await {
         Ok(response) => {
             info!("Status update successful: {}", response.message);
             let body = serde_json::to_string(&response).unwrap_or_default();

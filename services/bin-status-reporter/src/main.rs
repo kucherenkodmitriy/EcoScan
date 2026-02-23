@@ -1,4 +1,7 @@
-use bin_status_reporter::sqs_handler;
+use std::sync::Arc;
+
+use bin_status_reporter::create_handler;
+use bin_status_reporter::infrastructure::dynamodb::DynamoDbRepository;
 use lambda_runtime::{run, service_fn, Error};
 use tracing_subscriber::fmt::format::FmtSpan;
 use tracing_subscriber::{fmt, EnvFilter};
@@ -18,6 +21,11 @@ async fn main() -> Result<(), Error> {
         .json() // Use JSON format for structured logging
         .init();
 
-    // Use the SQS handler as the main entry point
-    run(service_fn(sqs_handler)).await
+    // Create DynamoDB repository once at cold start
+    let repo =
+        Arc::new(DynamoDbRepository::new().await.map_err(|e| {
+            Error::from(format!("Failed to initialize DynamoDB repository: {}", e))
+        })?);
+
+    run(service_fn(create_handler(repo))).await
 }

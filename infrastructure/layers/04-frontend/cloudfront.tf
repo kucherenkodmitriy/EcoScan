@@ -70,6 +70,19 @@ resource "aws_cloudfront_response_headers_policy" "security_headers" {
       override   = true
     }
   }
+
+  custom_headers_config {
+    items {
+      header   = "Content-Security-Policy"
+      override = true
+      value    = "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://maps.googleapis.com https://www.google.com https://www.gstatic.com https://www.googletagmanager.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; img-src 'self' data: https://*.googleapis.com https://*.gstatic.com; font-src 'self' https://fonts.gstatic.com; connect-src 'self' https://maps.googleapis.com https://www.google.com https://www.google-analytics.com; frame-src https://www.google.com https://www.recaptcha.net; object-src 'none'; base-uri 'self'"
+    }
+    items {
+      header   = "Permissions-Policy"
+      override = true
+      value    = "camera=(), microphone=(), geolocation=(self)"
+    }
+  }
 }
 
 # CloudFront Origin Access Control for S3

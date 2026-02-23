@@ -1,7 +1,12 @@
+use std::sync::Arc;
+
 use lambda_runtime::{run, service_fn, Error};
+use tracing::error;
 use tracing_subscriber::fmt::format::FmtSpan;
 use tracing_subscriber::{fmt, EnvFilter};
-use webhook_sender::sqs_handler;
+use webhook_sender::config::Config;
+use webhook_sender::infrastructure::DynamoDbWebhookRepository;
+use webhook_sender::{create_handler, WebhookState};
 
 #[tokio::main]
 async fn main() -> Result<(), Error> {
@@ -16,5 +21,20 @@ async fn main() -> Result<(), Error> {
         .json()
         .init();
 
-    run(service_fn(sqs_handler)).await
+    let config = Config::from_env();
+
+    let repo = match DynamoDbWebhookRepository::new(&config).await {
+        Ok(repo) => repo,
+        Err(e) => {
+            error!("Failed to initialize DynamoDB repository: {}", e);
+            return Err(Error::from(format!(
+                "Failed to initialize DynamoDB repository: {}",
+                e
+            )));
+        }
+    };
+
+    let state = Arc::new(WebhookState { config, repo });
+
+    run(service_fn(create_handler(state))).await
 }

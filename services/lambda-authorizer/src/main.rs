@@ -131,7 +131,15 @@ async fn get_jwt_secret() -> Result<String, String> {
 
 /// Fetch secret from AWS Secrets Manager
 async fn fetch_from_secrets_manager(secret_arn: &str) -> Result<String, String> {
-    let config = aws_config::defaults(BehaviorVersion::latest()).load().await;
+    let timeout_config = aws_config::timeout::TimeoutConfig::builder()
+        .connect_timeout(std::time::Duration::from_secs(5))
+        .operation_timeout(std::time::Duration::from_secs(10))
+        .build();
+
+    let config = aws_config::defaults(BehaviorVersion::latest())
+        .timeout_config(timeout_config)
+        .load()
+        .await;
 
     let client = SecretsManagerClient::new(&config);
 

@@ -532,6 +532,28 @@ jobs:
             -backend-config="../../../infrastructure/backend/dev.tfbackend" \
             -backend-config="key=layers/02-compute/terraform.tfstate"
 
+      # One-time import of pre-existing CloudWatch Log Groups into Terraform state.
+      # These were auto-created by Lambda before we added explicit aws_cloudwatch_log_group resources.
+      # Each import is allowed to fail (resource may already be in state).
+      # TODO: Remove this step after the first successful deploy.
+      - name: Import existing CloudWatch Log Groups
+        working-directory: infrastructure/layers/02-compute
+        run: |
+          TFVARS="-var-file=../../environments/dev.tfvars -var=recaptcha_secret_key=placeholder -var=notify_email=placeholder -var=from_email=placeholder"
+          LOG_GROUPS=(
+            "aws_cloudwatch_log_group.update_bin_status /aws/lambda/dev-ecoscan-update-bin-status"
+            "aws_cloudwatch_log_group.authorizer /aws/lambda/dev-ecoscan-authorizer"
+            "aws_cloudwatch_log_group.api_key_authorizer /aws/lambda/dev-ecoscan-apikey-authorizer"
+            "aws_cloudwatch_log_group.admin_dashboard /aws/lambda/dev-ecoscan-admin-dashboard"
+            "aws_cloudwatch_log_group.contact_form_handler /aws/lambda/dev-ecoscan-contact-form"
+            "aws_cloudwatch_log_group.webhook_sender /aws/lambda/dev-ecoscan-webhook-sender"
+          )
+          for entry in "${LOG_GROUPS[@]}"; do
+            read -r addr id <<< "$entry"
+            echo "Importing $addr ($id)..."
+            terraform import $TFVARS "$addr" "$id" 2>&1 || echo "  -> Already in state or not found, skipping"
+          done
+
       - name: Terraform Plan
         id: plan
         working-directory: infrastructure/layers/02-compute

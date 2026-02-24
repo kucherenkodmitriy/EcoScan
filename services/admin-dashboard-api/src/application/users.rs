@@ -97,39 +97,35 @@ pub async fn create_user(
     info!(email = %email, role = ?request.role, "User created successfully");
 
     // Send welcome email (best effort)
-    if let Some(email_svc) = email_service {
+    let password_delivered = if let Some(email_svc) = email_service {
         if email_svc.is_configured() {
             match email_svc
                 .send_welcome_email(&email, &request.name, &initial_password)
                 .await
             {
-                Ok(_) => info!("Welcome email sent to {}", email),
+                Ok(_) => {
+                    info!("Welcome email sent to {}", email);
+                    true
+                }
                 Err(e) => {
-                    warn!(
-                        "Failed to send welcome email: {}. Password: {}",
-                        e, initial_password
-                    );
-                    // Don't fail the operation if email fails
+                    warn!("Failed to send welcome email to {}: {}", email, e);
+                    false
                 }
             }
         } else {
-            warn!(
-                "Email service not configured. Initial password for {}: {}",
-                email, initial_password
-            );
+            warn!("Email service not configured for user {}", email);
+            false
         }
     } else {
-        warn!(
-            "No email service provided. Initial password for {}: {}",
-            email, initial_password
-        );
-    }
+        warn!("No email service provided for user {}", email);
+        false
+    };
 
     Ok(UserCreatedResponse {
         email,
         name: request.name,
         role: request.role,
-        initial_password,
+        password_delivered,
         created_at: user.created_at.to_rfc3339(),
     })
 }
@@ -381,7 +377,7 @@ mod tests {
         assert_eq!(response.email, "test@example.com");
         assert_eq!(response.name, "Test User");
         assert_eq!(response.role, UserRole::Operator);
-        assert_eq!(response.initial_password.len(), PASSWORD_LENGTH);
+        assert!(!response.password_delivered);
     }
 
     #[tokio::test]

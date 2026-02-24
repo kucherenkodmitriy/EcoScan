@@ -7,6 +7,7 @@ use std::sync::Arc;
 
 use aws_lambda_events::event::sqs::{BatchItemFailure, SqsBatchResponse, SqsEvent};
 use lambda_runtime::{Error, LambdaEvent};
+use reqwest::Client;
 use tracing::{error, info};
 
 use crate::application::deliver_webhooks;
@@ -18,6 +19,7 @@ use crate::infrastructure::DynamoDbWebhookRepository;
 pub struct WebhookState {
     pub config: Config,
     pub repo: DynamoDbWebhookRepository,
+    pub http_client: Client,
 }
 
 /// Create the Lambda handler with shared state
@@ -84,7 +86,7 @@ async fn sqs_handler_inner(
         );
 
         // Deliver webhooks - individual delivery failures are logged but don't fail the message
-        deliver_webhooks(&state.repo, &message, &state.config).await;
+        deliver_webhooks(&state.http_client, &state.repo, &message).await;
     }
 
     Ok(SqsBatchResponse {

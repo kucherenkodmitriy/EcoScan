@@ -6,7 +6,8 @@
 # - New webhook delivery SQS queue (webhook-sender)
 
 resource "aws_sns_topic" "status_updates" {
-  name = "${var.environment}-${var.project_name}-status-updates"
+  name              = "${var.environment}-${var.project_name}-status-updates"
+  kms_master_key_id = var.use_localstack ? null : "alias/aws/sns"
 
   tags = merge(
     local.common_tags,

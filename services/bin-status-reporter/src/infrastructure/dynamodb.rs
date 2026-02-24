@@ -179,37 +179,18 @@ impl BinRepository for DynamoDbRepository {
         // Calculate weighted average of recent reports
         let weighted_average = calculate_fullness_default(&recent_reports);
 
-        // Get current reports count for incrementing
-        let result = self
-            .client
-            .get_item()
-            .table_name(&self.bins_table)
-            .key("binId", AttributeValue::S(bin_id.to_string()))
-            .send()
-            .await
-            .map_err(|e| RepositoryError::DatabaseError(e.to_string()))?;
-
-        let reports_count = result
-            .item()
-            .and_then(|item| item.get("reportsCount"))
-            .and_then(|v| v.as_n().ok())
-            .and_then(|n| n.parse::<i32>().ok())
-            .unwrap_or(0);
-
-        let new_reports_count = reports_count + 1;
-
-        // Update bin with weighted average status
+        // Update bin with weighted average status using atomic ADD for reportsCount
         self.client
             .update_item()
             .table_name(&self.bins_table)
             .key("binId", AttributeValue::S(bin_id.to_string()))
-            .update_expression("SET #s = :s, #u = :u, #rc = :rc")
+            .update_expression("SET #s = :s, #u = :u ADD #rc :one")
             .expression_attribute_names("#s", "status")
             .expression_attribute_names("#u", "lastUpdated")
             .expression_attribute_names("#rc", "reportsCount")
             .expression_attribute_values(":s", AttributeValue::N(weighted_average.to_string()))
             .expression_attribute_values(":u", AttributeValue::S(timestamp.to_rfc3339()))
-            .expression_attribute_values(":rc", AttributeValue::N(new_reports_count.to_string()))
+            .expression_attribute_values(":one", AttributeValue::N("1".to_string()))
             .send()
             .await
             .map_err(|e| RepositoryError::DatabaseError(e.to_string()))?;

@@ -204,7 +204,7 @@ resource "aws_cloudfront_distribution" "frontend" {
     cloudfront_default_certificate = var.custom_domain == ""
     acm_certificate_arn            = var.custom_domain != "" ? var.acm_certificate_arn : null
     ssl_support_method             = var.custom_domain != "" ? "sni-only" : null
-    minimum_protocol_version       = var.custom_domain != "" ? "TLSv1.2_2021" : "TLSv1"
+    minimum_protocol_version       = "TLSv1.2_2021"
   }
 
   # Geo restrictions (none by default)

@@ -10,6 +10,7 @@ resource "aws_sqs_queue" "status_updates_dlq" {
 
   message_retention_seconds  = 1209600 # 14 days
   visibility_timeout_seconds = 300     # 5 minutes
+  sqs_managed_sse_enabled    = var.use_localstack ? false : true
 
   tags = merge(
     local.common_tags,
@@ -28,6 +29,7 @@ resource "aws_sqs_queue" "status_updates" {
   message_retention_seconds  = 345600 # 4 days
   visibility_timeout_seconds = 90     # 1.5 minutes (3x Lambda timeout of 30s)
   receive_wait_time_seconds  = 0      # Short polling for responsiveness
+  sqs_managed_sse_enabled    = var.use_localstack ? false : true
 
   # Dead letter queue configuration
   redrive_policy = jsonencode({
@@ -76,6 +78,7 @@ resource "aws_sqs_queue" "webhook_delivery_dlq" {
 
   message_retention_seconds  = 1209600 # 14 days
   visibility_timeout_seconds = 300
+  sqs_managed_sse_enabled    = var.use_localstack ? false : true
 
   tags = merge(
     local.common_tags,
@@ -93,6 +96,7 @@ resource "aws_sqs_queue" "webhook_delivery" {
   message_retention_seconds  = 345600 # 4 days
   visibility_timeout_seconds = 180    # 3 minutes (3x Lambda timeout of 60s)
   receive_wait_time_seconds  = 0
+  sqs_managed_sse_enabled    = var.use_localstack ? false : true
 
   redrive_policy = jsonencode({
     deadLetterTargetArn = aws_sqs_queue.webhook_delivery_dlq.arn

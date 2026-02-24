@@ -31,12 +31,11 @@ resource "aws_iam_policy" "lambda_policy" {
     Statement = [
       {
         Action = [
-          "logs:CreateLogGroup",
           "logs:CreateLogStream",
           "logs:PutLogEvents"
         ]
         Effect   = "Allow"
-        Resource = "arn:aws:logs:*:*:*"
+        Resource = "${aws_cloudwatch_log_group.update_bin_status.arn}:*"
       },
       {
         Action = [

@@ -28,9 +28,27 @@ resource "aws_s3_bucket" "lambda_deployments" {
   )
 }
 
-# Enable versioning for production environments
+# Block public access for health bucket
+resource "aws_s3_bucket_public_access_block" "health" {
+  bucket                  = aws_s3_bucket.health.id
+  block_public_acls       = true
+  block_public_policy     = true
+  ignore_public_acls      = true
+  restrict_public_buckets = true
+}
+
+# Block public access for lambda deployments bucket
+resource "aws_s3_bucket_public_access_block" "lambda_deployments" {
+  bucket                  = aws_s3_bucket.lambda_deployments.id
+  block_public_acls       = true
+  block_public_policy     = true
+  ignore_public_acls      = true
+  restrict_public_buckets = true
+}
+
+# Enable versioning for non-local environments
 resource "aws_s3_bucket_versioning" "lambda_deployments" {
-  count  = var.environment == "prod" ? 1 : 0
+  count  = var.use_localstack ? 0 : 1
   bucket = aws_s3_bucket.lambda_deployments.id
 
   versioning_configuration {

@@ -21,9 +21,9 @@ resource "aws_s3_bucket_public_access_block" "frontend" {
   restrict_public_buckets = true
 }
 
-# Enable versioning for production
+# Enable versioning for non-local environments
 resource "aws_s3_bucket_versioning" "frontend" {
-  count  = var.environment == "prod" ? 1 : 0
+  count  = var.use_localstack ? 0 : 1
   bucket = aws_s3_bucket.frontend.id
 
   versioning_configuration {

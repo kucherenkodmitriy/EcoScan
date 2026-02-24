@@ -20,6 +20,7 @@ pub struct JwtConfig {
 }
 
 impl JwtConfig {
+    #[cfg(test)]
     pub fn from_env() -> Self {
         let secret = std::env::var("JWT_SECRET")
             .unwrap_or_else(|_| "ecoscan-jwt-secret-change-in-production".to_string());

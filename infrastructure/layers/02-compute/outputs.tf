@@ -77,3 +77,9 @@ output "api_key_authorizer_name" {
   description = "Name of the API Key Authorizer Lambda function"
   value       = aws_lambda_function.api_key_authorizer.function_name
 }
+
+# Alarm SNS Topic
+output "alarm_sns_topic_arn" {
+  description = "ARN of the CloudWatch alarm SNS notification topic"
+  value       = var.use_localstack ? "" : aws_sns_topic.alarm_notifications[0].arn
+}

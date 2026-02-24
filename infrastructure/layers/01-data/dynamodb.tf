@@ -12,9 +12,9 @@ resource "aws_dynamodb_table" "trash_bins" {
     type = "S"
   }
 
-  # Enable point-in-time recovery for production
+  # Enable point-in-time recovery for non-local environments
   point_in_time_recovery {
-    enabled = var.environment == "prod"
+    enabled = !var.use_localstack
   }
 
   # Enable encryption for non-local environments
@@ -53,9 +53,9 @@ resource "aws_dynamodb_table" "status_reports" {
     type = "S"
   }
 
-  # Enable point-in-time recovery for production
+  # Enable point-in-time recovery for non-local environments
   point_in_time_recovery {
-    enabled = var.environment == "prod"
+    enabled = !var.use_localstack
   }
 
   # Enable encryption for non-local environments
@@ -88,9 +88,9 @@ resource "aws_dynamodb_table" "admin_users" {
     type = "S"
   }
 
-  # Enable point-in-time recovery for production
+  # Enable point-in-time recovery for non-local environments
   point_in_time_recovery {
-    enabled = var.environment == "prod"
+    enabled = !var.use_localstack
   }
 
   # Enable encryption for non-local environments
@@ -123,9 +123,9 @@ resource "aws_dynamodb_table" "webhook_configs" {
     type = "S"
   }
 
-  # Enable point-in-time recovery for production
+  # Enable point-in-time recovery for non-local environments
   point_in_time_recovery {
-    enabled = var.environment == "prod"
+    enabled = !var.use_localstack
   }
 
   # Enable encryption for non-local environments
@@ -171,9 +171,9 @@ resource "aws_dynamodb_table" "api_keys" {
     write_capacity  = var.dynamodb_billing_mode == "PROVISIONED" ? var.dynamodb_write_capacity : null
   }
 
-  # Enable point-in-time recovery for production
+  # Enable point-in-time recovery for non-local environments
   point_in_time_recovery {
-    enabled = var.environment == "prod"
+    enabled = !var.use_localstack
   }
 
   # Enable encryption for non-local environments
@@ -212,9 +212,9 @@ resource "aws_dynamodb_table" "demo_requests" {
     enabled        = true
   }
 
-  # Enable point-in-time recovery for production
+  # Enable point-in-time recovery for non-local environments
   point_in_time_recovery {
-    enabled = var.environment == "prod"
+    enabled = !var.use_localstack
   }
 
   # Enable encryption for non-local environments

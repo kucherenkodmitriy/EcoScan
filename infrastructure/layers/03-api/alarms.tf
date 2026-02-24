@@ -3,6 +3,10 @@
 # =============================================================================
 # Only created in non-LocalStack environments
 
+locals {
+  alarm_sns_topic_arn = var.use_localstack ? "" : data.terraform_remote_state.compute.outputs.alarm_sns_topic_arn
+}
+
 resource "aws_cloudwatch_metric_alarm" "api_5xx_errors" {
   count = var.use_localstack ? 0 : 1
 
@@ -16,6 +20,9 @@ resource "aws_cloudwatch_metric_alarm" "api_5xx_errors" {
   threshold           = 0
   alarm_description   = "API Gateway 5XX errors > 0 in 5 minutes"
   treat_missing_data  = "notBreaching"
+
+  alarm_actions = local.alarm_sns_topic_arn != "" ? [local.alarm_sns_topic_arn] : []
+  ok_actions    = local.alarm_sns_topic_arn != "" ? [local.alarm_sns_topic_arn] : []
 
   dimensions = {
     ApiName = aws_api_gateway_rest_api.api.name
@@ -37,6 +44,9 @@ resource "aws_cloudwatch_metric_alarm" "api_4xx_errors" {
   threshold           = 50
   alarm_description   = "API Gateway 4XX errors > 50 in 10 minutes"
   treat_missing_data  = "notBreaching"
+
+  alarm_actions = local.alarm_sns_topic_arn != "" ? [local.alarm_sns_topic_arn] : []
+  ok_actions    = local.alarm_sns_topic_arn != "" ? [local.alarm_sns_topic_arn] : []
 
   dimensions = {
     ApiName = aws_api_gateway_rest_api.api.name

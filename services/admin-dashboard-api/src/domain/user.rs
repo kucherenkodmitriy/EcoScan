@@ -116,13 +116,13 @@ pub struct UpdateUserRequest {
     pub is_active: Option<bool>,
 }
 
-/// User created response (includes initial password)
+/// User created response
 #[derive(Debug, Serialize)]
 pub struct UserCreatedResponse {
     pub email: String,
     pub name: String,
     pub role: UserRole,
-    pub initial_password: String,
+    pub password_delivered: bool,
     pub created_at: String,
 }
 

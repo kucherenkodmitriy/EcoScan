@@ -1,3 +1,47 @@
+# =============================================================================
+# CloudWatch Log Groups (explicit, with retention)
+# =============================================================================
+
+resource "aws_cloudwatch_log_group" "update_bin_status" {
+  name              = "/aws/lambda/${var.environment}-${var.project_name}-update-bin-status"
+  retention_in_days = var.use_localstack ? 1 : 14
+  tags              = local.common_tags
+}
+
+resource "aws_cloudwatch_log_group" "authorizer" {
+  name              = "/aws/lambda/${var.environment}-${var.project_name}-authorizer"
+  retention_in_days = var.use_localstack ? 1 : 14
+  tags              = local.common_tags
+}
+
+resource "aws_cloudwatch_log_group" "api_key_authorizer" {
+  name              = "/aws/lambda/${var.environment}-${var.project_name}-apikey-authorizer"
+  retention_in_days = var.use_localstack ? 1 : 14
+  tags              = local.common_tags
+}
+
+resource "aws_cloudwatch_log_group" "admin_dashboard" {
+  name              = "/aws/lambda/${var.environment}-${var.project_name}-admin-dashboard"
+  retention_in_days = var.use_localstack ? 1 : 14
+  tags              = local.common_tags
+}
+
+resource "aws_cloudwatch_log_group" "contact_form_handler" {
+  name              = "/aws/lambda/${var.environment}-${var.project_name}-contact-form"
+  retention_in_days = var.use_localstack ? 1 : 14
+  tags              = local.common_tags
+}
+
+resource "aws_cloudwatch_log_group" "webhook_sender" {
+  name              = "/aws/lambda/${var.environment}-${var.project_name}-webhook-sender"
+  retention_in_days = var.use_localstack ? 1 : 14
+  tags              = local.common_tags
+}
+
+# =============================================================================
+# Lambda Functions
+# =============================================================================
+
 resource "aws_lambda_function" "update_bin_status" {
   function_name = "${var.environment}-${var.project_name}-update-bin-status"
   role          = aws_iam_role.lambda_exec_role.arn
@@ -131,9 +175,29 @@ resource "aws_iam_role" "lambda_authorizer_role" {
   tags = local.common_tags
 }
 
+resource "aws_iam_policy" "authorizer_logs_policy" {
+  name = "${var.environment}-${var.project_name}-authorizer-logs-policy"
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Effect = "Allow"
+        Action = [
+          "logs:CreateLogStream",
+          "logs:PutLogEvents"
+        ]
+        Resource = "${aws_cloudwatch_log_group.authorizer.arn}:*"
+      }
+    ]
+  })
+
+  tags = local.common_tags
+}
+
 resource "aws_iam_role_policy_attachment" "authorizer_logs" {
   role       = aws_iam_role.lambda_authorizer_role.name
-  policy_arn = "arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole"
+  policy_arn = aws_iam_policy.authorizer_logs_policy.arn
 }
 
 # Policy for authorizer to read JWT secret from Secrets Manager
@@ -231,11 +295,10 @@ resource "aws_iam_policy" "api_key_authorizer_policy" {
       {
         Effect = "Allow"
         Action = [
-          "logs:CreateLogGroup",
           "logs:CreateLogStream",
           "logs:PutLogEvents"
         ]
-        Resource = "arn:aws:logs:*:*:*"
+        Resource = "${aws_cloudwatch_log_group.api_key_authorizer.arn}:*"
       },
       {
         Effect = "Allow"
@@ -357,11 +420,10 @@ resource "aws_iam_policy" "admin_dashboard_policy" {
       {
         Effect = "Allow"
         Action = [
-          "logs:CreateLogGroup",
           "logs:CreateLogStream",
           "logs:PutLogEvents"
         ]
-        Resource = "arn:aws:logs:*:*:*"
+        Resource = "${aws_cloudwatch_log_group.admin_dashboard.arn}:*"
       },
       {
         Effect = "Allow"
@@ -395,7 +457,7 @@ resource "aws_iam_policy" "admin_dashboard_policy" {
           "ses:SendEmail",
           "ses:SendRawEmail"
         ]
-        Resource = "*"
+        Resource = var.from_email != "" ? "arn:aws:ses:${var.aws_region}:*:identity/${var.from_email}" : "*"
       },
       {
         Effect = "Allow"
@@ -489,11 +551,10 @@ resource "aws_iam_policy" "contact_form_policy" {
       {
         Effect = "Allow"
         Action = [
-          "logs:CreateLogGroup",
           "logs:CreateLogStream",
           "logs:PutLogEvents"
         ]
-        Resource = "arn:aws:logs:*:*:*"
+        Resource = "${aws_cloudwatch_log_group.contact_form_handler.arn}:*"
       },
       {
         Effect = "Allow"
@@ -517,7 +578,7 @@ resource "aws_iam_policy" "contact_form_policy" {
           "ses:SendEmail",
           "ses:SendRawEmail"
         ]
-        Resource = "*"
+        Resource = var.from_email != "" ? "arn:aws:ses:${var.aws_region}:*:identity/${var.from_email}" : "*"
       }
     ]
   })
@@ -617,11 +678,10 @@ resource "aws_iam_policy" "webhook_sender_policy" {
       {
         Effect = "Allow"
         Action = [
-          "logs:CreateLogGroup",
           "logs:CreateLogStream",
           "logs:PutLogEvents"
         ]
-        Resource = "arn:aws:logs:*:*:*"
+        Resource = "${aws_cloudwatch_log_group.webhook_sender.arn}:*"
       },
       {
         Effect = "Allow"

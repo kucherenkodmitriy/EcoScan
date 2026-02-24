@@ -1,6 +1,8 @@
 use std::sync::Arc;
+use std::time::Duration;
 
 use lambda_runtime::{run, service_fn, Error};
+use reqwest::Client;
 use tracing::error;
 use tracing_subscriber::fmt::format::FmtSpan;
 use tracing_subscriber::{fmt, EnvFilter};
@@ -34,7 +36,16 @@ async fn main() -> Result<(), Error> {
         }
     };
 
-    let state = Arc::new(WebhookState { config, repo });
+    let http_client = Client::builder()
+        .timeout(Duration::from_secs(config.webhook_timeout_secs))
+        .build()
+        .map_err(|e| Error::from(format!("Failed to create HTTP client: {}", e)))?;
+
+    let state = Arc::new(WebhookState {
+        config,
+        repo,
+        http_client,
+    });
 
     run(service_fn(create_handler(state))).await
 }

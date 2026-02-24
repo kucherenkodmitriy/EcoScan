@@ -516,6 +516,22 @@ resource "aws_iam_policy" "github_actions_extra_policy" {
           "arn:aws:sns:*:*:${var.environment}-${var.project_name}-*",
         ]
       },
+      # CloudWatch Alarms Permissions (for Lambda and API Gateway alarms)
+      {
+        Sid    = "CloudWatchAlarmsManagement"
+        Effect = "Allow"
+        Action = [
+          "cloudwatch:PutMetricAlarm",
+          "cloudwatch:DeleteAlarms",
+          "cloudwatch:DescribeAlarms",
+          "cloudwatch:ListTagsForResource",
+          "cloudwatch:TagResource",
+          "cloudwatch:UntagResource",
+        ]
+        Resource = [
+          "arn:aws:cloudwatch:*:*:alarm:${var.environment}-${var.project_name}-*",
+        ]
+      },
       # CloudFront Permissions (for frontend CDN)
       {
         Sid    = "CloudFrontManagement"

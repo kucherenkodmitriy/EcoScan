@@ -532,6 +532,25 @@ resource "aws_iam_policy" "github_actions_extra_policy" {
           "arn:aws:cloudwatch:*:*:alarm:${var.environment}-${var.project_name}-*",
         ]
       },
+      # WAFv2 Permissions (for API Gateway WAF)
+      {
+        Sid    = "WAFv2Management"
+        Effect = "Allow"
+        Action = [
+          "wafv2:CreateWebACL",
+          "wafv2:DeleteWebACL",
+          "wafv2:GetWebACL",
+          "wafv2:UpdateWebACL",
+          "wafv2:ListWebACLs",
+          "wafv2:ListTagsForResource",
+          "wafv2:TagResource",
+          "wafv2:UntagResource",
+          "wafv2:AssociateWebACL",
+          "wafv2:DisassociateWebACL",
+          "wafv2:GetWebACLForResource",
+        ]
+        Resource = "*"
+      },
       # CloudFront Permissions (for frontend CDN)
       {
         Sid    = "CloudFrontManagement"

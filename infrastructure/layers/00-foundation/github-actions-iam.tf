@@ -299,7 +299,6 @@ resource "aws_iam_policy" "github_actions_deployment_policy" {
           "apigateway:PATCH",
           "apigateway:DELETE",
           "apigateway:UpdateRestApiPolicy",
-          "apigateway:SetWebACL",
         ]
         Resource = [
           "arn:aws:apigateway:*::/restapis",
@@ -549,6 +548,7 @@ resource "aws_iam_policy" "github_actions_extra_policy" {
           "wafv2:AssociateWebACL",
           "wafv2:DisassociateWebACL",
           "wafv2:GetWebACLForResource",
+          "apigateway:SetWebACL",
         ]
         Resource = "*"
       },

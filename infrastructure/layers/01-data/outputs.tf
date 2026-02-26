@@ -133,6 +133,17 @@ output "api_keys_table_arn" {
   value       = aws_dynamodb_table.api_keys.arn
 }
 
+# Archived Reports DynamoDB outputs
+output "archived_reports_table_name" {
+  description = "Name of the archived reports DynamoDB table"
+  value       = aws_dynamodb_table.archived_reports.name
+}
+
+output "archived_reports_table_arn" {
+  description = "ARN of the archived reports DynamoDB table"
+  value       = aws_dynamodb_table.archived_reports.arn
+}
+
 output "google_maps_api_key_secret_arn" {
   description = "ARN of the Google Maps API key secret in Secrets Manager"
   value       = aws_secretsmanager_secret.google_maps_api_key.arn

@@ -13,15 +13,17 @@ use base64::{engine::general_purpose::STANDARD as BASE64, Engine as _};
 use crate::config::Config;
 use crate::domain::{
     AdminUser, ApiKeyRecord, ApiKeyRepository, AppError, BinInfo, BinRepository, BinType,
-    Coordinates, CreateBinRequest, Result, UpdateApiKeyRequest, UpdateBinRequest,
-    UpdateWebhookRequest, UserRepository, UserRole, WebhookAuthType, WebhookConfig,
-    WebhookRepository,
+    Coordinates, CreateBinRequest, ReportRepository, Result, StatusReport, UpdateApiKeyRequest,
+    UpdateBinRequest, UpdateWebhookRequest, UserRepository, UserRole, WebhookAuthType,
+    WebhookConfig, WebhookRepository,
 };
 
 pub struct DynamoDbRepository {
     client: Client,
     users_table: String,
     bins_table: String,
+    status_reports_table: String,
+    archived_reports_table: String,
     webhooks_table: String,
     api_keys_table: String,
 }
@@ -55,6 +57,8 @@ impl DynamoDbRepository {
             client,
             users_table: config.admin_users_table.clone(),
             bins_table: config.trash_bins_table.clone(),
+            status_reports_table: config.status_reports_table.clone(),
+            archived_reports_table: config.archived_reports_table.clone(),
             webhooks_table: config.webhook_configs_table.clone(),
             api_keys_table: config.api_keys_table.clone(),
         })
@@ -1158,6 +1162,192 @@ impl ApiKeyRepository for DynamoDbRepository {
             .map_err(|e| AppError::DatabaseError(e.to_string()))?;
 
         info!(key_id = %key_id, "API key deactivated (soft delete)");
+        Ok(())
+    }
+}
+
+// =============================================================================
+// Report Repository Implementation (archive & reset)
+// =============================================================================
+
+#[async_trait]
+impl ReportRepository for DynamoDbRepository {
+    #[instrument(skip(self), fields(table = %self.status_reports_table))]
+    async fn query_reports(&self, bin_id: &Uuid) -> Result<Vec<StatusReport>> {
+        let result = self
+            .client
+            .query()
+            .table_name(&self.status_reports_table)
+            .key_condition_expression("binId = :bid")
+            .expression_attribute_values(":bid", AttributeValue::S(bin_id.to_string()))
+            .send()
+            .await
+            .map_err(|e| AppError::DatabaseError(e.to_string()))?;
+
+        let reports: Vec<StatusReport> = result
+            .items
+            .unwrap_or_default()
+            .iter()
+            .filter_map(|item| {
+                let bin_id = item
+                    .get("binId")
+                    .and_then(|v| v.as_s().ok())
+                    .and_then(|s| Uuid::parse_str(s).ok())?;
+                let created_at = item.get("createdAt").and_then(|v| v.as_s().ok()).cloned()?;
+                let status = item
+                    .get("status")
+                    .and_then(|v| v.as_n().ok())
+                    .and_then(|s| s.parse().ok())
+                    .unwrap_or(0);
+                let source = item
+                    .get("source")
+                    .and_then(|v| v.as_s().ok())
+                    .cloned()
+                    .unwrap_or_else(|| "unknown".to_string());
+
+                Some(StatusReport {
+                    bin_id,
+                    created_at,
+                    status,
+                    source,
+                })
+            })
+            .collect();
+
+        info!(bin_id = %bin_id, count = reports.len(), "Queried reports");
+        Ok(reports)
+    }
+
+    #[instrument(skip(self, reports), fields(table = %self.archived_reports_table))]
+    async fn archive_reports(
+        &self,
+        bin_id: &Uuid,
+        reports: &[StatusReport],
+        batch_id: &str,
+        archived_by: &str,
+    ) -> Result<usize> {
+        if reports.is_empty() {
+            return Ok(0);
+        }
+
+        let archived_at = Utc::now().to_rfc3339();
+        let mut archived = 0;
+
+        // DynamoDB BatchWriteItem supports max 25 items per request
+        for chunk in reports.chunks(25) {
+            let write_requests: Vec<aws_sdk_dynamodb::types::WriteRequest> = chunk
+                .iter()
+                .map(|report| {
+                    let mut item = std::collections::HashMap::new();
+                    item.insert("binId".to_string(), AttributeValue::S(bin_id.to_string()));
+                    item.insert(
+                        "createdAt".to_string(),
+                        AttributeValue::S(report.created_at.clone()),
+                    );
+                    item.insert(
+                        "status".to_string(),
+                        AttributeValue::N(report.status.to_string()),
+                    );
+                    item.insert(
+                        "source".to_string(),
+                        AttributeValue::S(report.source.clone()),
+                    );
+                    item.insert(
+                        "archivedAt".to_string(),
+                        AttributeValue::S(archived_at.clone()),
+                    );
+                    item.insert(
+                        "archiveBatchId".to_string(),
+                        AttributeValue::S(batch_id.to_string()),
+                    );
+                    item.insert(
+                        "archivedBy".to_string(),
+                        AttributeValue::S(archived_by.to_string()),
+                    );
+
+                    aws_sdk_dynamodb::types::WriteRequest::builder()
+                        .put_request(
+                            aws_sdk_dynamodb::types::PutRequest::builder()
+                                .set_item(Some(item))
+                                .build()
+                                .expect("valid put request"),
+                        )
+                        .build()
+                })
+                .collect();
+
+            self.client
+                .batch_write_item()
+                .request_items(&self.archived_reports_table, write_requests)
+                .send()
+                .await
+                .map_err(|e| AppError::DatabaseError(e.to_string()))?;
+
+            archived += chunk.len();
+        }
+
+        info!(bin_id = %bin_id, archived = archived, batch_id = %batch_id, "Archived reports");
+        Ok(archived)
+    }
+
+    #[instrument(skip(self, reports), fields(table = %self.status_reports_table))]
+    async fn delete_reports(&self, bin_id: &Uuid, reports: &[StatusReport]) -> Result<()> {
+        if reports.is_empty() {
+            return Ok(());
+        }
+
+        // DynamoDB BatchWriteItem supports max 25 items per request
+        for chunk in reports.chunks(25) {
+            let write_requests: Vec<aws_sdk_dynamodb::types::WriteRequest> = chunk
+                .iter()
+                .map(|report| {
+                    let mut key = std::collections::HashMap::new();
+                    key.insert("binId".to_string(), AttributeValue::S(bin_id.to_string()));
+                    key.insert(
+                        "createdAt".to_string(),
+                        AttributeValue::S(report.created_at.clone()),
+                    );
+
+                    aws_sdk_dynamodb::types::WriteRequest::builder()
+                        .delete_request(
+                            aws_sdk_dynamodb::types::DeleteRequest::builder()
+                                .set_key(Some(key))
+                                .build()
+                                .expect("valid delete request"),
+                        )
+                        .build()
+                })
+                .collect();
+
+            self.client
+                .batch_write_item()
+                .request_items(&self.status_reports_table, write_requests)
+                .send()
+                .await
+                .map_err(|e| AppError::DatabaseError(e.to_string()))?;
+        }
+
+        info!(bin_id = %bin_id, deleted = reports.len(), "Deleted reports from source table");
+        Ok(())
+    }
+
+    #[instrument(skip(self), fields(table = %self.bins_table))]
+    async fn reset_bin_status(&self, bin_id: &Uuid) -> Result<()> {
+        let now = Utc::now().to_rfc3339();
+
+        self.client
+            .update_item()
+            .table_name(&self.bins_table)
+            .key("binId", AttributeValue::S(bin_id.to_string()))
+            .update_expression("SET #s = :zero, reportsCount = :zero, lastUpdated = :now")
+            .expression_attribute_names("#s", "status")
+            .expression_attribute_values(":zero", AttributeValue::N("0".to_string()))
+            .expression_attribute_values(":now", AttributeValue::S(now))
+            .send()
+            .await
+            .map_err(|e| AppError::DatabaseError(e.to_string()))?;
+
+        info!(bin_id = %bin_id, "Reset bin status to 0");
         Ok(())
     }
 }

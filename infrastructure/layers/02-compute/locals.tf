@@ -20,18 +20,20 @@ locals {
   jwt_secret_arn = data.terraform_remote_state.data.outputs.jwt_secret_arn
 
   # Get SQS queue info from data layer (no circular dependency)
-  sqs_queue_arn  = data.terraform_remote_state.data.outputs.sqs_queue_arn
-  sqs_queue_name = data.terraform_remote_state.data.outputs.sqs_queue_name
+  sqs_queue_arn = data.terraform_remote_state.data.outputs.sqs_queue_arn
 
   # Webhook infrastructure from data layer
   webhook_sqs_queue_arn      = data.terraform_remote_state.data.outputs.webhook_sqs_queue_arn
-  webhook_sqs_queue_name     = data.terraform_remote_state.data.outputs.webhook_sqs_queue_name
   webhook_configs_table_name = data.terraform_remote_state.data.outputs.webhook_configs_table_name
   webhook_configs_table_arn  = data.terraform_remote_state.data.outputs.webhook_configs_table_arn
 
   # API Keys table from data layer
   api_keys_table_name = data.terraform_remote_state.data.outputs.api_keys_table_name
   api_keys_table_arn  = data.terraform_remote_state.data.outputs.api_keys_table_arn
+
+  # Archived Reports table from data layer
+  archived_reports_table_name = data.terraform_remote_state.data.outputs.archived_reports_table_name
+  archived_reports_table_arn  = data.terraform_remote_state.data.outputs.archived_reports_table_arn
 
   # DLQ names from data layer (for CloudWatch alarms)
   sqs_dlq_name         = data.terraform_remote_state.data.outputs.sqs_dlq_name

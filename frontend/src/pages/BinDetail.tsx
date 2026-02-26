@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useParams, useNavigate, Link } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
-import { getBin, deleteBin, Bin } from '../api/client'
+import { getBin, deleteBin, resetBinReports, Bin } from '../api/client'
 import { useBreadcrumbs } from '../context/BreadcrumbContext'
 import QRLabel from '../components/QRLabel'
 import styles from './BinDetail.module.css'
@@ -27,6 +27,9 @@ export default function BinDetail() {
   const [error, setError] = useState('')
   const [deleting, setDeleting] = useState(false)
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
+  const [showResetConfirm, setShowResetConfirm] = useState(false)
+  const [resetting, setResetting] = useState(false)
+  const [resetSuccess, setResetSuccess] = useState('')
   const [showQRPreview, setShowQRPreview] = useState(false)
   const [isPrinting, setIsPrinting] = useState(false)
 
@@ -67,6 +70,25 @@ export default function BinDetail() {
       setError(err instanceof Error ? err.message : t('binDetail.failedToDelete'))
       setDeleting(false)
       setShowDeleteConfirm(false)
+    }
+  }
+
+  const handleReset = async () => {
+    if (!id) return
+
+    setResetting(true)
+    try {
+      const result = await resetBinReports(id)
+      setResetSuccess(t('binDetail.resetSuccess', { count: result.archived_count }))
+      setShowResetConfirm(false)
+      // Refresh bin data
+      const data = await getBin(id)
+      setBin(data)
+    } catch (err) {
+      setError(err instanceof Error ? err.message : t('binDetail.failedToReset'))
+      setShowResetConfirm(false)
+    } finally {
+      setResetting(false)
     }
   }
 
@@ -115,6 +137,14 @@ export default function BinDetail() {
                   {t('binDetail.editBin')}
                 </Link>
                 <button
+                  className="btn btn-secondary"
+                  onClick={() => setShowResetConfirm(true)}
+                  disabled={resetting || (bin.reports_count || 0) === 0}
+                  style={{ background: '#2563eb', border: 'none' }}
+                >
+                  {t('binDetail.resetReports')}
+                </button>
+                <button
                   className={`btn ${styles.btnDanger}`}
                   onClick={() => setShowDeleteConfirm(true)}
                   disabled={deleting}
@@ -125,6 +155,11 @@ export default function BinDetail() {
             </div>
 
             {error && <div className="error-message">{error}</div>}
+            {resetSuccess && (
+              <div className="success-message" style={{ background: '#dcfce7', color: '#166534', padding: '12px 16px', borderRadius: 8, marginBottom: 16 }}>
+                {resetSuccess}
+              </div>
+            )}
 
             <div className={styles.grid}>
               <div className={styles.card}>
@@ -206,6 +241,34 @@ export default function BinDetail() {
                       disabled={deleting}
                     >
                       {deleting ? t('binDetail.deleting') : t('common.delete')}
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {showResetConfirm && (
+              <div className={styles.modal}>
+                <div className={styles.modalContent}>
+                  <h3>{t('binDetail.resetReportsTitle')}</h3>
+                  <p>{t('binDetail.resetReportsConfirm', { name: bin.name, count: bin.reports_count || 0 })}</p>
+                  <p style={{ fontSize: '0.9em', color: '#666' }}>{t('binDetail.resetReportsNote')}</p>
+                  <div className={styles.modalActions}>
+                    <button
+                      className="btn btn-secondary"
+                      onClick={() => setShowResetConfirm(false)}
+                      disabled={resetting}
+                      style={{ background: '#666', border: 'none' }}
+                    >
+                      {t('common.cancel')}
+                    </button>
+                    <button
+                      className="btn btn-primary"
+                      onClick={handleReset}
+                      disabled={resetting}
+                      style={{ background: '#2563eb', border: 'none' }}
+                    >
+                      {resetting ? t('binDetail.resettingReports') : t('binDetail.confirmReset')}
                     </button>
                   </div>
                 </div>

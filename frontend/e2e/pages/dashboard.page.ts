@@ -16,6 +16,16 @@ export class DashboardPage {
   readonly fullnessSlider: Locator;
   readonly createRouteButton: Locator;
 
+  // Bulk selection
+  readonly selectAllCheckbox: Locator;
+  readonly bulkBar: Locator;
+  readonly resetSelectedButton: Locator;
+  readonly deselectAllButton: Locator;
+  readonly bulkResetConfirmModal: Locator;
+  readonly bulkResetConfirmButton: Locator;
+  readonly bulkResetCancelButton: Locator;
+  readonly successBanner: Locator;
+
   constructor(page: Page) {
     this.page = page;
     this.logoutButton = page.getByRole('button', { name: /logout/i });
@@ -31,6 +41,16 @@ export class DashboardPage {
     this.fabAddButton = page.locator('[class*="fabAdd"]');
     this.fullnessSlider = page.locator('[class*="fullnessSlider"], [class*="sliderContainer"]');
     this.createRouteButton = page.getByRole('button', { name: /create route/i });
+
+    // Bulk selection locators
+    this.selectAllCheckbox = page.locator('table thead input[type="checkbox"]');
+    this.bulkBar = page.locator('[class*="bulkBar"]');
+    this.resetSelectedButton = page.getByRole('button', { name: /reset reports/i });
+    this.deselectAllButton = page.locator('[class*="deselectBtn"]');
+    this.bulkResetConfirmModal = page.locator('[class*="modalOverlay"]');
+    this.bulkResetConfirmButton = page.locator('[class*="modalContent"] button', { hasText: /reset reports/i });
+    this.bulkResetCancelButton = page.locator('[class*="modalContent"] button', { hasText: /cancel/i });
+    this.successBanner = page.locator('[class*="successBanner"]');
   }
 
   async goto() {
@@ -47,5 +67,13 @@ export class DashboardPage {
 
   getBinRowByName(name: string): Locator {
     return this.binTableRows.filter({ hasText: name });
+  }
+
+  getRowCheckbox(name: string): Locator {
+    return this.getBinRowByName(name).locator('input[type="checkbox"]');
+  }
+
+  getSelectedRows(): Locator {
+    return this.page.locator('table tbody tr[class*="selectedRow"]');
   }
 }

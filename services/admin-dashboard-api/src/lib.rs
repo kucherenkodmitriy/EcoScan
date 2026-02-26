@@ -14,17 +14,17 @@ use tracing::{info, instrument, warn};
 use uuid::Uuid;
 
 use crate::application::{
-    create_admin_user, create_api_key, create_bin, create_webhook, delete_api_key, delete_bin,
-    delete_user, delete_webhook, get_api_key, get_bin, get_bin_external, get_user, get_webhook,
-    handle_forgot_password, handle_login, handle_reset_password, list_api_keys, list_bins,
-    list_bins_external, list_users, list_webhooks, update_api_key, update_bin, update_user,
-    update_webhook,
+    batch_reset_reports, create_admin_user, create_api_key, create_bin, create_webhook,
+    delete_api_key, delete_bin, delete_user, delete_webhook, get_api_key, get_bin,
+    get_bin_external, get_user, get_webhook, handle_forgot_password, handle_login,
+    handle_reset_password, list_api_keys, list_bins, list_bins_external, list_users, list_webhooks,
+    reset_reports, update_api_key, update_bin, update_user, update_webhook,
 };
 use crate::config::Config;
 use crate::domain::{
-    AppError, CreateApiKeyRequest, CreateBinRequest, CreateUserRequest, CreateWebhookRequest,
-    ForgotPasswordRequest, LoginRequest, PublicBinInfo, ResetPasswordRequest, UpdateApiKeyRequest,
-    UpdateBinRequest, UpdateUserRequest, UpdateWebhookRequest,
+    AppError, BatchResetReportsRequest, CreateApiKeyRequest, CreateBinRequest, CreateUserRequest,
+    CreateWebhookRequest, ForgotPasswordRequest, LoginRequest, PublicBinInfo, ResetPasswordRequest,
+    UpdateApiKeyRequest, UpdateBinRequest, UpdateUserRequest, UpdateWebhookRequest,
 };
 use crate::infrastructure::{decode_token, DynamoDbRepository, EmailService, JwtConfig};
 
@@ -237,6 +237,11 @@ async fn api_handler_inner(
             handle_get_bin(repo, bin_id, cors_origin).await
         }
 
+        // Batch reset reports for multiple bins
+        ("POST", p) if p.ends_with("/admin/bins/reset-reports") => {
+            handle_batch_reset_reports(&request, repo, jwt_secret, cors_origin).await
+        }
+
         // Create bin
         ("POST", p) if p.ends_with("/admin/bins") => {
             handle_create_bin(&request, repo, cors_origin).await
@@ -246,6 +251,12 @@ async fn api_handler_inner(
         ("PUT", p) if p.contains("/admin/bins/") => {
             let bin_id = get_path_param(&request, "bin_id");
             handle_update_bin(&request, repo, bin_id, cors_origin).await
+        }
+
+        // Reset bin reports (archive & reset status)
+        ("POST", p) if p.contains("/admin/bins/") && p.ends_with("/reset-reports") => {
+            let bin_id = get_path_param(&request, "bin_id");
+            handle_reset_reports(&request, repo, bin_id, jwt_secret, cors_origin).await
         }
 
         // Delete bin
@@ -631,6 +642,100 @@ fn require_admin_role(
     }
 
     Ok(())
+}
+
+/// Check if the user has admin or operator role
+#[allow(clippy::result_large_err)]
+fn require_operator_or_admin_role(
+    request: &ApiGatewayProxyRequest,
+    jwt_secret: &str,
+    cors_origin: &str,
+) -> Result<(), ApiGatewayProxyResponse> {
+    let role = extract_authorizer_context(request, "role", jwt_secret)
+        .unwrap_or_else(|| "viewer".to_string());
+
+    let role_lower = role.to_lowercase();
+    if role_lower != "admin" && role_lower != "operator" {
+        warn!(role = %role, "Unauthorized access attempt - operator or admin required");
+        return Err(error_response(
+            403,
+            "Forbidden: Operator or Admin role required",
+            cors_origin,
+        ));
+    }
+
+    Ok(())
+}
+
+// =============================================================================
+// Reset Reports Handler
+// =============================================================================
+
+async fn handle_reset_reports(
+    request: &ApiGatewayProxyRequest,
+    repo: &DynamoDbRepository,
+    bin_id: Option<String>,
+    jwt_secret: &str,
+    cors_origin: &str,
+) -> ApiGatewayProxyResponse {
+    if let Err(response) = require_operator_or_admin_role(request, jwt_secret, cors_origin) {
+        return response;
+    }
+
+    let bin_id = match bin_id.and_then(|s| Uuid::parse_str(&s).ok()) {
+        Some(id) => id,
+        None => return error_response(400, "Invalid bin ID", cors_origin),
+    };
+
+    let archived_by = extract_authorizer_context(request, "email", jwt_secret)
+        .unwrap_or_else(|| "unknown".to_string());
+
+    match reset_reports(repo, repo, &bin_id, &archived_by).await {
+        Ok(response) => success_response(200, serde_json::to_value(response).unwrap(), cors_origin),
+        Err(e) => {
+            let status = error_to_status_code(&e);
+            error_response(status, &e.to_string(), cors_origin)
+        }
+    }
+}
+
+// =============================================================================
+// Batch Reset Reports Handler
+// =============================================================================
+
+async fn handle_batch_reset_reports(
+    request: &ApiGatewayProxyRequest,
+    repo: &DynamoDbRepository,
+    jwt_secret: &str,
+    cors_origin: &str,
+) -> ApiGatewayProxyResponse {
+    if let Err(response) = require_operator_or_admin_role(request, jwt_secret, cors_origin) {
+        return response;
+    }
+
+    let body = match &request.body {
+        Some(b) => b,
+        None => return error_response(400, "Request body is required", cors_origin),
+    };
+
+    let batch_request: BatchResetReportsRequest = match serde_json::from_str(body) {
+        Ok(r) => r,
+        Err(e) => {
+            warn!(error = %e, "Failed to parse batch reset reports request");
+            return error_response(400, "Invalid request body", cors_origin);
+        }
+    };
+
+    let archived_by = extract_authorizer_context(request, "email", jwt_secret)
+        .unwrap_or_else(|| "unknown".to_string());
+
+    match batch_reset_reports(repo, repo, &batch_request.bin_ids, &archived_by).await {
+        Ok(response) => success_response(200, serde_json::to_value(response).unwrap(), cors_origin),
+        Err(e) => {
+            let status = error_to_status_code(&e);
+            error_response(status, &e.to_string(), cors_origin)
+        }
+    }
 }
 
 // =============================================================================

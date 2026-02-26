@@ -348,17 +348,18 @@ resource "aws_lambda_function" "admin_dashboard" {
   environment {
     variables = merge(
       {
-        ADMIN_USERS_TABLE_NAME     = local.admin_users_table_name
-        TRASH_BINS_TABLE_NAME      = local.trash_bins_table_name
-        STATUS_REPORTS_TABLE_NAME  = local.status_reports_table_name
-        WEBHOOK_CONFIGS_TABLE_NAME = local.webhook_configs_table_name
-        API_KEYS_TABLE_NAME        = local.api_keys_table_name
-        JWT_EXPIRY_HOURS           = var.jwt_expiry_hours
-        CORS_ALLOWED_ORIGINS       = var.cors_allowed_origins
-        FROM_EMAIL                 = var.from_email
-        FRONTEND_URL               = var.frontend_url
-        AWS_XRAY_TRACING_NAME      = "${var.environment}-${var.project_name}-admin-dashboard"
-        AWS_XRAY_CONTEXT_MISSING   = "LOG_ERROR"
+        ADMIN_USERS_TABLE_NAME      = local.admin_users_table_name
+        TRASH_BINS_TABLE_NAME       = local.trash_bins_table_name
+        STATUS_REPORTS_TABLE_NAME   = local.status_reports_table_name
+        WEBHOOK_CONFIGS_TABLE_NAME  = local.webhook_configs_table_name
+        API_KEYS_TABLE_NAME         = local.api_keys_table_name
+        ARCHIVED_REPORTS_TABLE_NAME = local.archived_reports_table_name
+        JWT_EXPIRY_HOURS            = var.jwt_expiry_hours
+        CORS_ALLOWED_ORIGINS        = var.cors_allowed_origins
+        FROM_EMAIL                  = var.from_email
+        FRONTEND_URL                = var.frontend_url
+        AWS_XRAY_TRACING_NAME       = "${var.environment}-${var.project_name}-admin-dashboard"
+        AWS_XRAY_CONTEXT_MISSING    = "LOG_ERROR"
       },
       var.use_localstack ? {
         # LocalStack: use env vars directly
@@ -433,7 +434,8 @@ resource "aws_iam_policy" "admin_dashboard_policy" {
           "dynamodb:UpdateItem",
           "dynamodb:DeleteItem",
           "dynamodb:Query",
-          "dynamodb:Scan"
+          "dynamodb:Scan",
+          "dynamodb:BatchWriteItem"
         ]
         Resource = [
           local.admin_users_table_arn,
@@ -441,7 +443,8 @@ resource "aws_iam_policy" "admin_dashboard_policy" {
           local.status_reports_table_arn,
           local.webhook_configs_table_arn,
           local.api_keys_table_arn,
-          "${local.api_keys_table_arn}/index/*"
+          "${local.api_keys_table_arn}/index/*",
+          local.archived_reports_table_arn
         ]
       },
       {

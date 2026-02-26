@@ -2,7 +2,7 @@ import { useState, useEffect, useMemo, useCallback } from 'react'
 import { Link } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { useBreadcrumbs } from '../context/BreadcrumbContext'
-import { getBins, Bin } from '../api/client'
+import { getBins, batchResetBinReports, Bin } from '../api/client'
 import BinMap from '../components/map/BinMap'
 import FullnessSlider from '../components/map/FullnessSlider'
 import AddBinModal from '../components/map/AddBinModal'
@@ -44,6 +44,12 @@ export default function Dashboard() {
   const [showRouteModal, setShowRouteModal] = useState(false)
   const [directions, setDirections] = useState<google.maps.DirectionsResult | null>(null)
   const [routeLoading, setRouteLoading] = useState(false)
+
+  // Bulk selection state (list view only)
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
+  const [resetting, setResetting] = useState(false)
+  const [resetSuccess, setResetSuccess] = useState('')
+  const [showResetConfirm, setShowResetConfirm] = useState(false)
 
   const { isLoaded } = useGoogleMaps()
 
@@ -101,6 +107,52 @@ export default function Dashboard() {
   // Handle bin created
   const handleBinCreated = () => {
     loadBins()
+  }
+
+  // Bulk selection helpers
+  const toggleSelect = (binId: string) => {
+    setSelectedIds((prev) => {
+      const next = new Set(prev)
+      if (next.has(binId)) next.delete(binId)
+      else next.add(binId)
+      return next
+    })
+  }
+
+  const selectAll = () => {
+    setSelectedIds(new Set(bins.map((b) => b.bin_id)))
+  }
+
+  const deselectAll = () => {
+    setSelectedIds(new Set())
+  }
+
+  const handleBulkReset = async () => {
+    setShowResetConfirm(false)
+    setResetting(true)
+    setResetSuccess('')
+    try {
+      const result = await batchResetBinReports(Array.from(selectedIds))
+      setResetSuccess(
+        t('dashboard.bulkResetSuccess', {
+          count: result.results.length,
+          archived: result.total_archived,
+        })
+      )
+      setSelectedIds(new Set())
+      loadBins()
+      setTimeout(() => setResetSuccess(''), 5000)
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to reset reports')
+    } finally {
+      setResetting(false)
+    }
+  }
+
+  // Clear selection when switching to map view
+  const handleViewChange = (mode: ViewMode) => {
+    if (mode === 'map') setSelectedIds(new Set())
+    setViewMode(mode)
   }
 
   // Get bins with coordinates for routing
@@ -182,13 +234,13 @@ export default function Dashboard() {
           <div className={styles.viewToggle}>
             <button
               className={`${styles.toggleBtn} ${viewMode === 'map' ? styles.active : ''}`}
-              onClick={() => setViewMode('map')}
+              onClick={() => handleViewChange('map')}
             >
               {t('dashboard.mapView')}
             </button>
             <button
               className={`${styles.toggleBtn} ${viewMode === 'list' ? styles.active : ''}`}
-              onClick={() => setViewMode('list')}
+              onClick={() => handleViewChange('list')}
             >
               {t('dashboard.showAsList')}
             </button>
@@ -242,6 +294,53 @@ export default function Dashboard() {
           </div>
         )}
 
+        {/* Success Banner */}
+        {resetSuccess && (
+          <div className={styles.successBanner}>
+            {resetSuccess}
+          </div>
+        )}
+
+        {/* Bulk Action Bar */}
+        {viewMode === 'list' && selectedIds.size > 0 && (
+          <div className={styles.bulkBar}>
+            <span>{t('dashboard.binsSelected', { count: selectedIds.size })}</span>
+            <button
+              className="btn btn-primary"
+              onClick={() => setShowResetConfirm(true)}
+              disabled={resetting}
+              style={{ background: '#c62828', border: 'none' }}
+            >
+              {resetting ? t('dashboard.resettingSelected') : t('dashboard.resetSelected')}
+            </button>
+            <button className={styles.deselectBtn} onClick={deselectAll}>
+              {t('dashboard.deselectAll')}
+            </button>
+          </div>
+        )}
+
+        {/* Bulk Reset Confirmation Modal */}
+        {showResetConfirm && (
+          <div className={styles.modalOverlay} onClick={() => setShowResetConfirm(false)}>
+            <div className={styles.modalContent} onClick={(e) => e.stopPropagation()}>
+              <h3>{t('dashboard.bulkResetTitle')}</h3>
+              <p>{t('dashboard.bulkResetConfirm', { count: selectedIds.size })}</p>
+              <div className={styles.modalActions}>
+                <button className="btn btn-secondary" onClick={() => setShowResetConfirm(false)}>
+                  {t('common.cancel')}
+                </button>
+                <button
+                  className="btn btn-primary"
+                  onClick={handleBulkReset}
+                  style={{ background: '#c62828', border: 'none' }}
+                >
+                  {t('dashboard.resetSelected')}
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* Main Content */}
         {error ? (
           <div className={styles.errorState}>
@@ -292,6 +391,14 @@ export default function Dashboard() {
               <table className={styles.table}>
                 <thead>
                   <tr>
+                    <th className={styles.checkbox}>
+                      <input
+                        type="checkbox"
+                        checked={bins.length > 0 && selectedIds.size === bins.length}
+                        onChange={(e) => (e.target.checked ? selectAll() : deselectAll())}
+                        title={t('dashboard.selectAll')}
+                      />
+                    </th>
                     <th>{t('dashboard.table.name')}</th>
                     <th>{t('dashboard.table.type')}</th>
                     <th>{t('dashboard.table.address')}</th>
@@ -304,7 +411,14 @@ export default function Dashboard() {
                 </thead>
                 <tbody>
                   {bins.map((bin) => (
-                    <tr key={bin.bin_id}>
+                    <tr key={bin.bin_id} className={selectedIds.has(bin.bin_id) ? styles.selectedRow : undefined}>
+                      <td className={styles.checkbox}>
+                        <input
+                          type="checkbox"
+                          checked={selectedIds.has(bin.bin_id)}
+                          onChange={() => toggleSelect(bin.bin_id)}
+                        />
+                      </td>
                       <td>
                         <Link to={`/bins/${bin.bin_id}`} className={styles.binLink}>
                           <strong>{bin.name || t('binDetail.unnamed')}</strong>

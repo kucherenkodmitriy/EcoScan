@@ -95,6 +95,14 @@
     "noBinsFound": "Žádné koše nenalezeny. Vytvořte svůj první koš.",
     "coordsWarning": "{{count}} koš(ů) není zobrazen na mapě (chybějící souřadnice)",
     "tryAgain": "Zkusit znovu",
+    "binsSelected": "{{count}} košů vybráno",
+    "resetSelected": "Resetovat hlášení",
+    "resettingSelected": "Resetuji...",
+    "deselectAll": "Zrušit výběr",
+    "selectAll": "Vybrat vše",
+    "bulkResetSuccess": "Úspěšně resetováno {{count}} košů ({{archived}} hlášení archivováno).",
+    "bulkResetConfirm": "Resetovat hlášení pro {{count}} vybraných košů? Hlášení budou archivována.",
+    "bulkResetTitle": "Resetovat hlášení pro vybrané koše?",
     "table": {
       "name": "Název",
       "type": "Typ",
@@ -129,7 +137,15 @@
     "loadingBin": "Nahrávám koš...",
     "failedToLoad": "Nepodařilo se načíst koš",
     "failedToDelete": "Nepodařilo se smazat koš",
-    "unnamed": "Nepojmenovaný koš"
+    "unnamed": "Nepojmenovaný koš",
+    "resetReports": "Resetovat hlášení",
+    "resetReportsTitle": "Resetovat hlášení?",
+    "resetReportsConfirm": "Toto archivuje všech {{count}} hlášení pro \"{{name}}\" a resetuje jeho stav na 0 %.",
+    "resetReportsNote": "Archivovaná hlášení jsou zachována pro analytiku. Tuto akci nelze vrátit.",
+    "resettingReports": "Resetuji...",
+    "confirmReset": "Resetovat hlášení",
+    "resetSuccess": "Úspěšně archivováno {{count}} hlášení a stav koše resetován.",
+    "failedToReset": "Nepodařilo se resetovat hlášení"
   },
   "binForm": {
     "createTitle": "Vytvořit nový koš",

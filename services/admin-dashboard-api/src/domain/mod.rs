@@ -167,6 +167,60 @@ pub trait WebhookRepository: Send + Sync {
     async fn delete_webhook(&self, webhook_id: &str) -> Result<()>;
 }
 
+/// A single status report from the status-reports table
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct StatusReport {
+    pub bin_id: Uuid,
+    pub created_at: String,
+    pub status: i32,
+    pub source: String,
+}
+
+/// Response from the reset-reports operation
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ResetReportsResponse {
+    pub archived_count: usize,
+    pub archive_batch_id: String,
+    pub message: String,
+}
+
+/// Request to batch reset reports for multiple bins
+#[derive(Debug, Deserialize)]
+pub struct BatchResetReportsRequest {
+    pub bin_ids: Vec<Uuid>,
+}
+
+/// Result of resetting reports for a single bin within a batch
+#[derive(Debug, Clone, Serialize)]
+pub struct BatchResetResult {
+    pub bin_id: Uuid,
+    pub archived_count: usize,
+    pub archive_batch_id: String,
+}
+
+/// Response from the batch reset-reports operation
+#[derive(Debug, Serialize)]
+pub struct BatchResetReportsResponse {
+    pub results: Vec<BatchResetResult>,
+    pub total_archived: usize,
+    pub message: String,
+}
+
+/// Repository trait for report archival operations
+#[async_trait]
+pub trait ReportRepository: Send + Sync {
+    async fn query_reports(&self, bin_id: &Uuid) -> Result<Vec<StatusReport>>;
+    async fn archive_reports(
+        &self,
+        bin_id: &Uuid,
+        reports: &[StatusReport],
+        batch_id: &str,
+        archived_by: &str,
+    ) -> Result<usize>;
+    async fn delete_reports(&self, bin_id: &Uuid, reports: &[StatusReport]) -> Result<()>;
+    async fn reset_bin_status(&self, bin_id: &Uuid) -> Result<()>;
+}
+
 /// Repository trait for API key operations
 #[async_trait]
 pub trait ApiKeyRepository: Send + Sync {

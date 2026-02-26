@@ -1,7 +1,10 @@
-use tracing::{info, instrument};
+use tracing::{info, instrument, warn};
 use uuid::Uuid;
 
-use crate::domain::{AppError, BinInfo, BinRepository, CreateBinRequest, Result, UpdateBinRequest};
+use crate::domain::{
+    AppError, BatchResetReportsResponse, BatchResetResult, BinInfo, BinRepository,
+    CreateBinRequest, ReportRepository, ResetReportsResponse, Result, UpdateBinRequest,
+};
 
 /// List all bins
 #[instrument(skip(repo))]
@@ -91,6 +94,106 @@ pub async fn delete_bin(repo: &dyn BinRepository, bin_id: &Uuid) -> Result<()> {
     Ok(())
 }
 
+/// Reset all reports for a bin: archive to archive table, delete from source, reset status to 0
+#[instrument(skip(bin_repo, report_repo))]
+pub async fn reset_reports(
+    bin_repo: &dyn BinRepository,
+    report_repo: &dyn ReportRepository,
+    bin_id: &Uuid,
+    archived_by: &str,
+) -> Result<ResetReportsResponse> {
+    // Verify bin exists
+    bin_repo
+        .get_bin(bin_id)
+        .await?
+        .ok_or_else(|| AppError::BinNotFound(bin_id.to_string()))?;
+
+    // Query all reports
+    let reports = report_repo.query_reports(bin_id).await?;
+    let count = reports.len();
+    let batch_id = Uuid::new_v4().to_string();
+
+    if !reports.is_empty() {
+        // Archive to archive table
+        report_repo
+            .archive_reports(bin_id, &reports, &batch_id, archived_by)
+            .await?;
+
+        // Delete from source table
+        report_repo.delete_reports(bin_id, &reports).await?;
+    }
+
+    // Reset bin status to 0
+    report_repo.reset_bin_status(bin_id).await?;
+
+    info!(bin_id = %bin_id, archived = count, batch_id = %batch_id, "Reports reset");
+
+    Ok(ResetReportsResponse {
+        archived_count: count,
+        archive_batch_id: batch_id,
+        message: format!(
+            "Successfully archived {} reports and reset bin status",
+            count
+        ),
+    })
+}
+
+/// Batch reset reports for multiple bins
+#[instrument(skip(bin_repo, report_repo))]
+pub async fn batch_reset_reports(
+    bin_repo: &dyn BinRepository,
+    report_repo: &dyn ReportRepository,
+    bin_ids: &[Uuid],
+    archived_by: &str,
+) -> Result<BatchResetReportsResponse> {
+    if bin_ids.is_empty() {
+        return Err(AppError::ValidationError(
+            "At least one bin ID is required".to_string(),
+        ));
+    }
+    if bin_ids.len() > 50 {
+        return Err(AppError::ValidationError(
+            "Cannot reset more than 50 bins at once".to_string(),
+        ));
+    }
+
+    let mut results = Vec::new();
+    let mut total_archived = 0;
+
+    for bin_id in bin_ids {
+        match reset_reports(bin_repo, report_repo, bin_id, archived_by).await {
+            Ok(response) => {
+                total_archived += response.archived_count;
+                results.push(BatchResetResult {
+                    bin_id: *bin_id,
+                    archived_count: response.archived_count,
+                    archive_batch_id: response.archive_batch_id,
+                });
+            }
+            Err(AppError::BinNotFound(id)) => {
+                warn!(bin_id = %id, "Skipping non-existent bin in batch reset");
+            }
+            Err(e) => return Err(e),
+        }
+    }
+
+    let bin_count = results.len();
+    info!(
+        bins = bin_count,
+        total_archived = total_archived,
+        "Batch reset reports completed"
+    );
+
+    Ok(BatchResetReportsResponse {
+        results,
+        total_archived,
+        message: format!(
+            "Successfully reset {} bins ({} reports archived)",
+            bin_count, total_archived
+        ),
+    })
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -113,6 +216,67 @@ mod tests {
             Self {
                 bins: Arc::new(Mutex::new(bins)),
             }
+        }
+    }
+
+    use crate::domain::StatusReport;
+
+    struct MockReportRepository {
+        reports: Arc<Mutex<Vec<StatusReport>>>,
+        archived: Arc<Mutex<Vec<StatusReport>>>,
+        status_reset: Arc<Mutex<bool>>,
+    }
+
+    impl MockReportRepository {
+        fn new() -> Self {
+            Self {
+                reports: Arc::new(Mutex::new(Vec::new())),
+                archived: Arc::new(Mutex::new(Vec::new())),
+                status_reset: Arc::new(Mutex::new(false)),
+            }
+        }
+
+        fn with_reports(reports: Vec<StatusReport>) -> Self {
+            Self {
+                reports: Arc::new(Mutex::new(reports)),
+                archived: Arc::new(Mutex::new(Vec::new())),
+                status_reset: Arc::new(Mutex::new(false)),
+            }
+        }
+    }
+
+    #[async_trait]
+    impl ReportRepository for MockReportRepository {
+        async fn query_reports(&self, bin_id: &Uuid) -> Result<Vec<StatusReport>> {
+            let reports = self.reports.lock().unwrap();
+            Ok(reports
+                .iter()
+                .filter(|r| r.bin_id == *bin_id)
+                .cloned()
+                .collect())
+        }
+
+        async fn archive_reports(
+            &self,
+            _bin_id: &Uuid,
+            reports: &[StatusReport],
+            _batch_id: &str,
+            _archived_by: &str,
+        ) -> Result<usize> {
+            let mut archived = self.archived.lock().unwrap();
+            archived.extend_from_slice(reports);
+            Ok(reports.len())
+        }
+
+        async fn delete_reports(&self, bin_id: &Uuid, _reports: &[StatusReport]) -> Result<()> {
+            let mut reports = self.reports.lock().unwrap();
+            reports.retain(|r| r.bin_id != *bin_id);
+            Ok(())
+        }
+
+        async fn reset_bin_status(&self, _bin_id: &Uuid) -> Result<()> {
+            *self.status_reset.lock().unwrap() = true;
+            Ok(())
         }
     }
 
@@ -284,5 +448,186 @@ mod tests {
         // Check bin is now inactive
         let bin = repo.get_bin(&bin_id).await.unwrap().unwrap();
         assert!(!bin.is_active);
+    }
+
+    #[tokio::test]
+    async fn test_reset_reports_with_reports() {
+        let bin_id = Uuid::new_v4();
+        let bins = vec![BinInfo {
+            bin_id,
+            name: "Test Bin".to_string(),
+            bin_type: BinType::Mixed,
+            address: None,
+            coordinates: None,
+            status: 75,
+            reports_count: 3,
+            last_updated: None,
+            is_active: true,
+        }];
+        let reports = vec![
+            StatusReport {
+                bin_id,
+                created_at: "2026-02-01T10:00:00Z".to_string(),
+                status: 50,
+                source: "qr".to_string(),
+            },
+            StatusReport {
+                bin_id,
+                created_at: "2026-02-02T10:00:00Z".to_string(),
+                status: 75,
+                source: "iot".to_string(),
+            },
+            StatusReport {
+                bin_id,
+                created_at: "2026-02-03T10:00:00Z".to_string(),
+                status: 80,
+                source: "manual".to_string(),
+            },
+        ];
+
+        let bin_repo = MockBinRepository::with_bins(bins);
+        let report_repo = MockReportRepository::with_reports(reports);
+
+        let result = reset_reports(&bin_repo, &report_repo, &bin_id, "admin@test.com")
+            .await
+            .unwrap();
+
+        assert_eq!(result.archived_count, 3);
+        assert!(!result.archive_batch_id.is_empty());
+
+        // Check reports were archived
+        assert_eq!(report_repo.archived.lock().unwrap().len(), 3);
+        // Check source reports were deleted
+        assert!(report_repo.reports.lock().unwrap().is_empty());
+        // Check bin status was reset
+        assert!(*report_repo.status_reset.lock().unwrap());
+    }
+
+    #[tokio::test]
+    async fn test_reset_reports_with_zero_reports() {
+        let bin_id = Uuid::new_v4();
+        let bins = vec![BinInfo {
+            bin_id,
+            name: "Empty Bin".to_string(),
+            bin_type: BinType::Mixed,
+            address: None,
+            coordinates: None,
+            status: 0,
+            reports_count: 0,
+            last_updated: None,
+            is_active: true,
+        }];
+
+        let bin_repo = MockBinRepository::with_bins(bins);
+        let report_repo = MockReportRepository::new();
+
+        let result = reset_reports(&bin_repo, &report_repo, &bin_id, "admin@test.com")
+            .await
+            .unwrap();
+
+        assert_eq!(result.archived_count, 0);
+        // Status should still be reset
+        assert!(*report_repo.status_reset.lock().unwrap());
+    }
+
+    #[tokio::test]
+    async fn test_reset_reports_bin_not_found() {
+        let bin_id = Uuid::new_v4();
+        let bin_repo = MockBinRepository::new();
+        let report_repo = MockReportRepository::new();
+
+        let result = reset_reports(&bin_repo, &report_repo, &bin_id, "admin@test.com").await;
+        assert!(matches!(result, Err(AppError::BinNotFound(_))));
+    }
+
+    // =========================================================================
+    // Batch Reset Reports Tests
+    // =========================================================================
+
+    fn make_bin(bin_id: Uuid) -> BinInfo {
+        BinInfo {
+            bin_id,
+            name: format!("Bin {}", bin_id),
+            bin_type: BinType::Mixed,
+            address: None,
+            coordinates: None,
+            status: 50,
+            reports_count: 2,
+            last_updated: None,
+            is_active: true,
+        }
+    }
+
+    #[tokio::test]
+    async fn test_batch_reset_reports_success() {
+        let id1 = Uuid::new_v4();
+        let id2 = Uuid::new_v4();
+        let bins = vec![make_bin(id1), make_bin(id2)];
+        let reports = vec![
+            StatusReport {
+                bin_id: id1,
+                created_at: "2026-02-01T10:00:00Z".to_string(),
+                status: 50,
+                source: "qr".to_string(),
+            },
+            StatusReport {
+                bin_id: id2,
+                created_at: "2026-02-02T10:00:00Z".to_string(),
+                status: 60,
+                source: "iot".to_string(),
+            },
+        ];
+
+        let bin_repo = MockBinRepository::with_bins(bins);
+        let report_repo = MockReportRepository::with_reports(reports);
+
+        let result = batch_reset_reports(&bin_repo, &report_repo, &[id1, id2], "admin@test.com")
+            .await
+            .unwrap();
+
+        assert_eq!(result.results.len(), 2);
+        assert_eq!(result.total_archived, 2);
+    }
+
+    #[tokio::test]
+    async fn test_batch_reset_reports_empty_ids() {
+        let bin_repo = MockBinRepository::new();
+        let report_repo = MockReportRepository::new();
+
+        let result = batch_reset_reports(&bin_repo, &report_repo, &[], "admin@test.com").await;
+        assert!(matches!(result, Err(AppError::ValidationError(_))));
+    }
+
+    #[tokio::test]
+    async fn test_batch_reset_reports_too_many_ids() {
+        let bin_repo = MockBinRepository::new();
+        let report_repo = MockReportRepository::new();
+        let ids: Vec<Uuid> = (0..51).map(|_| Uuid::new_v4()).collect();
+
+        let result = batch_reset_reports(&bin_repo, &report_repo, &ids, "admin@test.com").await;
+        assert!(matches!(result, Err(AppError::ValidationError(_))));
+    }
+
+    #[tokio::test]
+    async fn test_batch_reset_reports_skips_not_found() {
+        let id1 = Uuid::new_v4();
+        let id_missing = Uuid::new_v4();
+        let bins = vec![make_bin(id1)];
+
+        let bin_repo = MockBinRepository::with_bins(bins);
+        let report_repo = MockReportRepository::new();
+
+        let result = batch_reset_reports(
+            &bin_repo,
+            &report_repo,
+            &[id1, id_missing],
+            "admin@test.com",
+        )
+        .await
+        .unwrap();
+
+        // Only the existing bin should be in results
+        assert_eq!(result.results.len(), 1);
+        assert_eq!(result.results[0].bin_id, id1);
     }
 }

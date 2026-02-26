@@ -193,6 +193,47 @@ resource "aws_dynamodb_table" "api_keys" {
   )
 }
 
+resource "aws_dynamodb_table" "archived_reports" {
+  name         = "${var.environment}-${var.project_name}-archived-reports"
+  billing_mode = var.dynamodb_billing_mode
+  hash_key     = "binId"
+  range_key    = "createdAt"
+
+  read_capacity  = var.dynamodb_billing_mode == "PROVISIONED" ? var.dynamodb_read_capacity : null
+  write_capacity = var.dynamodb_billing_mode == "PROVISIONED" ? var.dynamodb_write_capacity : null
+
+  attribute {
+    name = "binId"
+    type = "S"
+  }
+
+  attribute {
+    name = "createdAt"
+    type = "S"
+  }
+
+  # Enable point-in-time recovery for non-local environments
+  point_in_time_recovery {
+    enabled = !var.use_localstack
+  }
+
+  # Enable encryption for non-local environments
+  dynamic "server_side_encryption" {
+    for_each = var.use_localstack ? [] : [1]
+    content {
+      enabled = true
+    }
+  }
+
+  tags = merge(
+    local.common_tags,
+    {
+      Name    = "${var.project_name}-archived-reports"
+      Purpose = "Store archived bin status reports for analytics"
+    }
+  )
+}
+
 resource "aws_dynamodb_table" "demo_requests" {
   name         = "${var.environment}-${var.project_name}-demo-requests"
   billing_mode = var.dynamodb_billing_mode

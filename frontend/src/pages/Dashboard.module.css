@@ -302,6 +302,100 @@
   background: #c8e6c9;
 }
 
+/* Checkbox column */
+.checkbox {
+  width: 40px;
+  text-align: center !important;
+}
+
+.checkbox input[type="checkbox"] {
+  width: 16px;
+  height: 16px;
+  cursor: pointer;
+}
+
+/* Selected row highlight */
+.selectedRow {
+  background: #e3f2fd !important;
+}
+
+/* Bulk action bar */
+.bulkBar {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 12px 20px;
+  background: white;
+  border-radius: 12px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+  margin-bottom: 16px;
+  font-size: 14px;
+  font-weight: 500;
+  color: #333;
+}
+
+.deselectBtn {
+  background: none;
+  border: none;
+  color: #1565c0;
+  cursor: pointer;
+  font-size: 14px;
+  padding: 4px 8px;
+}
+
+.deselectBtn:hover {
+  text-decoration: underline;
+}
+
+/* Success banner */
+.successBanner {
+  background: #e8f5e9;
+  color: #2e7d32;
+  padding: 12px 20px;
+  border-radius: 8px;
+  font-size: 14px;
+  margin-bottom: 16px;
+}
+
+/* Confirmation modal */
+.modalOverlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+}
+
+.modalContent {
+  background: white;
+  border-radius: 12px;
+  padding: 24px;
+  max-width: 440px;
+  width: 90%;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.15);
+}
+
+.modalContent h3 {
+  margin: 0 0 12px;
+  font-size: 18px;
+  color: #333;
+}
+
+.modalContent p {
+  margin: 0 0 20px;
+  font-size: 14px;
+  color: #666;
+  line-height: 1.5;
+}
+
+.modalActions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 12px;
+}
+
 /* Responsive */
 @media (max-width: 768px) {
   .main {

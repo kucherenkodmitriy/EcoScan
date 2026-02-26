@@ -192,9 +192,6 @@ resource "aws_api_gateway_integration_response" "sns_integration_response" {
   depends_on = [aws_api_gateway_integration.sns_integration]
 }
 
-# Data source to get AWS account ID
-data "aws_caller_identity" "current" {}
-
 resource "aws_api_gateway_deployment" "api_deployment" {
   rest_api_id = aws_api_gateway_rest_api.api.id
 
@@ -236,6 +233,16 @@ resource "aws_api_gateway_deployment" "api_deployment" {
       aws_api_gateway_integration.options_admin_bins_integration.id,
       aws_api_gateway_method.options_admin_bin.id,
       aws_api_gateway_integration.options_admin_bin_integration.id,
+      # Batch reset reports endpoint
+      aws_api_gateway_resource.admin_bins_reset_reports.id,
+      aws_api_gateway_method.post_admin_bins_reset_reports.id,
+      aws_api_gateway_method.options_admin_bins_reset_reports.id,
+      aws_api_gateway_integration.options_admin_bins_reset_reports_integration.id,
+      # Single bin reset reports endpoint
+      aws_api_gateway_resource.admin_bin_reset_reports.id,
+      aws_api_gateway_method.post_admin_bin_reset_reports.id,
+      aws_api_gateway_method.options_admin_bin_reset_reports.id,
+      aws_api_gateway_integration.options_admin_bin_reset_reports_integration.id,
       aws_api_gateway_authorizer.jwt_authorizer.id,
       # Public report endpoints
       aws_api_gateway_resource.report.id,
@@ -806,6 +813,104 @@ resource "aws_api_gateway_integration" "delete_admin_bin_integration" {
   rest_api_id             = aws_api_gateway_rest_api.api.id
   resource_id             = aws_api_gateway_resource.admin_bin_id.id
   http_method             = aws_api_gateway_method.delete_admin_bin.http_method
+  integration_http_method = "POST"
+  type                    = "AWS_PROXY"
+  uri                     = "arn:aws:apigateway:${var.aws_region}:lambda:path/2015-03-31/functions/${local.admin_dashboard_arn}/invocations"
+  credentials             = aws_iam_role.apigateway_lambda_role.arn
+}
+
+# =============================================================================
+# Batch Reset Reports Resource (/admin/bins/reset-reports)
+# =============================================================================
+
+resource "aws_api_gateway_resource" "admin_bins_reset_reports" {
+  rest_api_id = aws_api_gateway_rest_api.api.id
+  parent_id   = aws_api_gateway_resource.admin_bins.id
+  path_part   = "reset-reports"
+}
+
+# OPTIONS /admin/bins/reset-reports - CORS preflight
+resource "aws_api_gateway_method" "options_admin_bins_reset_reports" {
+  rest_api_id   = aws_api_gateway_rest_api.api.id
+  resource_id   = aws_api_gateway_resource.admin_bins_reset_reports.id
+  http_method   = "OPTIONS"
+  authorization = "NONE"
+}
+
+resource "aws_api_gateway_integration" "options_admin_bins_reset_reports_integration" {
+  rest_api_id             = aws_api_gateway_rest_api.api.id
+  resource_id             = aws_api_gateway_resource.admin_bins_reset_reports.id
+  http_method             = aws_api_gateway_method.options_admin_bins_reset_reports.http_method
+  integration_http_method = "POST"
+  type                    = "AWS_PROXY"
+  uri                     = "arn:aws:apigateway:${var.aws_region}:lambda:path/2015-03-31/functions/${local.admin_dashboard_arn}/invocations"
+  credentials             = aws_iam_role.apigateway_lambda_role.arn
+}
+
+# POST /admin/bins/reset-reports - Batch reset reports (requires JWT)
+resource "aws_api_gateway_method" "post_admin_bins_reset_reports" {
+  rest_api_id   = aws_api_gateway_rest_api.api.id
+  resource_id   = aws_api_gateway_resource.admin_bins_reset_reports.id
+  http_method   = "POST"
+  authorization = "CUSTOM"
+  authorizer_id = aws_api_gateway_authorizer.jwt_authorizer.id
+}
+
+resource "aws_api_gateway_integration" "post_admin_bins_reset_reports_integration" {
+  rest_api_id             = aws_api_gateway_rest_api.api.id
+  resource_id             = aws_api_gateway_resource.admin_bins_reset_reports.id
+  http_method             = aws_api_gateway_method.post_admin_bins_reset_reports.http_method
+  integration_http_method = "POST"
+  type                    = "AWS_PROXY"
+  uri                     = "arn:aws:apigateway:${var.aws_region}:lambda:path/2015-03-31/functions/${local.admin_dashboard_arn}/invocations"
+  credentials             = aws_iam_role.apigateway_lambda_role.arn
+}
+
+# =============================================================================
+# Reset Reports Resource (/admin/bins/{bin_id}/reset-reports)
+# =============================================================================
+
+resource "aws_api_gateway_resource" "admin_bin_reset_reports" {
+  rest_api_id = aws_api_gateway_rest_api.api.id
+  parent_id   = aws_api_gateway_resource.admin_bin_id.id
+  path_part   = "reset-reports"
+}
+
+# OPTIONS /admin/bins/{bin_id}/reset-reports - CORS preflight
+resource "aws_api_gateway_method" "options_admin_bin_reset_reports" {
+  rest_api_id   = aws_api_gateway_rest_api.api.id
+  resource_id   = aws_api_gateway_resource.admin_bin_reset_reports.id
+  http_method   = "OPTIONS"
+  authorization = "NONE"
+}
+
+resource "aws_api_gateway_integration" "options_admin_bin_reset_reports_integration" {
+  rest_api_id             = aws_api_gateway_rest_api.api.id
+  resource_id             = aws_api_gateway_resource.admin_bin_reset_reports.id
+  http_method             = aws_api_gateway_method.options_admin_bin_reset_reports.http_method
+  integration_http_method = "POST"
+  type                    = "AWS_PROXY"
+  uri                     = "arn:aws:apigateway:${var.aws_region}:lambda:path/2015-03-31/functions/${local.admin_dashboard_arn}/invocations"
+  credentials             = aws_iam_role.apigateway_lambda_role.arn
+}
+
+# POST /admin/bins/{bin_id}/reset-reports - Reset bin reports (requires JWT)
+resource "aws_api_gateway_method" "post_admin_bin_reset_reports" {
+  rest_api_id   = aws_api_gateway_rest_api.api.id
+  resource_id   = aws_api_gateway_resource.admin_bin_reset_reports.id
+  http_method   = "POST"
+  authorization = "CUSTOM"
+  authorizer_id = aws_api_gateway_authorizer.jwt_authorizer.id
+
+  request_parameters = {
+    "method.request.path.bin_id" = true
+  }
+}
+
+resource "aws_api_gateway_integration" "post_admin_bin_reset_reports_integration" {
+  rest_api_id             = aws_api_gateway_rest_api.api.id
+  resource_id             = aws_api_gateway_resource.admin_bin_reset_reports.id
+  http_method             = aws_api_gateway_method.post_admin_bin_reset_reports.http_method
   integration_http_method = "POST"
   type                    = "AWS_PROXY"
   uri                     = "arn:aws:apigateway:${var.aws_region}:lambda:path/2015-03-31/functions/${local.admin_dashboard_arn}/invocations"

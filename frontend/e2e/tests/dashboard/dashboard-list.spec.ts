@@ -13,7 +13,7 @@ test.describe('Dashboard List View', () => {
 
   test('displays table headers', async ({ page }) => {
     const headers = page.locator('table th');
-    await expect(headers).toHaveCount(8);
+    await expect(headers).toHaveCount(9);
     await expect(page.locator('table th', { hasText: /name/i })).toBeVisible();
     await expect(page.locator('table th', { hasText: /type/i })).toBeVisible();
   });

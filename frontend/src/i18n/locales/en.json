@@ -95,6 +95,14 @@
     "noBinsFound": "No bins found. Create your first bin to get started.",
     "coordsWarning": "{{count}} bin(s) not shown on map (missing coordinates)",
     "tryAgain": "Try Again",
+    "binsSelected": "{{count}} bins selected",
+    "resetSelected": "Reset Reports",
+    "resettingSelected": "Resetting...",
+    "deselectAll": "Deselect All",
+    "selectAll": "Select All",
+    "bulkResetSuccess": "Successfully reset {{count}} bins ({{archived}} reports archived).",
+    "bulkResetConfirm": "Reset reports for {{count}} selected bins? Reports will be archived.",
+    "bulkResetTitle": "Reset Reports for Selected Bins?",
     "table": {
       "name": "Name",
       "type": "Type",
@@ -129,7 +137,15 @@
     "loadingBin": "Loading bin...",
     "failedToLoad": "Failed to load bin",
     "failedToDelete": "Failed to delete bin",
-    "unnamed": "Unnamed Bin"
+    "unnamed": "Unnamed Bin",
+    "resetReports": "Reset Reports",
+    "resetReportsTitle": "Reset Reports?",
+    "resetReportsConfirm": "This will archive all {{count}} reports for \"{{name}}\" and reset its status to 0%.",
+    "resetReportsNote": "Archived reports are preserved for analytics. This action cannot be undone.",
+    "resettingReports": "Resetting...",
+    "confirmReset": "Reset Reports",
+    "resetSuccess": "Successfully archived {{count}} reports and reset bin status.",
+    "failedToReset": "Failed to reset reports"
   },
   "binForm": {
     "createTitle": "Create New Bin",

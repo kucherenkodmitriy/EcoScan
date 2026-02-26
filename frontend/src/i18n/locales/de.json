@@ -95,6 +95,14 @@
     "noBinsFound": "Keine Behälter gefunden. Erstellen Sie Ihren ersten Behälter.",
     "coordsWarning": "{{count}} Behälter nicht auf Karte angezeigt (fehlende Koordinaten)",
     "tryAgain": "Erneut versuchen",
+    "binsSelected": "{{count}} Behälter ausgewählt",
+    "resetSelected": "Meldungen zurücksetzen",
+    "resettingSelected": "Zurücksetzen...",
+    "deselectAll": "Alle abwählen",
+    "selectAll": "Alle auswählen",
+    "bulkResetSuccess": "Erfolgreich {{count}} Behälter zurückgesetzt ({{archived}} Meldungen archiviert).",
+    "bulkResetConfirm": "Meldungen für {{count}} ausgewählte Behälter zurücksetzen? Meldungen werden archiviert.",
+    "bulkResetTitle": "Meldungen für ausgewählte Behälter zurücksetzen?",
     "table": {
       "name": "Name",
       "type": "Typ",
@@ -129,7 +137,15 @@
     "loadingBin": "Behälter laden...",
     "failedToLoad": "Behälter konnte nicht geladen werden",
     "failedToDelete": "Behälter konnte nicht gelöscht werden",
-    "unnamed": "Unbenannter Behälter"
+    "unnamed": "Unbenannter Behälter",
+    "resetReports": "Meldungen zurücksetzen",
+    "resetReportsTitle": "Meldungen zurücksetzen?",
+    "resetReportsConfirm": "Dies archiviert alle {{count}} Meldungen für \"{{name}}\" und setzt den Status auf 0 % zurück.",
+    "resetReportsNote": "Archivierte Meldungen bleiben für Analysen erhalten. Diese Aktion kann nicht rückgängig gemacht werden.",
+    "resettingReports": "Zurücksetzen...",
+    "confirmReset": "Meldungen zurücksetzen",
+    "resetSuccess": "{{count}} Meldungen erfolgreich archiviert und Behälterstatus zurückgesetzt.",
+    "failedToReset": "Meldungen konnten nicht zurückgesetzt werden"
   },
   "binForm": {
     "createTitle": "Neuen Behälter erstellen",

@@ -226,6 +226,61 @@ export async function updateBin(binId: string, input: UpdateBinInput): Promise<B
   return response.json()
 }
 
+export interface ResetReportsResponse {
+  archived_count: number
+  archive_batch_id: string
+  message: string
+}
+
+export async function resetBinReports(binId: string): Promise<ResetReportsResponse> {
+  const response = await fetchWithAuth(`/admin/bins/${binId}/reset-reports`, {
+    method: 'POST',
+  })
+  if (!response.ok) {
+    const errorText = await response.text()
+    let errorMessage = 'Failed to reset reports'
+    try {
+      const errorJson = JSON.parse(errorText)
+      errorMessage = errorJson.error || errorJson.message || errorMessage
+    } catch {
+      if (errorText) errorMessage = errorText
+    }
+    throw new Error(errorMessage)
+  }
+  return response.json()
+}
+
+export interface BatchResetResult {
+  bin_id: string
+  archived_count: number
+  archive_batch_id: string
+}
+
+export interface BatchResetReportsResponse {
+  results: BatchResetResult[]
+  total_archived: number
+  message: string
+}
+
+export async function batchResetBinReports(binIds: string[]): Promise<BatchResetReportsResponse> {
+  const response = await fetchWithAuth('/admin/bins/reset-reports', {
+    method: 'POST',
+    body: JSON.stringify({ bin_ids: binIds }),
+  })
+  if (!response.ok) {
+    const errorText = await response.text()
+    let errorMessage = 'Failed to reset reports'
+    try {
+      const errorJson = JSON.parse(errorText)
+      errorMessage = errorJson.error || errorJson.message || errorMessage
+    } catch {
+      if (errorText) errorMessage = errorText
+    }
+    throw new Error(errorMessage)
+  }
+  return response.json()
+}
+
 export async function deleteBin(binId: string): Promise<void> {
   const response = await fetchWithAuth(`/admin/bins/${binId}`, {
     method: 'DELETE',

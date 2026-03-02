@@ -258,7 +258,11 @@
     "loadingBins": "Loading bins...",
     "noMatchingBins": "No bins match your filters.",
     "unnamed": "Unnamed",
-    "pageOf": "Page {{current}} of {{total}}"
+    "pageOf": "Page {{current}} of {{total}}",
+    "pageTitleLabel": "Page title",
+    "saveAsPdf": "Save as PDF",
+    "generatingPdf": "Generating PDF...",
+    "pdfError": "Failed to generate PDF. Please try again."
   },
   "cookies": {
     "message": "We use cookies to analyze site traffic and improve your experience. No personal data is shared with third parties.",

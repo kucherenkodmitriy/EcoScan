@@ -258,7 +258,11 @@
     "loadingBins": "Nahrávám koše...",
     "noMatchingBins": "Žádné koše neodpovídají filtrům.",
     "unnamed": "Nepojmenovaný",
-    "pageOf": "Strana {{current}} z {{total}}"
+    "pageOf": "Strana {{current}} z {{total}}",
+    "pageTitleLabel": "Nadpis stránky",
+    "saveAsPdf": "Uložit jako PDF",
+    "generatingPdf": "Generuji PDF...",
+    "pdfError": "Nepodařilo se vygenerovat PDF. Zkuste to znovu."
   },
   "cookies": {
     "message": "Používáme cookies k analýze návštěvnosti a zlepšení vašeho zážitku. Osobní údaje nesdílíme s třetími stranami.",

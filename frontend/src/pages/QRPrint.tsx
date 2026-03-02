@@ -50,8 +50,14 @@ export default function QRPrint() {
   // Preview modal
   const [previewBin, setPreviewBin] = useState<Bin | null>(null)
 
+  // Custom title for QR pages
+  const [customTitle, setCustomTitle] = useState('')
+
   // Print mode
   const [isPrintMode, setIsPrintMode] = useState(false)
+
+  // PDF generation
+  const [isGeneratingPdf, setIsGeneratingPdf] = useState(false)
 
   useEffect(() => {
     const loadBins = async () => {
@@ -91,6 +97,8 @@ export default function QRPrint() {
 
   const selectedBins = filteredBins.filter((bin) => selectedIds.has(bin.bin_id))
 
+  const pageTitle = customTitle.trim() || t('qrPrint.containerFullCTA')
+
   const toggleSelection = (binId: string) => {
     setSelectedIds((prev) => {
       const next = new Set(prev)
@@ -113,6 +121,24 @@ export default function QRPrint() {
 
   const handlePrint = () => {
     setIsPrintMode(true)
+  }
+
+  const handleSavePdf = async () => {
+    setIsGeneratingPdf(true)
+    try {
+      const { generateQrPdf } = await import('../utils/generateQrPdf')
+      await generateQrPdf(selectedBins, window.location.origin, {
+        cta: pageTitle,
+        unnamed: t('qrPrint.unnamed'),
+        pageOf: (current: number, total: number) =>
+          t('qrPrint.pageOf', { current, total }),
+      })
+    } catch (err) {
+      console.error('PDF generation failed:', err)
+      alert(t('qrPrint.pdfError'))
+    } finally {
+      setIsGeneratingPdf(false)
+    }
   }
 
   const handlePrintSingle = (bin: Bin) => {
@@ -170,7 +196,7 @@ export default function QRPrint() {
           {binsToPrint.map((bin, index) => (
             <div key={bin.bin_id} className={styles.printPage}>
               <div className={styles.printPageContent}>
-                <h1 className={styles.printCTA}>{t('qrPrint.containerFullCTA')}</h1>
+                <h1 className={styles.printCTA}>{pageTitle}</h1>
                 <QRCodeSVG
                   value={`${window.location.origin}/report?bin=${bin.bin_id}`}
                   size={550}
@@ -256,18 +282,40 @@ export default function QRPrint() {
           </div>
         </div>
 
-        {/* Selection counter and print button */}
+        {/* Custom page title */}
+        <div className={styles.titleInput}>
+          <label htmlFor="customTitle">{t('qrPrint.pageTitleLabel')}</label>
+          <input
+            id="customTitle"
+            type="text"
+            value={customTitle}
+            onChange={(e) => setCustomTitle(e.target.value)}
+            placeholder={t('qrPrint.containerFullCTA')}
+            className={styles.titleField}
+          />
+        </div>
+
+        {/* Selection counter and action buttons */}
         <div className={styles.actionBar}>
           <span className={styles.counter}>
             {t('qrPrint.binsSelected', { count: selectedIds.size })}
           </span>
-          <button
-            className="btn btn-primary"
-            onClick={handlePrint}
-            disabled={selectedIds.size === 0}
-          >
-            {t('qrPrint.printSelected')} ({selectedIds.size})
-          </button>
+          <div className={styles.actionButtons}>
+            <button
+              className="btn btn-primary"
+              onClick={handlePrint}
+              disabled={selectedIds.size === 0}
+            >
+              {t('qrPrint.printSelected')} ({selectedIds.size})
+            </button>
+            <button
+              className={`btn ${styles.pdfBtn}`}
+              onClick={handleSavePdf}
+              disabled={selectedIds.size === 0 || isGeneratingPdf}
+            >
+              {isGeneratingPdf ? t('qrPrint.generatingPdf') : t('qrPrint.saveAsPdf')}
+            </button>
+          </div>
         </div>
 
         {/* Bin list */}

@@ -258,7 +258,11 @@
     "loadingBins": "Behälter laden...",
     "noMatchingBins": "Keine Behälter entsprechen Ihren Filtern.",
     "unnamed": "Unbenannt",
-    "pageOf": "Seite {{current}} von {{total}}"
+    "pageOf": "Seite {{current}} von {{total}}",
+    "pageTitleLabel": "Seitentitel",
+    "saveAsPdf": "Als PDF speichern",
+    "generatingPdf": "PDF wird erstellt...",
+    "pdfError": "PDF konnte nicht erstellt werden. Bitte versuchen Sie es erneut."
   },
   "cookies": {
     "message": "Wir verwenden Cookies zur Analyse des Website-Traffics und zur Verbesserung Ihrer Erfahrung. Persönliche Daten werden nicht an Dritte weitergegeben.",

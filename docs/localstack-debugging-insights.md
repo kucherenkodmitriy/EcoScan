@@ -20,7 +20,7 @@ The primary symptom was the end-to-end test consistently failing with an **HTTP 
 
 ### 3. Runtime Environment
 
-- **Problem**: The `bootstrap` binary was not executable within the Lambda environment, and there was a subtle incompatibility between the build environment and the `provided.al2` runtime.
+- **Problem**: The `bootstrap` binary was not executable within the Lambda environment, and there was a subtle incompatibility between the build environment and the `provided.al2023` runtime.
 - **Solution**:
     - Added a `chmod +x` command to the `scripts/build-lambda.sh` script to ensure the binary has the correct permissions.
     - Switched the build script to use an `amazonlinux:2` Docker image, guaranteeing that the compiled binary is 100% compatible with the target runtime.

@@ -94,7 +94,7 @@ EcoScan uses a **multi-layer Terraform architecture**:
         │  ┌──────────────────────────────────────────┐   │
         │  │  Lambda: update-bin-status (Rust)        │   │
         │  │  - Handler: sqs_handler                  │   │
-        │  │  - Runtime: provided.al2                 │   │
+        │  │  - Runtime: provided.al2023               │   │
         │  │  - Architecture: x86_64                  │   │
         │  └────────────────┬─────────────────────────┘   │
         │                   │ reads/writes                 │

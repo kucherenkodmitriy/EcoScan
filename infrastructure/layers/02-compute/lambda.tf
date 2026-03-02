@@ -46,7 +46,7 @@ resource "aws_lambda_function" "update_bin_status" {
   function_name = "${var.environment}-${var.project_name}-update-bin-status"
   role          = aws_iam_role.lambda_exec_role.arn
   handler       = "bootstrap"
-  runtime       = "provided.al2"
+  runtime       = "provided.al2023"
   architectures = [var.lambda_architecture]
   memory_size   = var.lambda_memory_size
   timeout       = var.lambda_timeout
@@ -118,7 +118,7 @@ resource "aws_lambda_function" "authorizer" {
   function_name = "${var.environment}-${var.project_name}-authorizer"
   role          = aws_iam_role.lambda_authorizer_role.arn
   handler       = "bootstrap"
-  runtime       = "provided.al2"
+  runtime       = "provided.al2023"
   architectures = [var.lambda_architecture]
   memory_size   = 128
   timeout       = 10
@@ -234,7 +234,7 @@ resource "aws_lambda_function" "api_key_authorizer" {
   function_name = "${var.environment}-${var.project_name}-apikey-authorizer"
   role          = aws_iam_role.api_key_authorizer_role.arn
   handler       = "bootstrap"
-  runtime       = "provided.al2"
+  runtime       = "provided.al2023"
   architectures = [var.lambda_architecture]
   memory_size   = 128
   timeout       = 10
@@ -337,7 +337,7 @@ resource "aws_lambda_function" "admin_dashboard" {
   function_name = "${var.environment}-${var.project_name}-admin-dashboard"
   role          = aws_iam_role.admin_dashboard_role.arn
   handler       = "bootstrap"
-  runtime       = "provided.al2"
+  runtime       = "provided.al2023"
   architectures = [var.lambda_architecture]
   memory_size   = var.lambda_memory_size
   timeout       = var.lambda_timeout
@@ -487,7 +487,7 @@ resource "aws_lambda_function" "contact_form_handler" {
   function_name = "${var.environment}-${var.project_name}-contact-form"
   role          = aws_iam_role.contact_form_role.arn
   handler       = "bootstrap"
-  runtime       = "provided.al2"
+  runtime       = "provided.al2023"
   architectures = [var.lambda_architecture]
   memory_size   = 256
   timeout       = 30 # reCAPTCHA verification can take several seconds
@@ -600,7 +600,7 @@ resource "aws_lambda_function" "webhook_sender" {
   function_name = "${var.environment}-${var.project_name}-webhook-sender"
   role          = aws_iam_role.webhook_sender_role.arn
   handler       = "bootstrap"
-  runtime       = "provided.al2"
+  runtime       = "provided.al2023"
   architectures = [var.lambda_architecture]
   memory_size   = var.lambda_memory_size
   timeout       = 60

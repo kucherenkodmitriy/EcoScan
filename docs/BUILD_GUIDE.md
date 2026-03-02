@@ -72,8 +72,8 @@ The build script automatically selects the correct configuration:
 
 | Architecture | Rust Target | Docker Image | Lambda Runtime |
 |--------------|-------------|--------------|----------------|
-| x86_64 | `x86_64-unknown-linux-musl` | `clux/muslrust` | `provided.al2` |
-| arm64 | `aarch64-unknown-linux-musl` | `messense/rust-musl-cross:aarch64-musl` | `provided.al2` |
+| x86_64 | `x86_64-unknown-linux-musl` | `clux/muslrust` | `provided.al2023` |
+| arm64 | `aarch64-unknown-linux-musl` | `messense/rust-musl-cross:aarch64-musl` | `provided.al2023` |
 
 ## Environment Configuration
 

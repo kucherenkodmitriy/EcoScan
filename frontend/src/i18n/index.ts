@@ -27,7 +27,7 @@ i18n
       escapeValue: false, // React already escapes values
     },
     detection: {
-      order: ['querystring', 'localStorage', 'navigator', 'htmlTag'],
+      order: ['querystring', 'localStorage'],
       lookupQuerystring: 'lang',
       caches: ['localStorage'],
       lookupLocalStorage: 'ecoscan-language',

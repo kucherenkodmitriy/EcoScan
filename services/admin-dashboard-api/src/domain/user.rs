@@ -122,6 +122,7 @@ pub struct UserCreatedResponse {
     pub email: String,
     pub name: String,
     pub role: UserRole,
+    pub initial_password: String,
     pub password_delivered: bool,
     pub created_at: String,
 }

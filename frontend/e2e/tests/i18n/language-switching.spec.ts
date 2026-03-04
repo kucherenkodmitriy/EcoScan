@@ -1,7 +1,7 @@
 import { test, expect } from '../../fixtures/base';
 
 test.describe('Language Switching', () => {
-  test('defaults to English', async ({ page }) => {
+  test('defaults to Czech', async ({ page }) => {
     await page.goto('/dashboard');
     await expect(page.getByText(/dashboard|bins/i).first()).toBeVisible();
   });

@@ -55,9 +55,12 @@ pub async fn handle_login(
         ));
     }
 
+    // Normalize email to match storage format
+    let email = request.email.trim().to_lowercase();
+
     // Get user from database
     let user = repo
-        .get_user(&request.email)
+        .get_user(&email)
         .await?
         .ok_or(AppError::InvalidCredentials)?;
 

@@ -7,8 +7,8 @@ import cs from './locales/cs.json'
 import de from './locales/de.json'
 
 export const supportedLanguages = [
-  { code: 'en', name: 'English', flag: '🇬🇧' },
   { code: 'cs', name: 'Čeština', flag: '🇨🇿' },
+  { code: 'en', name: 'English', flag: '🇬🇧' },
   { code: 'de', name: 'Deutsch', flag: '🇩🇪' },
 ]
 
@@ -21,7 +21,7 @@ i18n
       cs: { translation: cs },
       de: { translation: de },
     },
-    fallbackLng: 'en',
+    fallbackLng: 'cs',
     supportedLngs: ['en', 'cs', 'de'],
     interpolation: {
       escapeValue: false, // React already escapes values

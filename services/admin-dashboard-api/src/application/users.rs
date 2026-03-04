@@ -125,6 +125,7 @@ pub async fn create_user(
         email,
         name: request.name,
         role: request.role,
+        initial_password,
         password_delivered,
         created_at: user.created_at.to_rfc3339(),
     })

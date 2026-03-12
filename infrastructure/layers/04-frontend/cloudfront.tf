@@ -22,6 +22,18 @@ resource "aws_cloudfront_function" "api_rewrite" {
   code = <<-EOF
     function handler(event) {
       var request = event.request;
+      var host = request.headers.host.value;
+      // Redirect www to apex domain
+      if (host.startsWith('www.')) {
+        var apex = host.substring(4);
+        return {
+          statusCode: 301,
+          statusDescription: 'Moved Permanently',
+          headers: {
+            location: { value: 'https://' + apex + request.uri }
+          }
+        };
+      }
       // Strip /api prefix from URI
       if (request.uri.startsWith('/api')) {
         request.uri = request.uri.substring(4);
@@ -29,6 +41,33 @@ resource "aws_cloudfront_function" "api_rewrite" {
         if (request.uri === '' || request.uri === null) {
           request.uri = '/';
         }
+      }
+      return request;
+    }
+  EOF
+}
+
+# CloudFront Function to redirect www to apex domain
+resource "aws_cloudfront_function" "www_redirect" {
+  count = var.use_localstack ? 0 : (var.custom_domain != "" ? 1 : 0)
+
+  name    = "${var.environment}-${var.project_name}-www-redirect"
+  runtime = "cloudfront-js-2.0"
+  comment = "Redirects www.${var.custom_domain} to ${var.custom_domain}"
+  publish = true
+
+  code = <<-EOF
+    function handler(event) {
+      var request = event.request;
+      var host = request.headers.host.value;
+      if (host.startsWith('www.')) {
+        return {
+          statusCode: 301,
+          statusDescription: 'Moved Permanently',
+          headers: {
+            location: { value: 'https://${var.custom_domain}' + request.uri }
+          }
+        };
       }
       return request;
     }
@@ -106,8 +145,8 @@ resource "aws_cloudfront_distribution" "frontend" {
   comment             = "${var.environment} EcoScan Frontend"
   price_class         = var.environment == "prod" ? "PriceClass_All" : "PriceClass_100"
 
-  # Custom domain aliases (optional)
-  aliases = var.custom_domain != "" ? [var.custom_domain] : []
+  # Custom domain aliases (optional) - includes www for redirect
+  aliases = var.custom_domain != "" ? [var.custom_domain, "www.${var.custom_domain}"] : []
 
   # S3 Origin for static files
   origin {
@@ -150,6 +189,15 @@ resource "aws_cloudfront_distribution" "frontend" {
     default_ttl            = var.default_ttl
     max_ttl                = var.max_ttl
     compress               = true
+
+    # Redirect www to apex domain
+    dynamic "function_association" {
+      for_each = var.custom_domain != "" ? [1] : []
+      content {
+        event_type   = "viewer-request"
+        function_arn = aws_cloudfront_function.www_redirect[0].arn
+      }
+    }
   }
 
   # Cache behavior for API requests - /api/*

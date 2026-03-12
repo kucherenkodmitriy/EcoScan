@@ -622,5 +622,45 @@
     "copyPassword": "Passwort kopieren",
     "passwordCopied": "Passwort in die Zwischenablage kopiert!",
     "passwordWarning": "⚠️ Dieses Passwort wird nur einmal angezeigt. Stellen Sie sicher, dass Sie es speichern oder mit dem Benutzer teilen."
+  },
+  "meta": {
+    "home": {
+      "title": "Intelligente Abfallbehälter-Überwachung",
+      "description": "EcoScan ist eine Plattform zur Echtzeitüberwachung von Abfallbehältern, QR-basierter Bürgermeldung und optimierten Sammelrouten für Kommunen."
+    },
+    "login": {
+      "title": "Admin-Anmeldung",
+      "description": "Melden Sie sich im EcoScan-Administrationspanel an."
+    },
+    "forgotPassword": {
+      "title": "Passwort vergessen",
+      "description": "Setzen Sie Ihr EcoScan-Administratorkonto-Passwort zurück."
+    },
+    "resetPassword": {
+      "title": "Passwort zurücksetzen",
+      "description": "Legen Sie ein neues Passwort für Ihr EcoScan-Konto fest."
+    },
+    "report": {
+      "title": "Behälterstatus melden",
+      "description": "Melden Sie den Füllstand eines Abfallbehälters über das EcoScan QR-System."
+    },
+    "privacy": {
+      "title": "Datenschutzrichtlinie",
+      "description": "Erfahren Sie, wie EcoScan Daten erhebt und verwendet. Wir erheben keine personenbezogenen Daten — alle Meldungen sind anonym."
+    },
+    "terms": {
+      "title": "Nutzungsbedingungen",
+      "description": "Nutzungsbedingungen und Haftungsausschluss für die EcoScan-Demoplattform."
+    },
+    "dashboard": {
+      "title": "Dashboard",
+      "description": "EcoScan-Administrationspanel zur Verwaltung von Abfallbehältern."
+    },
+    "notFound": {
+      "title": "Seite nicht gefunden",
+      "description": "Die gesuchte Seite existiert nicht.",
+      "heading": "Die gesuchte Seite existiert nicht.",
+      "backHome": "Zur Startseite"
+    }
   }
 }

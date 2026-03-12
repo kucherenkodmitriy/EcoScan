@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import type { ChangeEvent, FormEvent } from 'react'
 import { useTranslation } from 'react-i18next'
+import SEO from '../../components/SEO'
 import DemoRequestModal from './DemoRequestModal'
 import LanguageSelector from '../../components/LanguageSelector'
 import './Landing.css'
@@ -159,6 +160,7 @@ function Landing() {
 
   return (
     <div className="landing">
+      <SEO titleKey="meta.home.title" descriptionKey="meta.home.description" canonical="https://ecoscan.city/" />
       <header className="landing-hero">
         <nav className="landing-nav">
           <div className="landing-logo">EcoScan</div>

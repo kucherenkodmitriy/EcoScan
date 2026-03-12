@@ -2,6 +2,7 @@ import { useState, FormEvent } from 'react'
 import { Link } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { forgotPassword } from '../api/client'
+import SEO from '../components/SEO'
 import LanguageSwitcher from '../components/LanguageSwitcher'
 import Footer from '../components/Footer'
 import styles from './Login.module.css'
@@ -36,6 +37,7 @@ export default function ForgotPassword() {
 
   return (
     <div className={styles.container}>
+      <SEO titleKey="meta.forgotPassword.title" descriptionKey="meta.forgotPassword.description" noindex />
       <div className={styles.languageSwitcher}>
         <div className="language-switcher-light">
           <LanguageSwitcher />

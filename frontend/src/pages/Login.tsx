@@ -2,6 +2,7 @@ import { useState, FormEvent, useEffect } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { useAuth } from '../context/AuthContext'
+import SEO from '../components/SEO'
 import LanguageSwitcher from '../components/LanguageSwitcher'
 import Footer from '../components/Footer'
 import styles from './Login.module.css'
@@ -48,6 +49,7 @@ export default function Login() {
 
   return (
     <div className={styles.container}>
+      <SEO titleKey="meta.login.title" descriptionKey="meta.login.description" noindex />
       <div className={styles.languageSwitcher}>
         <div className="language-switcher-light">
           <LanguageSwitcher />

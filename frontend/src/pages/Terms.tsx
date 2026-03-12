@@ -1,5 +1,6 @@
 import { Link } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
+import SEO from '../components/SEO'
 import LanguageSwitcher from '../components/LanguageSwitcher'
 import Footer from '../components/Footer'
 import styles from './Legal.module.css'
@@ -9,6 +10,7 @@ export default function Terms() {
 
   return (
     <div className={styles.container}>
+      <SEO titleKey="meta.terms.title" descriptionKey="meta.terms.description" canonical="https://ecoscan.city/terms" />
       <div className={styles.languageSwitcher}>
         <LanguageSwitcher />
       </div>

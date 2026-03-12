@@ -2,6 +2,7 @@ import { useState, FormEvent } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { resetPassword } from '../api/client'
+import SEO from '../components/SEO'
 import LanguageSwitcher from '../components/LanguageSwitcher'
 import Footer from '../components/Footer'
 import styles from './Login.module.css'
@@ -70,6 +71,7 @@ export default function ResetPassword() {
 
   return (
     <div className={styles.container}>
+      <SEO titleKey="meta.resetPassword.title" descriptionKey="meta.resetPassword.description" noindex />
       <div className={styles.languageSwitcher}>
         <div className="language-switcher-light">
           <LanguageSwitcher />

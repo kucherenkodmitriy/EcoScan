@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { getPublicBinInfo, submitBinStatus, PublicBinInfo } from '../api/client'
+import SEO from '../components/SEO'
 import LanguageSwitcher from '../components/LanguageSwitcher'
 import Footer from '../components/Footer'
 import styles from './Report.module.css'
@@ -168,6 +169,7 @@ export default function Report() {
 
   return (
     <div className={styles.container}>
+      <SEO titleKey="meta.report.title" descriptionKey="meta.report.description" />
       <div className={styles.languageSwitcher}>
         <div className="language-switcher-light">
           <LanguageSwitcher />

@@ -622,5 +622,45 @@
     "copyPassword": "Copy Password",
     "passwordCopied": "Password copied to clipboard!",
     "passwordWarning": "⚠️ This password will only be shown once. Make sure to save or share it with the user."
+  },
+  "meta": {
+    "home": {
+      "title": "Smart Waste Bin Monitoring",
+      "description": "EcoScan is a pilot-ready platform for real-time bin monitoring, QR-based citizen reporting, and optimized collection routes for municipalities."
+    },
+    "login": {
+      "title": "Admin Login",
+      "description": "Sign in to the EcoScan admin dashboard."
+    },
+    "forgotPassword": {
+      "title": "Forgot Password",
+      "description": "Reset your EcoScan admin account password."
+    },
+    "resetPassword": {
+      "title": "Reset Password",
+      "description": "Set a new password for your EcoScan admin account."
+    },
+    "report": {
+      "title": "Report Bin Status",
+      "description": "Report the fill level of a waste bin using the EcoScan QR code system."
+    },
+    "privacy": {
+      "title": "Privacy Policy",
+      "description": "Learn how EcoScan collects and uses data. We collect no personal information — all bin reports are anonymous."
+    },
+    "terms": {
+      "title": "Terms of Service",
+      "description": "Terms of service and disclaimer for the EcoScan demo platform."
+    },
+    "dashboard": {
+      "title": "Dashboard",
+      "description": "EcoScan admin dashboard for managing waste bins."
+    },
+    "notFound": {
+      "title": "Page Not Found",
+      "description": "The page you are looking for does not exist.",
+      "heading": "The page you are looking for does not exist.",
+      "backHome": "Go to homepage"
+    }
   }
 }

@@ -622,5 +622,45 @@
     "copyPassword": "Kopírovat heslo",
     "passwordCopied": "Heslo zkopírováno do schránky!",
     "passwordWarning": "⚠️ Toto heslo bude zobrazeno pouze jednou. Nezapomeňte si ho uložit nebo sdílet s uživatelem."
+  },
+  "meta": {
+    "home": {
+      "title": "Chytrý monitoring odpadových kontejnerů",
+      "description": "EcoScan je platforma pro sledování naplněnosti kontejnerů v reálném čase, hlášení občanů přes QR kódy a optimalizaci svozových tras."
+    },
+    "login": {
+      "title": "Přihlášení správce",
+      "description": "Přihlaste se do administrace EcoScan."
+    },
+    "forgotPassword": {
+      "title": "Zapomenuté heslo",
+      "description": "Obnovte heslo k vašemu účtu EcoScan."
+    },
+    "resetPassword": {
+      "title": "Nové heslo",
+      "description": "Nastavte nové heslo k vašemu účtu EcoScan."
+    },
+    "report": {
+      "title": "Nahlásit stav kontejneru",
+      "description": "Nahlaste naplněnost kontejneru pomocí QR systému EcoScan."
+    },
+    "privacy": {
+      "title": "Zásady ochrany osobních údajů",
+      "description": "Zjistěte, jak EcoScan shromažďuje a používá data. Neshromažďujeme žádné osobní údaje — všechna hlášení jsou anonymní."
+    },
+    "terms": {
+      "title": "Podmínky služby",
+      "description": "Podmínky služby a vyloučení odpovědnosti pro demo platformu EcoScan."
+    },
+    "dashboard": {
+      "title": "Přehled",
+      "description": "Administrační panel EcoScan pro správu odpadových kontejnerů."
+    },
+    "notFound": {
+      "title": "Stránka nenalezena",
+      "description": "Požadovaná stránka neexistuje.",
+      "heading": "Požadovaná stránka neexistuje.",
+      "backHome": "Přejít na úvodní stránku"
+    }
   }
 }

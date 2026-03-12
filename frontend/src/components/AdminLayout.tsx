@@ -1,6 +1,7 @@
 import { Link, Outlet } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { useAuth } from '../context/AuthContext'
+import SEO from './SEO'
 import LanguageSwitcher from './LanguageSwitcher'
 import Breadcrumbs from './Breadcrumbs'
 import Footer from './Footer'
@@ -12,6 +13,7 @@ export default function AdminLayout() {
 
   return (
     <div className={styles.page}>
+      <SEO titleKey="meta.dashboard.title" descriptionKey="meta.dashboard.description" noindex />
       <header className={styles.header}>
         <div className={styles.headerLeft}>
           <Link to="/dashboard" className={styles.appName}>

@@ -20,6 +20,7 @@ import ApiKeyDetail from './pages/ApiKeyDetail'
 import Settings from './pages/Settings'
 import UserDetail from './pages/UserDetail'
 import UserForm from './pages/UserForm'
+import NotFound from './pages/NotFound'
 import CookieConsent from './components/CookieConsent'
 
 function PrivateRoute() {
@@ -71,7 +72,7 @@ function App() {
         <Route path="/users/:email/edit" element={<UserForm />} />
         <Route path="/print" element={<QRPrint />} />
       </Route>
-      <Route path="*" element={<Navigate to="/" />} />
+      <Route path="*" element={<NotFound />} />
     </Routes>
     <CookieConsent />
     </>

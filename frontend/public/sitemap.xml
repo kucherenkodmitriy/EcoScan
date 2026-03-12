@@ -5,16 +5,35 @@
   <!-- Homepage -->
   <url>
     <loc>https://ecoscan.city/</loc>
-    <xhtml:link rel="alternate" hreflang="en" href="https://ecoscan.city/"/>
-    <xhtml:link rel="alternate" hreflang="cs" href="https://ecoscan.city/?lang=cs"/>
+    <lastmod>2026-03-12</lastmod>
+    <xhtml:link rel="alternate" hreflang="cs" href="https://ecoscan.city/"/>
+    <xhtml:link rel="alternate" hreflang="en" href="https://ecoscan.city/?lang=en"/>
     <xhtml:link rel="alternate" hreflang="de" href="https://ecoscan.city/?lang=de"/>
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://ecoscan.city/"/>
     <changefreq>weekly</changefreq>
     <priority>1.0</priority>
+  </url>
+
+  <!-- Report Bin Status (public QR landing page) -->
+  <url>
+    <loc>https://ecoscan.city/report</loc>
+    <lastmod>2026-03-12</lastmod>
+    <xhtml:link rel="alternate" hreflang="cs" href="https://ecoscan.city/report"/>
+    <xhtml:link rel="alternate" hreflang="en" href="https://ecoscan.city/report?lang=en"/>
+    <xhtml:link rel="alternate" hreflang="de" href="https://ecoscan.city/report?lang=de"/>
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://ecoscan.city/report"/>
+    <changefreq>monthly</changefreq>
+    <priority>0.6</priority>
   </url>
 
   <!-- Privacy Policy -->
   <url>
     <loc>https://ecoscan.city/privacy</loc>
+    <lastmod>2026-03-12</lastmod>
+    <xhtml:link rel="alternate" hreflang="cs" href="https://ecoscan.city/privacy"/>
+    <xhtml:link rel="alternate" hreflang="en" href="https://ecoscan.city/privacy?lang=en"/>
+    <xhtml:link rel="alternate" hreflang="de" href="https://ecoscan.city/privacy?lang=de"/>
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://ecoscan.city/privacy"/>
     <changefreq>monthly</changefreq>
     <priority>0.3</priority>
   </url>
@@ -22,6 +41,11 @@
   <!-- Terms of Service -->
   <url>
     <loc>https://ecoscan.city/terms</loc>
+    <lastmod>2026-03-12</lastmod>
+    <xhtml:link rel="alternate" hreflang="cs" href="https://ecoscan.city/terms"/>
+    <xhtml:link rel="alternate" hreflang="en" href="https://ecoscan.city/terms?lang=en"/>
+    <xhtml:link rel="alternate" hreflang="de" href="https://ecoscan.city/terms?lang=de"/>
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://ecoscan.city/terms"/>
     <changefreq>monthly</changefreq>
     <priority>0.3</priority>
   </url>

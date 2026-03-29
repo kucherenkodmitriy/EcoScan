@@ -99,7 +99,7 @@ variable "notify_email" {
 }
 
 variable "from_email" {
-  description = "Email address to send notifications from (must be verified in SES)"
+  description = "Email address to send notifications from (must be verified in SES). Required for non-local environments."
   type        = string
   default     = ""
 }
@@ -123,9 +123,8 @@ variable "jwt_expiry_hours" {
 }
 
 variable "cors_allowed_origins" {
-  description = "Allowed CORS origins (e.g., https://your-cloudfront-domain.cloudfront.net). Use * for development."
+  description = "Allowed CORS origins (e.g., https://your-cloudfront-domain.cloudfront.net). Use * only for local development."
   type        = string
-  default     = "*"
 }
 
 variable "frontend_url" {

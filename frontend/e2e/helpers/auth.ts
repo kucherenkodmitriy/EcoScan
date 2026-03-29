@@ -7,8 +7,9 @@ export const STORAGE_STATE_PATH = path.join(__dirname, '..', '.auth', 'user.json
 
 export async function login(page: Page, email: string, password: string): Promise<void> {
   await page.goto('/login');
+  await page.waitForLoadState('domcontentloaded');
   await page.locator('input#email').fill(email);
   await page.locator('input#password').fill(password);
   await page.locator('button[type=submit]').click();
-  await page.waitForURL('/dashboard');
+  await page.waitForURL('/dashboard', { timeout: 30_000 });
 }

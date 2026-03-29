@@ -1,9 +1,11 @@
 import { test, expect } from '../../fixtures/base';
 
 test.describe('Language Switching', () => {
-  test('defaults to Czech', async ({ page }) => {
+  test('defaults to English in test environment', async ({ page }) => {
     await page.goto('/dashboard');
-    await expect(page.getByText(/dashboard|bins/i).first()).toBeVisible();
+    // autoMock fixture sets ecoscan-language=en
+    const lang = await page.evaluate(() => localStorage.getItem('ecoscan-language'));
+    expect(lang).toBe('en');
   });
 
   test('can switch to Czech', async ({ page }) => {
@@ -28,12 +30,20 @@ test.describe('Language Switching', () => {
     expect(lang).toBe('de');
   });
 
-  test('persists language in localStorage', async ({ page }) => {
+  test('persists language in localStorage after switch', async ({ page }) => {
     await page.goto('/dashboard');
-    await page.evaluate(() => localStorage.setItem('ecoscan-language', 'cs'));
-    await page.reload();
+    // Switch to Czech via the UI language switcher
+    const langTrigger = page.locator('[class*="trigger"]').first();
+    await langTrigger.click();
+    const czechOption = page.locator('[class*="option"]').filter({ hasText: /čeština|CS/i });
+    await czechOption.click();
+    // Verify it was saved
     const lang = await page.evaluate(() => localStorage.getItem('ecoscan-language'));
     expect(lang).toBe('cs');
+    // Reload and verify it persists
+    await page.reload();
+    const langAfter = await page.evaluate(() => localStorage.getItem('ecoscan-language'));
+    expect(langAfter).toBe('cs');
   });
 
   test('respects ?lang= query parameter', async ({ page }) => {

@@ -45,19 +45,12 @@ variable "api_burst_limit" {
 }
 
 variable "cors_allowed_origins" {
-  description = "Allowed CORS origins for MOCK integration responses"
+  description = "Allowed CORS origins for MOCK integration responses. Use * only for local development."
   type        = string
-  default     = "*"
 }
 
 variable "waf_rate_limit" {
   description = "WAF rate limit (requests per 5-minute window per IP)"
   type        = number
   default     = 100
-}
-
-variable "alarm_email" {
-  description = "Email address for CloudWatch alarm notifications (empty to skip)"
-  type        = string
-  default     = ""
 }

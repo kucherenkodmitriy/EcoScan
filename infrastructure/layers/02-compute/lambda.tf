@@ -460,7 +460,7 @@ resource "aws_iam_policy" "admin_dashboard_policy" {
           "ses:SendEmail",
           "ses:SendRawEmail"
         ]
-        Resource = var.from_email != "" ? "arn:aws:ses:${var.aws_region}:*:identity/${var.from_email}" : "*"
+        Resource = var.from_email != "" ? "arn:aws:ses:${var.aws_region}:*:identity/${var.from_email}" : "arn:aws:ses:${var.aws_region}:*:identity/noop-local-dev"
       },
       {
         Effect = "Allow"
@@ -581,7 +581,7 @@ resource "aws_iam_policy" "contact_form_policy" {
           "ses:SendEmail",
           "ses:SendRawEmail"
         ]
-        Resource = var.from_email != "" ? "arn:aws:ses:${var.aws_region}:*:identity/${var.from_email}" : "*"
+        Resource = var.from_email != "" ? "arn:aws:ses:${var.aws_region}:*:identity/${var.from_email}" : "arn:aws:ses:${var.aws_region}:*:identity/noop-local-dev"
       }
     ]
   })

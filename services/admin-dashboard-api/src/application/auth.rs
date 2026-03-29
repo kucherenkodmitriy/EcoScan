@@ -194,7 +194,7 @@ pub async fn handle_forgot_password(
             warn!(error = %e, email = %email, "Failed to send password reset email");
         }
     } else {
-        info!(email = %email, reset_link = %reset_link, "Email service not configured, logging reset link");
+        warn!(email = %email, "Email service not configured, reset link not sent");
     }
 
     Ok(success)
@@ -242,6 +242,9 @@ pub async fn handle_reset_password(
     // Hash new password and update
     let new_password_hash = hash_password(&request.new_password)?;
     repo.update_password(&email, &new_password_hash).await?;
+
+    // Invalidate token immediately to prevent replay attacks
+    let _ = repo.clear_reset_token(&email).await;
 
     info!(email = %email, "Password reset successful");
 

@@ -5,6 +5,9 @@ import { mockGoogleApis } from './helpers/google-mock';
 
 setup('authenticate', async ({ page }) => {
   await mockGoogleApis(page);
+  await page.addInitScript(() => {
+    localStorage.setItem('ecoscan-language', 'en');
+  });
   await login(page, TEST_CREDENTIALS.email, TEST_CREDENTIALS.password);
   await page.context().storageState({ path: STORAGE_STATE_PATH });
 });

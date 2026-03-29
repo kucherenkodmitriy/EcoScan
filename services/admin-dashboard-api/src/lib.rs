@@ -229,10 +229,18 @@ async fn api_handler_inner(
         }
 
         // List bins
-        ("GET", p) if p.ends_with("/admin/bins") => handle_list_bins(repo, cors_origin).await,
+        ("GET", p) if p.ends_with("/admin/bins") => {
+            if let Err(response) = require_admin_role(&request, jwt_secret, cors_origin) {
+                return Ok(response);
+            }
+            handle_list_bins(repo, cors_origin).await
+        }
 
         // Get single bin
         ("GET", p) if p.contains("/admin/bins/") => {
+            if let Err(response) = require_admin_role(&request, jwt_secret, cors_origin) {
+                return Ok(response);
+            }
             let bin_id = get_path_param(&request, "bin_id");
             handle_get_bin(repo, bin_id, cors_origin).await
         }
@@ -244,11 +252,17 @@ async fn api_handler_inner(
 
         // Create bin
         ("POST", p) if p.ends_with("/admin/bins") => {
+            if let Err(response) = require_admin_role(&request, jwt_secret, cors_origin) {
+                return Ok(response);
+            }
             handle_create_bin(&request, repo, cors_origin).await
         }
 
         // Update bin
         ("PUT", p) if p.contains("/admin/bins/") => {
+            if let Err(response) = require_admin_role(&request, jwt_secret, cors_origin) {
+                return Ok(response);
+            }
             let bin_id = get_path_param(&request, "bin_id");
             handle_update_bin(&request, repo, bin_id, cors_origin).await
         }
@@ -261,6 +275,9 @@ async fn api_handler_inner(
 
         // Delete bin
         ("DELETE", p) if p.contains("/admin/bins/") => {
+            if let Err(response) = require_admin_role(&request, jwt_secret, cors_origin) {
+                return Ok(response);
+            }
             let bin_id = get_path_param(&request, "bin_id");
             handle_delete_bin(repo, bin_id, cors_origin).await
         }

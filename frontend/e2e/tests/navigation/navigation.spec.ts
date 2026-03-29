@@ -38,9 +38,9 @@ test.describe('Navigation', () => {
     await expect(page).toHaveURL('/dashboard');
   });
 
-  test('unknown route redirects to landing', async ({ page }) => {
+  test('unknown route shows 404 page', async ({ page }) => {
     await page.goto('/nonexistent-route');
-    await expect(page).toHaveURL('/');
+    await expect(page.getByText('404')).toBeVisible();
   });
 
   test('landing privacy link works', async ({ page }) => {
